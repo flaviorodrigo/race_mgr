@@ -59,6 +59,39 @@ class LiveSessionTest {
     }
 
     @Test
+    void bansAreOptionalAndBounded() {
+        assertThat(LiveSession.isValidBan(null)).isTrue();
+        assertThat(LiveSession.isValidBan(1)).isTrue();
+        assertThat(LiveSession.isValidBan(LiveSession.MAX_BAN_SECONDS)).isTrue();
+        assertThat(LiveSession.isValidBan(0)).isFalse();
+        assertThat(LiveSession.isValidBan(-5)).isFalse();
+        assertThat(LiveSession.isValidBan(LiveSession.MAX_BAN_SECONDS + 1)).isFalse();
+    }
+
+    // Captured from the real dedicated server (build 1, protocol 99) while it was idle
+    @Test
+    void readsAnIdleServersRealResponse() throws Exception {
+        String json = new String(getClass().getResourceAsStream("/ams2_session_status_idle.json").readAllBytes(),
+                java.nio.charset.StandardCharsets.UTF_8);
+        var summary = LiveSession.summarize(JsonMapper.shared().readTree(json).path("response"), true);
+
+        // SessionStage is empty and the sizes are 0 while idle: fall back to the overall state, sizes unknown
+        assertThat(summary.stage()).isEqualTo("Idle");
+        assertThat(summary.players()).isZero();
+        assertThat(summary.maxPlayers()).isNull();
+        assertThat(summary.trackId()).isNull();
+    }
+
+    @Test
+    void prefersTheServersMemberLimitOverSessionAttributes() {
+        var running = JsonMapper.shared().readTree(
+                "{\"state\":\"Running\",\"max_member_count\":16,\"attributes\":{\"SessionStage\":\"Race\",\"MaxPlayers\":24,\"TrackId\":55},\"members\":[]}");
+        var summary = LiveSession.summarize(running, false);
+        assertThat(summary.maxPlayers()).isEqualTo(16);
+        assertThat(summary.trackId()).isEqualTo("55");
+    }
+
+    @Test
     void onlyPlausibleReferenceIdsAreAccepted() {
         assertThat(LiveSession.isValidRefId(0)).isTrue();
         assertThat(LiveSession.isValidRefId(65535)).isTrue();
@@ -79,7 +112,8 @@ class LiveSessionTest {
     @Test
     void queryValuesCannotInjectExtraParameters() {
         String base = "http://127.0.0.1:9000/api";
-        assertThat(LiveSession.kickUri(base, 7).toString()).isEqualTo(base + "/session/kick?refid=7");
+        assertThat(LiveSession.kickUri(base, 7, null).toString()).isEqualTo(base + "/session/kick?refid=7");
+        assertThat(LiveSession.kickUri(base, 7, 3600).toString()).isEqualTo(base + "/session/kick?refid=7&ban=3600");
 
         var uri = LiveSession.chatUri(base, "hi&refid=1 #now=yes+more?");
         assertThat(uri.getRawQuery()).startsWith("message=");

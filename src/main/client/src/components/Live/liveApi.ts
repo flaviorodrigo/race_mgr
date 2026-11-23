@@ -27,13 +27,14 @@ export const fetchLiveSession = async (admin: boolean): Promise<ILiveSession | n
 	}
 };
 
-export const kickPlayer = async (refid: number): Promise<boolean> => {
+// BanSeconds: also ban the player from rejoining for this long (the game server's temporary ban)
+export const kickPlayer = async (refid: number, banSeconds?: number): Promise<boolean> => {
 	const rmApi = new RaceMgrApi();
 	try {
 		const response = await rmApi.makeApiCall({
 			url: `${rmApi.getBaseAdminApiUrl()}/gameserver/kick`,
 			method: 'post',
-			data: {refid},
+			data: {refid, ...(banSeconds ? {banSeconds} : {})},
 		});
 		return response.data?.status === 200;
 	} catch {

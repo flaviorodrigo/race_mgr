@@ -291,7 +291,8 @@ class RacemgrApplicationTests {
     @Test
     void kickAndChatValidateTheirInput() throws Exception {
         Cookie session = adminSession();
-        for (String bad : new String[]{"{}", "{\"refid\":-4}", "{\"refid\":99999999}", "{\"refid\":\"abc\"}"}) {
+        for (String bad : new String[]{"{}", "{\"refid\":-4}", "{\"refid\":99999999}", "{\"refid\":\"abc\"}",
+                "{\"refid\":3,\"banSeconds\":0}", "{\"refid\":3,\"banSeconds\":-1}", "{\"refid\":3,\"banSeconds\":999999999}"}) {
             int code = mvc.perform(adminJson(post("/api/v1/admin/gameserver/kick"), session, bad)).andReturn().getResponse().getStatus();
             assertThat(code).as(bad).isIn(400, 422);
         }

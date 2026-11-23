@@ -48,17 +48,31 @@ public final class LiveSession {
             }
         }
 
+        // SessionStage is empty while the server is idle; its overall state (Idle/Allocating/Running) still says something
         String stage = text(attributes.path("SessionStage"));
         if (stage == null) {
             stage = text(status.path("state"));
         }
-        return new Summary(stage, text(attributes.path("TrackId")), members.size(),
-                integer(attributes.path("MaxPlayers")), members);
+
+        // An idle server reports 0 for its sizes: treat that as "unknown" rather than "0 players allowed"
+        Integer maxPlayers = positive(integer(status.path("max_member_count")));
+        if (maxPlayers == null) {
+            maxPlayers = positive(integer(attributes.path("MaxPlayers")));
+        }
+        return new Summary(stage, positive(integer(attributes.path("TrackId"))) == null ? null : text(attributes.path("TrackId")),
+                members.size(), maxPlayers, members);
     }
 
     /** Only whole, non-negative reference ids are ever sent to the game server. */
     public static boolean isValidRefId(Integer refid) {
         return refid != null && refid >= 0 && refid <= 65535;
+    }
+
+    public static final int MAX_BAN_SECONDS = 365 * 24 * 60 * 60;
+
+    /** A temporary ban length in seconds: absent means "just kick". */
+    public static boolean isValidBan(Integer banSeconds) {
+        return banSeconds == null || (banSeconds >= 1 && banSeconds <= MAX_BAN_SECONDS);
     }
 
     /** Chat is plain text: no control characters, bounded length. */
@@ -71,9 +85,12 @@ public final class LiveSession {
     }
 
     // Query values are strictly encoded, so a chat message containing "&" or "=" can't add parameters
-    static URI kickUri(String baseUrl, int refid) {
-        return UriComponentsBuilder.fromUriString(baseUrl + "/session/kick")
-                .queryParam("refid", "{refid}").encode().buildAndExpand(refid).toUri();
+    static URI kickUri(String baseUrl, int refid, Integer banSeconds) {
+        var builder = UriComponentsBuilder.fromUriString(baseUrl + "/session/kick").queryParam("refid", "{refid}");
+        if (banSeconds == null) {
+            return builder.encode().buildAndExpand(refid).toUri();
+        }
+        return builder.queryParam("ban", "{ban}").encode().buildAndExpand(refid, banSeconds).toUri();
     }
 
     static URI chatUri(String baseUrl, String message) {
@@ -81,8 +98,17 @@ public final class LiveSession {
                 .queryParam("message", "{message}").encode().buildAndExpand(message).toUri();
     }
 
+    private static Integer positive(Integer value) {
+        return value != null && value > 0 ? value : null;
+    }
+
+    // Blank counts as missing
     private static String text(JsonNode node) {
-        return node.isMissingNode() || node.isNull() ? null : node.asString();
+        if (node.isMissingNode() || node.isNull()) {
+            return null;
+        }
+        String value = node.asString();
+        return value == null || value.isBlank() ? null : value;
     }
 
     private static Integer integer(JsonNode node) {

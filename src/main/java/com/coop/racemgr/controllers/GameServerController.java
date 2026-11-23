@@ -62,6 +62,8 @@ public class GameServerController {
     @Data
     public static class KickRequest {
         private Integer refid;
+        // Optional: also ban for this many seconds (the game server's temporary ban)
+        private Integer banSeconds;
     }
 
     @Data
@@ -87,10 +89,15 @@ public class GameServerController {
             return ResponseHandler.generateResponse("A valid player reference id is required", HttpStatus.BAD_REQUEST, null);
         }
 
+        if (!LiveSession.isValidBan(request.getBanSeconds())) {
+            return ResponseHandler.generateResponse("A ban must be between 1 second and one year", HttpStatus.BAD_REQUEST, null);
+        }
+
         try {
-            this.gameServerProxy.kick(request.getRefid());
-            logger.info("Admin " + authentication.getName() + " kicked player refid " + request.getRefid());
-            return ResponseHandler.generateResponse("Player kicked", HttpStatus.OK, null);
+            this.gameServerProxy.kick(request.getRefid(), request.getBanSeconds());
+            logger.info("Admin " + authentication.getName() + " kicked player refid " + request.getRefid()
+                    + (request.getBanSeconds() == null ? "" : " with a " + request.getBanSeconds() + "s ban"));
+            return ResponseHandler.generateResponse(request.getBanSeconds() == null ? "Player kicked" : "Player kicked and banned", HttpStatus.OK, null);
         } catch (Exception e) {
             logger.warn("Kick failed: " + e);
             return ResponseHandler.generateResponse("Request failed", HttpStatus.MULTI_STATUS, null);

@@ -45,7 +45,12 @@ public class GameServerProxy {
 
     private static JdkClientHttpRequestFactory timeouts() {
         var factory = new JdkClientHttpRequestFactory(
-                HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(3)).build());
+                HttpClient.newBuilder()
+                        .connectTimeout(Duration.ofSeconds(3))
+                        // The game server (libwebsockets) hangs up on the HTTP/2 upgrade request the JDK client sends
+                        // by default over plain HTTP, so speak HTTP/1.1 only.
+                        .version(HttpClient.Version.HTTP_1_1)
+                        .build());
         factory.setReadTimeout(Duration.ofSeconds(10));
         return factory;
     }
@@ -97,8 +102,9 @@ public class GameServerProxy {
         cachedStatus = null;
     }
 
-    public void kick(int refid) {
-        REST_CLIENT.get().uri(LiveSession.kickUri(gameServerBaseUrl, refid)).retrieve().toBodilessEntity();
+    /** Removes a player; with banSeconds also bans them from rejoining for that long (the game server's own temporary ban). */
+    public void kick(int refid, Integer banSeconds) {
+        REST_CLIENT.get().uri(LiveSession.kickUri(gameServerBaseUrl, refid, banSeconds)).retrieve().toBodilessEntity();
         cachedStatus = null;
     }
 
