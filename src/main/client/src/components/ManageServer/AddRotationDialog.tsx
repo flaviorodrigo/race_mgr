@@ -11,7 +11,6 @@ import {sanitizeString} from '../../utils/stringUtils';
 import Typography from '@mui/material/Typography';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import Button from '@mui/material/Button';
-import LoadingButton from '@mui/lab/LoadingButton';
 import Switch from '@mui/material/Switch';
 import Slider from '@mui/material/Slider';
 import Dialog from '@mui/material/Dialog';
@@ -124,10 +123,10 @@ const AddRotationDialog = (props:IProps) => {
 			<Dialog open={props.open} onClose={handleClose}>
 				<DialogTitle>Add a Rotation</DialogTitle>
 				<DialogContent sx={{minWidth: 600}}>
-					<Grid container spacing={3} padding={3}>
-						<Grid item xs={12}>
+					<Grid container spacing={3} sx={{padding: 3}}>
+						<Grid size={{xs: 12}}>
 							<TextField
-								inputProps={{maxLength: 50}}
+								slotProps={{htmlInput: {maxLength: 50}}}
 								id="standard-basic"
 								label="Rotation Name"
 								variant="standard"
@@ -136,7 +135,7 @@ const AddRotationDialog = (props:IProps) => {
 								disabled={rotations.isLoading}
 								onChange={handleRotationNameChange} />
 						</Grid>
-						<Grid item xs={12}>
+						<Grid size={{xs: 12}}>
 							<Typography align="left" variant="subtitle1" sx={{minWidth: 100}}>Number of Races</Typography>
 							<Slider
 								size="small"
@@ -153,7 +152,7 @@ const AddRotationDialog = (props:IProps) => {
 							/>
 
 						</Grid>
-						<Grid item xs={4}>
+						<Grid size={{xs: 4}}>
 							<FormControlLabel
 								control={
 									<Switch disabled={rotations.isLoading} checked={allowKarts} onChange={handleAllowKartsChanged} name="allowKarts" />
@@ -162,7 +161,7 @@ const AddRotationDialog = (props:IProps) => {
 							/>
 						</Grid>
 
-						<Grid item xs={4}>
+						<Grid size={{xs: 4}}>
 							<FormControlLabel
 								control={
 									<Switch disabled={rotations.isLoading} checked={persist} onChange={handlePersistChanged} name="persist" />
@@ -172,7 +171,7 @@ const AddRotationDialog = (props:IProps) => {
 
 						</Grid>
 
-						<Grid item xs={4}>
+						<Grid size={{xs: 4}}>
 							<FormControlLabel
 								control={
 									<Switch disabled={rotations.isLoading} checked={restart} onChange={handleRestartChanged} name="restart" />
@@ -191,9 +190,9 @@ const AddRotationDialog = (props:IProps) => {
 
 				<DialogActions>
 					<Button onClick={handleClose} disabled={rotations.isLoading}>Cancel</Button>
-					<LoadingButton onClick={handleApply} loading={rotations.isLoading}>
+					<Button onClick={handleApply} loading={rotations.isLoading}>
 							Add Rotation
-					</LoadingButton>
+					</Button>
 				</DialogActions>
 			</Dialog>
 		</div>

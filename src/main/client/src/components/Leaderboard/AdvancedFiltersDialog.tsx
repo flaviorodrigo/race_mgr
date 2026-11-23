@@ -65,9 +65,9 @@ const AdvancedFiltersDialog = (props:IProps) => {
 			<Dialog open={props.open} onClose={handleClose}>
 				<DialogTitle>Advanced Filters</DialogTitle>
 				<DialogContent sx={{minWidth: 500}}>
-					<Grid container spacing={3} padding={3}>
-						<Grid item xs={12} md={12} lg={12}>
-							<Stack spacing={2} direction="row" sx={{mb: 2}} alignItems="center">
+					<Grid container spacing={3} sx={{padding: 3}}>
+						<Grid size={{xs: 12, md: 12, lg: 12}}>
+							<Stack spacing={2} direction="row" sx={{mb: 2, alignItems: 'center'}}>
 								<Typography align="left" variant="subtitle1" sx={{minWidth: 100}}>Humans</Typography>
 								<Slider
 									size="small"
@@ -83,8 +83,8 @@ const AdvancedFiltersDialog = (props:IProps) => {
 							</Stack>
 						</Grid>
 
-						<Grid item xs={12} md={12} lg={12}>
-							<Stack spacing={2} direction="row" sx={{mb: 2}} alignItems="center">
+						<Grid size={{xs: 12, md: 12, lg: 12}}>
+							<Stack spacing={2} direction="row" sx={{mb: 2, alignItems: 'center'}}>
 								<Typography align="left" variant="subtitle1" sx={{minWidth: 100}}>Grid Size</Typography>
 								<Slider
 									size="small"
@@ -101,8 +101,8 @@ const AdvancedFiltersDialog = (props:IProps) => {
 							</Stack>
 						</Grid>
 
-						<Grid item xs={12} md={12} lg={12}>
-							<Stack spacing={2} direction="row" sx={{mb: 1}} alignItems="center">
+						<Grid size={{xs: 12, md: 12, lg: 12}}>
+							<Stack spacing={2} direction="row" sx={{mb: 1, alignItems: 'center'}}>
 								<Typography align="left" variant="subtitle1" sx={{minWidth: 100}}>AI Strength</Typography>
 								<Slider
 									size="small"
@@ -117,7 +117,7 @@ const AdvancedFiltersDialog = (props:IProps) => {
 								/>
 							</Stack>
 						</Grid>
-						<Grid item xs={12} md={12} lg={12}>
+						<Grid size={{xs: 12, md: 12, lg: 12}}>
 							<Typography align="right" sx={{minWidth: 100}}>
 								<Link
 									component="button"

@@ -14,7 +14,7 @@ const ConfigError = () => (
 				Server Status Error
 		</Typography>
 
-		<Typography variant="subtitle1" align="left" gutterBottom={true} maxWidth={500}>
+		<Typography variant="subtitle1" align="left" gutterBottom={true} sx={{maxWidth: 500}}>
 				There was an error loading the server status.
 		</Typography>
 

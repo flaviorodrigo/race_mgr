@@ -3,7 +3,7 @@ import {styled} from '@mui/material/styles';
 
 import {doAuth} from './utilites';
 
-import {Redirect} from 'react-router-dom';
+import {Navigate} from 'react-router-dom';
 
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
@@ -56,7 +56,7 @@ const Login = (props:ILoginProps) => {
 
 	return (
 
-		props.isAuthenticated === true ? <Redirect to="/" />
+		props.isAuthenticated === true ? <Navigate to="/" replace />
 
 			: <Paper sx={{
 				p: 2,
@@ -68,9 +68,9 @@ const Login = (props:ILoginProps) => {
 				Login
 				</Typography>
 
-				<Typography variant="subtitle1" align="left" gutterBottom={true} maxWidth={500}>
+				<Typography variant="subtitle1" align="left" gutterBottom={true} sx={{maxWidth: 500}}>
 					<TextField
-						inputProps={{maxLength: 50}}
+						slotProps={{htmlInput: {maxLength: 50}}}
 						id="standard-basic"
 						label="UserName"
 						variant="standard"
@@ -81,9 +81,9 @@ const Login = (props:ILoginProps) => {
 					/>
 				</Typography>
 
-				<Typography variant="subtitle1" align="left" gutterBottom={true} maxWidth={500}>
+				<Typography variant="subtitle1" align="left" gutterBottom={true} sx={{maxWidth: 500}}>
 					<TextField
-						inputProps={{maxLength: 50}}
+						slotProps={{htmlInput: {maxLength: 50}}}
 						id="standard-basic"
 						label="Password"
 						variant="standard"
@@ -95,13 +95,13 @@ const Login = (props:ILoginProps) => {
 					/>
 				</Typography>
 
-				<Typography variant="subtitle1" align="left" gutterBottom={true} maxWidth={500}>
+				<Typography variant="subtitle1" align="left" gutterBottom={true} sx={{maxWidth: 500}}>
 					<ErrorTypography>
 						{errorMessage}
 					</ErrorTypography>
 				</Typography>
 
-				<Typography variant="subtitle1" align="left" gutterBottom={true} maxWidth={500}>
+				<Typography variant="subtitle1" align="left" gutterBottom={true} sx={{maxWidth: 500}}>
 					<Button disabled={userName === '' || password === ''} variant="outlined" onClick={handleLogin}>Login</Button>
 				</Typography>
 

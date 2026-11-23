@@ -127,7 +127,7 @@ const RaceSummary = (props:IProps) => {
 		setMaxSummary(DEFAULT_SUMMARY_COUNT);
 	}, [props.filteredRaces]);
 
-	return (<Box marginTop={'10px'}>
+	return (<Box sx={{marginTop: '10px'}}>
 		<TableContainer component={Paper}>
 			<Table sx={{minWidth: 650}} aria-label="Race Summary" size="small">
 				<TableHead>

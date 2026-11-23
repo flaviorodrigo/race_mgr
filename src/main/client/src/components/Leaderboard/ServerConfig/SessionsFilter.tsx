@@ -73,7 +73,7 @@ const StatsFilter = (props:IProps) => {
 
 	return (
 		<Grid container spacing={3}>
-			<Grid item xs={12} md={3}>
+			<Grid size={{xs: 12, md: 3}}>
 				<FormControl variant="standard" sx={{p: 1, m: 1, minWidth: 220}} size="small">
 					<InputLabel id="session-select">Session</InputLabel>
 					<Select
@@ -90,7 +90,7 @@ const StatsFilter = (props:IProps) => {
 					</Select>
 				</FormControl>
 			</Grid>
-			<Grid item xs={12} md={3}>
+			<Grid size={{xs: 12, md: 3}}>
 				<FormControl variant="standard" sx={{p: 1, m: 1, minWidth: 220}} size="small">
 					<InputLabel id="rotation-select">Rotation</InputLabel>
 					<Select

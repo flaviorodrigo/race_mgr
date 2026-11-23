@@ -24,7 +24,7 @@ import Footer from './Footer';
 
 import {
 	BrowserRouter as Router,
-	Switch, Route, Link as RouterLink,
+	Routes, Route, Link as RouterLink,
 } from 'react-router-dom';
 
 import MenuIcon from '@mui/icons-material/Menu';
@@ -160,7 +160,7 @@ const DashboardContent = () => {
 
 							{!isAuthenticated
 							&& 	<NavLink to="/login">
-								<IconButton sx={{color: 'white'}}>
+								<IconButton sx={{color: 'white'}} aria-label="Login">
 									<Tooltip title="Login">
 										<LoginIcon/>
 									</Tooltip>
@@ -169,7 +169,7 @@ const DashboardContent = () => {
 							}
 
 							{isAuthenticated
-							&& <IconButton sx={{color: 'white'}} onClick={handleLogout}>
+							&& <IconButton sx={{color: 'white'}} aria-label="Logout" onClick={handleLogout}>
 								<Tooltip title="Logout">
 									<LogoutIcon/>
 								</Tooltip>
@@ -230,26 +230,14 @@ const DashboardContent = () => {
 					>
 						<Toolbar />
 						<Container maxWidth="lg" sx={{mt: 4, mb: 4}}>
-							<Switch>
-								<Route exact path="/">
-									<LeaderBoard />
-								</Route>
-								<Route exact path="/manageServer">
-									<ManageServer isAuthenticated={isAuthenticated} />
-								</Route>
-								<Route exact path="/login">
-									<Login isAuthenticated={isAuthenticated} setIsAuthenticated={setIsAuthenticated} />
-								</Route>
-								<Route exact path="/serverstopped">
-									<ServerStopped />
-								</Route>
-								<Route exact path="/serverconfigerror">
-									<ServerConfigError />
-								</Route>
-								<Route exact path="/serverstatuserror">
-									<ServerStatusError />
-								</Route>
-							</Switch>
+							<Routes>
+								<Route path="/" element={<LeaderBoard />} />
+								<Route path="/manageServer" element={<ManageServer isAuthenticated={isAuthenticated} />} />
+								<Route path="/login" element={<Login isAuthenticated={isAuthenticated} setIsAuthenticated={setIsAuthenticated} />} />
+								<Route path="/serverstopped" element={<ServerStopped />} />
+								<Route path="/serverconfigerror" element={<ServerConfigError />} />
+								<Route path="/serverstatuserror" element={<ServerStatusError />} />
+							</Routes>
 							<Footer />
 						</Container>
 					</Box>

@@ -7,7 +7,6 @@ import {sanitizeString} from '../../utils/stringUtils';
 import {addSession, setSelectedSessionId} from '../../state/sessions';
 
 import Button from '@mui/material/Button';
-import LoadingButton from '@mui/lab/LoadingButton';
 import Dialog from '@mui/material/Dialog';
 import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
@@ -75,9 +74,9 @@ const AddSessionDialog = (props:IProps) => {
 			<Dialog open={props.open} onClose={handleClose}>
 				<DialogTitle>Add a Session</DialogTitle>
 				<DialogContent sx={{minWidth: 600}}>
-					<Grid container spacing={3} padding={3}>
+					<Grid container spacing={3} sx={{padding: 3}}>
 						<TextField
-							inputProps={{maxLength: 50}}
+							slotProps={{htmlInput: {maxLength: 50}}}
 							id="standard-basic"
 							label="Session Name"
 							variant="standard"
@@ -95,9 +94,9 @@ const AddSessionDialog = (props:IProps) => {
 
 				<DialogActions>
 					<Button onClick={handleClose} disabled={sessions.isLoading}>Cancel</Button>
-					<LoadingButton disabled={sessionName.length === 0} onClick={handleAddSession} loading={sessions.isLoading}>
+					<Button disabled={sessionName.length === 0} onClick={handleAddSession} loading={sessions.isLoading}>
 							Add Session
-					</LoadingButton>
+					</Button>
 				</DialogActions>
 			</Dialog>
 		</div>

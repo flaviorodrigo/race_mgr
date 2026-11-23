@@ -14,7 +14,7 @@ const ServerStopped = () => (
 				Server is Stopped
 		</Typography>
 
-		<Typography variant="subtitle1" align="left" gutterBottom={true} maxWidth={500}>
+		<Typography variant="subtitle1" align="left" gutterBottom={true} sx={{maxWidth: 500}}>
 				The game server is not running.
 		</Typography>
 

@@ -15,7 +15,7 @@ const ServerConfigError = () => (
 				Error Loading Config
 		</Typography>
 
-		<Typography variant="subtitle1" align="left" gutterBottom={true} maxWidth={500}>
+		<Typography variant="subtitle1" align="left" gutterBottom={true} sx={{maxWidth: 500}}>
 				There was an error loading the server configuration. It is possible that an active race session and/or rotation is not set (e.g. during initial setup). Use the Race Manager <RouterLink to="/manageserver">admin UI</RouterLink> to create/update these before racing.
 		</Typography>
 

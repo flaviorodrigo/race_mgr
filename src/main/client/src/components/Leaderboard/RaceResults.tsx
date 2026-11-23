@@ -159,7 +159,7 @@ const RaceResults = (props:IProps) => {
 	}, []);
 
 	return (
-		<Box marginTop={'10px'}>
+		<Box sx={{marginTop: '10px'}}>
 			<TableContainer component={Paper}>
 				<Table size="small" aria-label="collapsible table">
 					<TableHead>

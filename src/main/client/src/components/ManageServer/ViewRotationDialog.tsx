@@ -44,14 +44,14 @@ const ViewRotationDialog = (props:IProps) => {
 				<DialogTitle>{rotationDetail?.rotationDetail?.name}</DialogTitle>
 
 				<DialogContent sx={{minWidth: 600, minHeight: 400}}>
-					<Grid container spacing={0} padding={0}>
-						<Grid item xs={12}>
+					<Grid container spacing={0} sx={{padding: 0}}>
+						<Grid size={{xs: 12}}>
 							<Typography sx={{m: 0}} variant="h6" component="div">
 							Vehicle Class: {rotationDetail?.rotationDetail?.vehicleClassId.replaceAll('_', ' ')}
 							</Typography>
 						</Grid>
 
-						<Grid item xs={12}>
+						<Grid size={{xs: 12}}>
 							<Typography sx={{mt: 2, fontWeight: 'bold'}} variant="subtitle1" component="div" align="left">
 							Tracks
 							</Typography>

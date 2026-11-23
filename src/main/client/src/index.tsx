@@ -1,10 +1,10 @@
 import React from 'react';
-import ReactDOM from 'react-dom';
+import {createRoot} from 'react-dom/client';
 import './index.css';
 import App from './App';
 import {Provider} from 'react-redux';
 import createSagaMiddleWare from 'redux-saga';
-import {configureStore} from '@reduxjs/toolkit';
+import {configureStore, Tuple} from '@reduxjs/toolkit';
 import rootSaga from './sagas/rootSaga';
 
 import serverConfigReducer from './state/serverConfig';
@@ -23,14 +23,13 @@ const store = configureStore({
 		rotations: rotationsReducer,
 		rotationDetail: rotationDetailReducer,
 	},
-	middleware: [saga],
+	middleware: () => new Tuple(saga),
 });
 
 saga.run(rootSaga);
 
-ReactDOM.render(
+createRoot(document.getElementById('root') as HTMLElement).render(
 	<Provider store={store}>
 		<App />
 	</Provider>,
-	document.getElementById('root'),
 );

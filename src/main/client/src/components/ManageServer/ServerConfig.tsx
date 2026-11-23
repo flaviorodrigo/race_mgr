@@ -54,8 +54,8 @@ const ServerConfig = () => {
 
 	return (
 		<Grid container spacing={3}>
-			<Grid item xs={6}>
-				<Grid item xs={6} sx={{height: '50px'}}>
+			<Grid size={{xs: 6}}>
+				<Grid sx={{height: '50px'}} size={{xs: 6}}>
 					<FormControl variant="standard" sx={{p: 1, m: 1, minWidth: 320}} size="small">
 						<InputLabel id="session-select">Session</InputLabel>
 						<Select
@@ -70,7 +70,7 @@ const ServerConfig = () => {
 						</Select>
 					</FormControl>
 				</Grid>
-				<Grid item xs={12} md={6}>
+				<Grid size={{xs: 12, md: 6}}>
 					<FormControl variant="standard" sx={{p: 1, m: 1, minWidth: 320}} size="small">
 						<Typography align="left">
 							<Link
@@ -88,8 +88,8 @@ const ServerConfig = () => {
 				</Grid>
 			</Grid>
 
-			<Grid item xs={12} md={6}>
-				<Grid item xs={12} sx={{height: '50px'}}>
+			<Grid size={{xs: 12, md: 6}}>
+				<Grid sx={{height: '50px'}} size={{xs: 12}}>
 					<FormControl variant="standard" sx={{p: 1, m: 1, minWidth: 320}} size="small">
 						<InputLabel id="rotation-select">Rotation</InputLabel>
 						<Select
@@ -103,7 +103,7 @@ const ServerConfig = () => {
 						</Select>
 					</FormControl>
 				</Grid>
-				<Grid item xs={12}>
+				<Grid size={{xs: 12}}>
 					<Stack direction="row">
 						<FormControl variant="standard" sx={{p: 1, m: 1, display: serverStatus.isRunning ? 'inline' : 'none'}} size="small" >
 							<Typography align="left">
@@ -142,7 +142,7 @@ const ServerConfig = () => {
 				</Grid>
 
 			</Grid>
-			<Grid item md={12}>
+			<Grid size={{md: 12}}>
 				<AddSessionDialog open={addSessionDialogIsOpen} setOpen={setAddSessionDialogIsOpen} />
 				<AddRotationDialog open={addRotationDialogIsOpen} setOpen={setAddRotationDialogIsOpen} />
 				<ViewRotationDialog open={viewRotationDialogIsOpen} setOpen={setViewRotationDialogIsOpen} />

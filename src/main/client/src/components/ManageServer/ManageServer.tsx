@@ -7,7 +7,7 @@ import {setSelectedRotationId} from '../../state/rotations';
 
 import ServerConfig from './ServerConfig';
 
-import {Redirect, useHistory} from 'react-router-dom';
+import {Navigate, useNavigate} from 'react-router-dom';
 
 import Typography from '@mui/material/Typography';
 import Snackbar from '@mui/material/Snackbar';
@@ -39,7 +39,7 @@ const ManageServer = (props:IManageServerProps) => {
 	const [notificationSeverity, setNotificationSeverity] = useState<notificationSeverity>('success');
 
 	const dispatch = useDispatch();
-	const history = useHistory();
+	const navigate = useNavigate();
 
 	useEffect(() => {
 		dispatch(getServerStatus());
@@ -69,7 +69,7 @@ const ManageServer = (props:IManageServerProps) => {
 
 	useEffect(() => {
 		if (serverStatus.hasError === true) {
-			history.push('/serverstatusError');
+			navigate('/serverstatusError');
 		}
 	}, [serverStatus.hasError]);
 
@@ -88,7 +88,7 @@ const ManageServer = (props:IManageServerProps) => {
 	};
 
 	return (
-		props.isAuthenticated === false ? <Redirect to="/login" />
+		props.isAuthenticated === false ? <Navigate to="/login" replace />
 
 			:		<Paper sx={{
 				p: 2,

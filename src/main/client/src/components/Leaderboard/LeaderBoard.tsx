@@ -156,15 +156,15 @@ const LeaderBoard:React.FC = () => {
 					</Typography>
 
 					<Grid container spacing={3}>
-						<Grid item xs={12} md={12} lg={12}>
-							<Typography marginTop={'5px'} marginBottom={'5px'} variant="h6">
+						<Grid size={{xs: 12, md: 12, lg: 12}}>
+							<Typography variant="h6" sx={{marginTop: '5px', marginBottom: '5px'}}>
 								{ filteredRaces.length} Races
 							</Typography>
 						</Grid>
 					</Grid>
 
-					<Grid container spacing={3} marginBottom={'25px'} marginTop={'-35px'}>
-						<Grid item xs={12} md={12} lg={12} display={filteredRaces.length > 0 ? '' : 'none'}>
+					<Grid container spacing={3} sx={{marginBottom: '25px', marginTop: '-35px'}}>
+						<Grid size={{xs: 12, md: 12, lg: 12}} sx={{display: filteredRaces.length > 0 ? '' : 'none'}}>
 							<Typography variant="h6" align="left">Session Leaders</Typography>
 							<RaceSummary filteredRaces={filteredRaces} />
 
@@ -172,7 +172,7 @@ const LeaderBoard:React.FC = () => {
 					</Grid>
 
 					<Grid container spacing={3}>
-						<Grid item xs={12} md={12} lg={12} display={filteredRaces.length > 0 ? '' : 'none'}>
+						<Grid size={{xs: 12, md: 12, lg: 12}} sx={{display: filteredRaces.length > 0 ? '' : 'none'}}>
 							<Typography variant="h6" align="left">Race Summary</Typography>
 							<RaceResults filteredRaces={filteredRaces}/>
 						</Grid>
