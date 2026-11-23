@@ -16,6 +16,7 @@ Notable changes, newest first. This file starts with the security and modernisat
 - Admin tools: server.cfg form, rotation builder, next-session settings, ban list, balance of performance, activity log, password change. Live session panel with kick, temporary ban and chat. Discord notifications.
 - Docker: optional build target that downloads the game server into the image (`docker/build-with-server.sh`, Steam credentials as BuildKit secrets).
 - Docker: one container with Wine and the game server, or Race Manager against a game server that runs elsewhere (`RM_GAMESERVER_CONTROL=external`). `docker/backup-mongo.sh` and `docker/restore-mongo.sh`.
+- Lightweight Race Manager image for a game server on a NAS (`race_mgr-external`), user and image settings in the NAS compose file, Synology notes.
 - GitHub workflow that builds and checks the Docker image on every push and publishes it (without game server files) on a version tag.
 - End-to-end tests (`e2e/`) and a CI workflow. The README screenshots come from them (`E2E_SCREENSHOTS=folder npm test`).
 

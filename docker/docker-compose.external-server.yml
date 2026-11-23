@@ -3,6 +3,8 @@
 #
 #   cp .env.example .env            # fill it in (including AMS2_DATA_DIR)
 #   docker compose -f docker/docker-compose.external-server.yml --env-file .env up -d --build
+# Instead of building the image on the machine (slow on a NAS), pull the published one: set RACEMGR_IMAGE in .env
+# (e.g. ghcr.io/<owner>/race_mgr-external:v1.0.0) and run `docker compose ... pull` then `up -d` without --build.
 #
 # Assumes the game server container uses host networking, so its HTTP API (port 9000) is on the host.
 # Race Manager shares the host network too, so it reaches the API on 127.0.0.1, where the game server
@@ -13,11 +15,14 @@
 # front of it. MongoDB is published on 127.0.0.1 only.
 services:
   racemgr:
+    image: ${RACEMGR_IMAGE:-racemgr-external:local}
     build:
       context: ..
       dockerfile: docker/Dockerfile.external
     restart: unless-stopped
     network_mode: host
+    # Run as the owner of the game server's folder so Race Manager can write server.cfg and the rotation file there
+    user: "${RACEMGR_UID:-1000}:${RACEMGR_GID:-1000}"
     environment:
       RM_ADMIN_USER: ${RM_ADMIN_USER:?set in .env}
       RM_ADMIN_PASSWORD: ${RM_ADMIN_PASSWORD:?set in .env}

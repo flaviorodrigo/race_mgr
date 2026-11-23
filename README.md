@@ -148,6 +148,18 @@ Race Manager doesn't have to launch the game server. Set `RM_GAMESERVER_CONTROL=
 
 `docker/docker-compose.external-server.yml` is a ready example (Race Manager plus MongoDB, both on the host's loopback). It assumes the game server container uses host networking and keeps its API on `127.0.0.1` via `httpApiInterface : "127.0.0.1"` in `server.cfg`.
 
+### On a Synology NAS
+
+Tested only on paper so far: nothing here has been run on a Synology yet. It needs DSM 7.2 or later with **Container Manager**, an x86 model, and a game server container whose folder you can reach (for a DS1522+ with 24 GB, memory is no problem).
+
+1. **MongoDB 7 needs a CPU with AVX.** Over SSH: `grep -c avx /proc/cpuinfo`. Anything above `0` is fine. If it prints `0`, change the `mongo:` image in the compose file to `mongo:4.4`, and expect to test that yourself.
+2. Make a folder, e.g. `/volume1/docker/racemgr`, and put in it the `docker/docker-compose.external-server.yml` file and the `docker/mongo-init` folder, side by side, plus a `.env` (copy `.env.example`, generate the secrets with `openssl rand -hex 24`).
+3. In `.env` set `AMS2_DATA_DIR` to the game server's folder (e.g. `/volume1/docker/ams2`), and `RACEMGR_UID` / `RACEMGR_GID` to that folder's owner: `ls -ln /volume1/docker/ams2`. On a Synology these are like `1026` and `100`, not 1000. Set `RACEMGR_IMAGE=ghcr.io/<owner>/race_mgr-external:<version>` (published when a version tag such as `v1.0.0` is pushed to GitHub), so the NAS pulls a ready image instead of compiling one.
+4. Container Manager → **Project** → Create, pick that folder and the compose file. It pulls the images and starts Race Manager and MongoDB. Race Manager listens on the NAS's `127.0.0.1:8080`.
+5. Race Manager reaches the game server's API at `127.0.0.1:9000` because the compose file uses the host network; that works when the game server container uses the host network too. If it doesn't, set `RM_GAMESERVER_HOST` to the NAS address and give it the API user and password (`RM_GAMESERVER_USER` / `RM_GAMESERVER_PASSWORD` in the compose file).
+6. For friends, use DSM's reverse proxy (Control Panel → Login Portal → Advanced → Reverse Proxy) to give `localhost:8080` an HTTPS name, and set `RM_COOKIE_SECURE=true`.
+7. Back up MongoDB regularly with `docker/backup-mongo.sh` from a Task Scheduler job (run it as root; first `export COMPOSE_FILE=docker/docker-compose.external-server.yml`).
+
 ## Admin tools
 
 Under *Manage Server*, below the live session, each tool opens on its own:
