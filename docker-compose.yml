@@ -2,6 +2,8 @@
 #   cp .env.example .env   # then fill in the values
 #   ./docker/download-server.sh <steam-username>
 #   docker compose up -d --build
+# Or have the build download the game server into the image instead of the second step:
+#   ./docker/build-with-server.sh <steam-username>
 #
 # Exposure: the web UI is published on 127.0.0.1 only (put a TLS reverse proxy in front, see README).
 # MongoDB is on an internal network with no published ports. The game server's HTTP API (9000)

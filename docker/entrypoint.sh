@@ -5,9 +5,14 @@ set -e
 rm -rf "${WINEPREFIX}"/*.lock /tmp/.wine-* 2>/dev/null || true
 wineserver -k 2>/dev/null || true
 
+# Image built with the game server inside (target with-server): put its files into the mounted folder
+if [ -n "${RM_SEED_SERVER_FROM:-}" ]; then
+  /app/seed-server.sh
+fi
+
 if [ ! -f "${RM_PATH_TO_DEDICATED_SERVER}/DedicatedServerCmd.exe" ]; then
   echo "ERROR: ${RM_PATH_TO_DEDICATED_SERVER}/DedicatedServerCmd.exe not found." >&2
-  echo "Download the server files first: ./docker/download-server.sh <steam-username>" >&2
+  echo "Download the server files first (./docker/download-server.sh <steam-username>) or build the image with them (./docker/build-with-server.sh <steam-username>)." >&2
   exit 1
 fi
 

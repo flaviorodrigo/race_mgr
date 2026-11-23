@@ -14,6 +14,7 @@ Notable changes, newest first. This file starts with the security and modernisat
 - Optional **`ams2_stats`** import (`RM_STATS_SOURCE=ams2_stats`): sector times, ideal lap, lap-time chart, DNF/DSQ handling. Disqualified drivers and drivers who retired before 90% of the winner's distance score no points.
 - Championship rules (dropped rounds, point adjustments, teams), voided races, CSV export, driver pages, fastest laps table, shareable race pages.
 - Admin tools: server.cfg form, rotation builder, next-session settings, ban list, balance of performance, activity log, password change. Live session panel with kick, temporary ban and chat. Discord notifications.
+- Docker: optional build target that downloads the game server into the image (`docker/build-with-server.sh`, Steam credentials as BuildKit secrets).
 - Docker: one container with Wine and the game server, or Race Manager against a game server that runs elsewhere (`RM_GAMESERVER_CONTROL=external`). `docker/backup-mongo.sh` and `docker/restore-mongo.sh`.
 - End-to-end tests (`e2e/`) and a CI workflow. The README screenshots come from them (`E2E_SCREENSHOTS=folder npm test`).
 

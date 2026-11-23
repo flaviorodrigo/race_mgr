@@ -89,6 +89,16 @@ What is exposed: the web UI only on `127.0.0.1:8080` (put a TLS reverse proxy in
 
 The Wine image is amd64 only. Update the game server by re-running step 2 and `docker compose restart racemgr`.
 
+#### Or build the game server into the image
+
+Instead of step 2, the build itself can download the game server: `./docker/build-with-server.sh <steam-username>` (after `cp .env.example .env`). It asks for your Steam password and, if your account uses Steam Guard, the current code (neither is echoed), then builds the `with-server` target of the `Dockerfile` and starts the stack. The Steam account must own the game.
+
+- The password and code reach SteamCMD as BuildKit secrets: they are not stored in the image or its layers, and only the server files are carried into the final image. A Steam Guard code is single use and expires within about a minute, so type it when asked; an account without Steam Guard, or a dedicated Steam account for this, avoids the problem for repeated builds.
+- On start the image copies the game server into the mounted `./ams2-server` folder (the folder that holds `server.cfg`, the ban list, the stats data and the rotation Race Manager writes), creating `server.cfg` from the sample. Later starts leave the folder alone, so your settings survive.
+- To update the game server: run the script again, then once `RM_REFRESH_SERVER=true docker compose -f docker-compose.yml -f docker/docker-compose.with-server.yml up -d`. That replaces the game files but keeps `server.cfg`, the ban list and whitelist, the balance-of-performance files, `lua_config/` and the rotation file.
+- **Keep that image on your machine.** It contains Reiza's server files, so never push it to a registry. A plain `docker compose up --build` still builds the normal image without them.
+- Status: the build stages and the copy-on-start logic are tested, but the SteamCMD download step itself has not been run against a real Steam account.
+
 ## Championships & scoring
 
 A **session** is a championship: its standings are the "Session Leaders" table, and "Points by Round" shows every driver's points in each race (round) plus the total. Rounds are numbered in the order the races were run.
