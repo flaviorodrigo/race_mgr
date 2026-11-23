@@ -49,6 +49,8 @@ class RacemgrApplicationTests {
     @MockitoBean
     private com.coop.racemgr.repositories.SessionPresetRepository sessionPresetRepository;
     @MockitoBean
+    private com.coop.racemgr.repositories.AdminUserRepository adminUserRepository;
+    @MockitoBean
     private com.coop.racemgr.repositories.AdminCredentialRepository adminCredentialRepository;
 
     private static final String LOGIN_OK = "{\"username\":\"admin\",\"password\":\"correct-horse-battery\"}";

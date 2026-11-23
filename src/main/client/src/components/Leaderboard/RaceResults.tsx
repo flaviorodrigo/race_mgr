@@ -11,6 +11,8 @@ import {fetchTrackData, fetchVehicleData} from './utilities';
 import {SortHeadCell, useSort} from './sorting';
 import {roundsOf} from './RoundPoints';
 import CopyLinkButton from './CopyLinkButton';
+import {atLeast} from '../../utils/roles';
+import {useRole} from '../Live/useRole';
 import RaceMgrApi from '../../api/RaceMgrApi';
 
 import Box from '@mui/material/Box';
@@ -60,11 +62,11 @@ const columns: Array<IColumn> = [
 
 const isHuman = (driverName:string) => driverName.slice(-4) !== '(AI)';
 
-function Row(props: { row: IRace, round: number, trackData: Array<ITrackData>, vehicleData: Array<IVehicleData>, onChanged?: () => void }) {
+function Row(props: { row: IRace, round: number, trackData: Array<ITrackData>, vehicleData: Array<IVehicleData>, isAdmin: boolean, onChanged?: () => void }) {
 	const {row} = props;
 	const [open, setOpen] = React.useState(false);
 	const [busy, setBusy] = React.useState(false);
-	const isAdmin = new RaceMgrApi().hasSession();
+	const {isAdmin} = props;
 
 	const setVoided = async (voided: boolean) => {
 		if (!row.raceId) {
@@ -205,6 +207,8 @@ function Row(props: { row: IRace, round: number, trackData: Array<ITrackData>, v
 }
 
 const RaceResults = (props:IProps) => {
+	// Voiding a race changes the standings: admins only (the server checks too). Asked once here, not per row.
+	const isAdmin = atLeast(useRole().role, 'ADMIN');
 	const [trackData, setTrackData] = React.useState<Array<ITrackData>>([]);
 	const [vehicleData, setVehicleData] = React.useState<Array<IVehicleData>>([]);
 
@@ -241,7 +245,7 @@ const RaceResults = (props:IProps) => {
 					</TableHead>
 					<TableBody>
 						{sortedRaces.map((row, idx) => (
-							<Row key={idx} row={row} onChanged={props.onChanged} round={roundNumbers.get(row) ?? 0} trackData={trackData} vehicleData={vehicleData} />
+							<Row key={idx} row={row} isAdmin={isAdmin} onChanged={props.onChanged} round={roundNumbers.get(row) ?? 0} trackData={trackData} vehicleData={vehicleData} />
 						))}
 					</TableBody>
 				</Table>

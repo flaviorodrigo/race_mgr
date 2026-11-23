@@ -1,8 +1,6 @@
 package com.coop.racemgr.controllers;
 
 import com.coop.racemgr.audit.AuditLog;
-import com.coop.racemgr.model.AdminCredential;
-import com.coop.racemgr.repositories.AdminCredentialRepository;
 import com.coop.racemgr.security.JwtTokenUtil;
 import com.coop.racemgr.security.LoginAttemptService;
 import com.coop.racemgr.security.SessionCookies;
@@ -16,6 +14,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -32,8 +31,6 @@ public class AccountController {
     private PasswordEncoder passwordEncoder;
     @Autowired
     private JwtUserDetailsService userDetailsService;
-    @Autowired
-    private AdminCredentialRepository credentialRepository;
     @Autowired
     private JwtTokenUtil jwtTokenUtil;
     @Autowired
@@ -68,7 +65,14 @@ public class AccountController {
             return ResponseHandler.generateResponse("The new password must be " + MIN_PASSWORD_LENGTH + " to "
                     + MAX_PASSWORD_LENGTH + " characters", HttpStatus.BAD_REQUEST, null);
         }
-        if (!passwordEncoder.matches(current, userDetailsService.currentPasswordHash())) {
+        // Every signed-in person changes their own password
+        JwtUserDetailsService.RmUser me;
+        try {
+            me = (JwtUserDetailsService.RmUser) userDetailsService.loadUserByUsername(authentication.getName());
+        } catch (UsernameNotFoundException e) {
+            return ResponseHandler.generateResponse("Not signed in", HttpStatus.UNAUTHORIZED, null);
+        }
+        if (!passwordEncoder.matches(current, me.getPassword())) {
             loginAttemptService.recordFailure(client);
             auditLog.record(authentication.getName(), "password change refused", "wrong current password");
             return ResponseHandler.generateResponse("The current password is wrong", HttpStatus.FORBIDDEN, null);
@@ -78,15 +82,11 @@ public class AccountController {
         }
 
         try {
-            var credential = new AdminCredential();
-            credential.setPasswordHash(passwordEncoder.encode(next));
-            credential.setUpdated(System.currentTimeMillis());
-            credentialRepository.save(credential);
-            userDetailsService.passwordChanged(credential.getPasswordHash(), credential.getUpdated());
+            userDetailsService.changePassword(me.getUsername(), passwordEncoder.encode(next));
             loginAttemptService.recordSuccess(client);
 
-            var userDetails = userDetailsService.loadUserByUsername(authentication.getName());
-            SessionCookies.add(httpRequest, httpResponse, jwtTokenUtil.generateToken(userDetails, credential.getUpdated()),
+            var userDetails = (JwtUserDetailsService.RmUser) userDetailsService.loadUserByUsername(authentication.getName());
+            SessionCookies.add(httpRequest, httpResponse, jwtTokenUtil.generateToken(userDetails, userDetails.getCredentialVersion()),
                     jwtTokenUtil.getValidity());
             auditLog.record(authentication.getName(), "password changed", "all other sessions signed out");
             return ResponseHandler.generateResponse("Password changed", HttpStatus.OK, null);

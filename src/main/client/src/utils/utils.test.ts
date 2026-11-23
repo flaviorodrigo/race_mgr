@@ -6,6 +6,7 @@ import {computeStandings, droppedRounds} from './standings';
 import {toCsv} from './csv';
 import {sectorRows, lapSeries, formatLap, formatSector} from './sectors';
 import {careerStats, trackRecords} from './careerStats';
+import {atLeast, generatePassword} from './roles';
 
 describe('calculatePoints', () => {
 	it('gives the winner a 40% bonus over a half-field points scale', () => {
@@ -215,5 +216,24 @@ describe('career statistics', () => {
 		const records = trackRecords(races);
 		expect(records).toHaveLength(1);
 		expect(records[0]).toMatchObject({trackId: 'A', driver: 'Ann', time: 99000, qualifying: true});
+	});
+});
+
+describe('roles', () => {
+	it('lets each role do what the roles below it can', () => {
+		expect(atLeast('OWNER', 'ADMIN')).toBe(true);
+		expect(atLeast('ADMIN', 'STEWARD')).toBe(true);
+		expect(atLeast('ADMIN', 'ADMIN')).toBe(true);
+		expect(atLeast('STEWARD', 'ADMIN')).toBe(false);
+		expect(atLeast('ADMIN', 'OWNER')).toBe(false);
+		expect(atLeast(null, 'STEWARD')).toBe(false);
+		expect(atLeast(undefined, 'STEWARD')).toBe(false);
+	});
+
+	it('generates passwords that are long enough and different each time', () => {
+		const a = generatePassword();
+		expect(a).toMatch(/^[A-Za-z0-9]{16}$/);
+		expect(generatePassword()).not.toBe(a);
+		expect(generatePassword(24)).toHaveLength(24);
 	});
 });

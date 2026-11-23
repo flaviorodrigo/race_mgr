@@ -400,6 +400,80 @@ scenario('a preset saves the next-session settings and applies them to the game 
   assert.equal(await state.page.$('table[aria-label="Presets"]'), null);
 });
 
+const signIn = async (user, password) => {
+  await go('/login');
+  const inputs = await state.page.$$('input');
+  await inputs[0].type(user);
+  await inputs[1].type(password);
+  await clickText('button', 'login');
+  await state.page.waitForFunction(() => document.cookie.includes('RM-SESSION=1'));
+};
+
+const signOut = async () => {
+  await state.page.click('button[aria-label="Logout"]');
+  await state.page.waitForFunction(() => !document.cookie.includes('RM-SESSION=1'));
+};
+
+const status = url => state.page.evaluate(async u => (await fetch(u)).status, url);
+
+scenario('the owner gives a friend a steward sign-in that only reaches race day, and can take it away again', async () => {
+  await go('/manageserver');
+  await openSection('Admins');
+  assert.deepEqual(await rows('table[aria-label="Admins"]'), ['admin Owner']);
+  await setInput(await labelled('User name'), 'Steve');
+  await clickText('button', 'generate');
+  const password = await state.page.evaluate(() => [...document.querySelectorAll('input')].find(i => i.closest('.MuiFormControl-root')?.querySelector('label')?.innerText.startsWith('Password'))?.value);
+  assert.match(password, /^[A-Za-z0-9]{16}$/);
+  await clickText('button', 'add');
+  await sleep(1500);
+  const notices = await state.page.$$eval('.MuiAccordionDetails-root .MuiAlert-message', a => a.map(x => x.innerText).join('\n'));
+  assert.match(notices, /Added steve/);
+  assert.ok(notices.includes(password), 'the password is shown once, for the owner to hand over');
+  assert.equal((await rows('table[aria-label="Admins"]')).length, 2);
+
+  // Steve signs in with the password he was given
+  await signOut();
+  await signIn('steve', password);
+  await go('/manageserver');
+  const sections = await state.page.$$eval('.MuiAccordionSummary-root', e => e.map(x => x.innerText.trim()));
+  assert.deepEqual(sections, ['Next session settings', 'Game server log', 'Account']);
+  assert.match(await text('body'), /signed in as a steward/);
+
+  // The server says no to everything beyond race day, and yes to race day
+  assert.deepEqual(await Promise.all(['/api/v1/admin/gameserver/banlist', '/api/v1/admin/gameserver/config', '/api/v1/admin/users', '/api/v1/admin/audit'].map(status)), [403, 403, 403, 403]);
+  assert.equal(await status('/api/v1/admin/gameserver/log'), 200);
+  assert.equal(await status('/api/v1/admin/gameserver/session'), 200);
+  assert.equal((await api('POST', '/api/v1/admin/gameserver/chat', {message: 'Race starts in five minutes'})).status, 200);
+  assert.ok((await fakeCalls()).some(c => c.call === 'chat' && c.message === 'Race starts in five minutes'));
+
+  // ...including penalties on a race page, but not voiding it
+  await go(`/race/${state.raceId}`);
+  assert.ok(await clickText('button', 'penalties and video'));
+  await state.page.waitForSelector('[role="dialog"]');
+  await clickText('[role="dialog"] button', 'cancel');
+  assert.equal((await api('POST', `/api/v1/admin/race/events/${state.raceId}/void`, {voided: true})).httpStatus, 403);
+
+  // The owner removes him: his session ends at once
+  await signOut();
+  await signIn('admin', state.adminPassword);
+  await go('/manageserver');
+  await openSection('Admins');
+  await state.page.evaluate(() => [...document.querySelectorAll('table[aria-label="Admins"] tbody tr')].find(r => r.innerText.startsWith('steve'))?.querySelectorAll('button')[1]?.click());
+  await state.page.waitForSelector('[role="dialog"]');
+  await clickText('[role="dialog"] button', 'remove');
+  await sleep(1500);
+  assert.deepEqual(await rows('table[aria-label="Admins"]'), ['admin Owner']);
+  await signOut();
+  await go('/login');
+  const inputs = await state.page.$$('input');
+  await inputs[0].type('steve');
+  await inputs[1].type(password);
+  await clickText('button', 'login');
+  await sleep(1200);
+  assert.equal(await state.page.evaluate(() => document.cookie.includes('RM-SESSION=1')), false, 'a removed user cannot sign in');
+  await signIn('admin', state.adminPassword);
+});
+
 scenario('signing out ends the admin session', async () => {
   await go('/');
   await state.page.click('button[aria-label="Logout"]');

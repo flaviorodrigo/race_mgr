@@ -2178,6 +2178,145 @@
 							"protocolProfileBehavior": {
 								"disableBodyPruning": true
 							}
+						},
+						{
+							"name": "Who am I (role)",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "http://{{HOST_BASE_API_URL}}/admin/me",
+									"protocol": "http",
+									"host": [
+										"{{HOST_BASE_API_URL}}"
+									],
+									"path": [
+										"admin",
+										"me"
+									]
+								}
+							},
+							"response": [],
+							"protocolProfileBehavior": {
+								"disableBodyPruning": true
+							}
+						},
+						{
+							"name": "Admins: list (owner)",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "http://{{HOST_BASE_API_URL}}/admin/users",
+									"protocol": "http",
+									"host": [
+										"{{HOST_BASE_API_URL}}"
+									],
+									"path": [
+										"admin",
+										"users"
+									]
+								}
+							},
+							"response": [],
+							"protocolProfileBehavior": {
+								"disableBodyPruning": true
+							}
+						},
+						{
+							"name": "Admins: add (owner)",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "X-XSRF-TOKEN",
+										"value": "{{XSRF-TOKEN}}",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "http://{{HOST_BASE_API_URL}}/admin/users",
+									"protocol": "http",
+									"host": [
+										"{{HOST_BASE_API_URL}}"
+									],
+									"path": [
+										"admin",
+										"users"
+									]
+								},
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"username\": \"steve\",\r\n    \"password\": \"a-long-enough-password\",\r\n    \"role\": \"STEWARD\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Admins: change role / reset password (owner)",
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "X-XSRF-TOKEN",
+										"value": "{{XSRF-TOKEN}}",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "http://{{HOST_BASE_API_URL}}/admin/users/steve",
+									"protocol": "http",
+									"host": [
+										"{{HOST_BASE_API_URL}}"
+									],
+									"path": [
+										"admin",
+										"users",
+										"steve"
+									]
+								},
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"role\": \"ADMIN\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Admins: remove (owner)",
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "X-XSRF-TOKEN",
+										"value": "{{XSRF-TOKEN}}",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "http://{{HOST_BASE_API_URL}}/admin/users/steve",
+									"protocol": "http",
+									"host": [
+										"{{HOST_BASE_API_URL}}"
+									],
+									"path": [
+										"admin",
+										"users",
+										"steve"
+									]
+								}
+							},
+							"response": []
 						}
 					]
 				}

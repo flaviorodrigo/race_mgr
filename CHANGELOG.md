@@ -8,6 +8,7 @@ Notable changes, newest first. This file starts with the security and modernisat
 - **Live timing** page: positions, laps, sector times, last and best lap of the running session, for everyone.
 - **Records** page: career totals per driver and the lap record at each track, across all championships.
 - **Penalties** on finished races (time penalties and disqualifications), re-ordering the result and the points; **video links** (YouTube/Twitch) on races.
+- **Admins and stewards**: the owner gives friends their own sign-in with a role (admin or steward); sessions follow role changes, password resets and removal at once.
 - **Presets**: save the next-session settings under a name and apply them with one click.
 - **Whitelist** editor and **game server log** viewer in the admin tools.
 - Optional **`ams2_stats`** import (`RM_STATS_SOURCE=ams2_stats`): sector times, ideal lap, lap-time chart, DNF/DSQ handling. Disqualified drivers and drivers who retired before 90% of the winner's distance score no points.

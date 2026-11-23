@@ -61,8 +61,21 @@ public class WebSecurityConfig {
                 .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
                 .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler()))
             .authorizeHttpRequests(auth -> auth
-                // All admin paths require authentication
-                .requestMatchers("/api/v1/admin/**").authenticated()
+                // Managing the other admins: the owner only
+                .requestMatchers("/api/v1/admin/users", "/api/v1/admin/users/**").hasRole("OWNER")
+                // Any signed-in person: who am I, change my own password
+                .requestMatchers(HttpMethod.GET, "/api/v1/admin/me").authenticated()
+                .requestMatchers(HttpMethod.POST, "/api/v1/admin/password").authenticated()
+                // Race-day actions a steward may do (an admin and the owner may too). Anything not listed here
+                // needs the admin role, so a new admin endpoint is admin-only until it is listed.
+                .requestMatchers(HttpMethod.GET, "/api/v1/admin/gameserver/session", "/api/v1/admin/gameserver/log",
+                        "/api/v1/admin/gameserver/presets").hasRole("STEWARD")
+                .requestMatchers(HttpMethod.POST, "/api/v1/admin/gameserver/kick", "/api/v1/admin/gameserver/chat",
+                        "/api/v1/admin/gameserver/session/next", "/api/v1/admin/gameserver/session/advance",
+                        "/api/v1/admin/gameserver/presets/*/apply").hasRole("STEWARD")
+                .requestMatchers(HttpMethod.PUT, "/api/v1/admin/race/events/*/penalties", "/api/v1/admin/race/events/*/video").hasRole("STEWARD")
+                // Everything else under /admin is for admins
+                .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
                 // Public read-only endpoints (also GET /api, which hands out the XSRF token)
                 .requestMatchers(HttpMethod.GET, "/api", "/api/v1/gameserver/**", "/api/v1/config", "/api/v1/race/**").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/v1/authenticate", "/api/v1/logout").permitAll()
@@ -79,7 +92,14 @@ public class WebSecurityConfig {
                     + "base-uri 'self'; form-action 'self'; frame-ancestors 'none'"))
                 .referrerPolicy(referrer -> referrer.policy(
                     org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter.ReferrerPolicy.SAME_ORIGIN)))
-            .exceptionHandling(e -> e.authenticationEntryPoint(jwtAuthenticationEntryPoint))
+            .exceptionHandling(e -> e
+                .authenticationEntryPoint(jwtAuthenticationEntryPoint)
+                // Signed in, but the role isn't enough: say so in the API's usual shape
+                .accessDeniedHandler((request, response, denied) -> {
+                    response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                    response.setContentType("application/json");
+                    response.getWriter().write("{\"message\":\"Your role is not allowed to do this\",\"status\":403,\"data\":null}");
+                }))
             // Stateless: no server-side session holds the user's state
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             // JwtRequestFilter records the authenticated context here for the duration of the request. The

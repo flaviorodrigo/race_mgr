@@ -1,14 +1,17 @@
 import React, {useEffect, useState} from 'react';
 
 import {
-	addBan, addToWhitelist, advanceSession, applyNextSession, applyPreset, deletePreset, fetchPresets, savePreset, changePassword, fetchAudit, fetchBanList, fetchGameLog, fetchServerConfig, fetchWhitelist,
+	addBan, addToWhitelist, advanceSession, applyNextSession, applyPreset, createAdminUser, deleteAdminUser, deletePreset, fetchAdminUsers, fetchPresets, savePreset,
+	updateAdminUser, changePassword, fetchAudit, fetchBanList, fetchGameLog, fetchServerConfig, fetchWhitelist,
 	removeBan, removeFromWhitelist, saveServerConfig,
-	IApiResult, IAuditEvent, IBanEntry, ILogEvent, INextSessionSettings, ISessionPreset, IWhitelist, ServerConfigValues,
+	IAdminUser, IApiResult, IAuditEvent, IBanEntry, ILogEvent, INextSessionSettings, ISessionPreset, IWhitelist, ServerConfigValues,
 } from '../Live/adminApi';
 import {fetchTrackData} from '../Leaderboard/utilities';
 import RotationBuilder from './RotationBuilder';
 import PerformancePanel from './PerformancePanel';
 import {ITrackData} from '../../interfaces/asm2Interfaces';
+import {atLeast, generatePassword, Role, roleLabel} from '../../utils/roles';
+import {useRole} from '../Live/useRole';
 
 import Accordion from '@mui/material/Accordion';
 import AccordionDetails from '@mui/material/AccordionDetails';
@@ -197,6 +200,8 @@ const NextSessionPanel = () => {
 	const [presets, setPresets] = useState<Array<ISessionPreset>>([]);
 	const [presetName, setPresetName] = useState('');
 	const [toDelete, setToDelete] = useState<ISessionPreset | null>(null);
+	// Stewards run presets; saving and deleting them is for admins
+	const canEditPresets = atLeast(useRole().role, 'ADMIN');
 
 	const loadPresets = async () => {
 		const result = await fetchPresets();
@@ -303,11 +308,11 @@ const NextSessionPanel = () => {
 				<Button variant="contained" disabled={!canApply} onClick={apply}>Apply to next session</Button>
 				<Button color="warning" disabled={busy} onClick={() => setConfirmAdvance(true)}>Advance to next stage</Button>
 			</Stack>
-			<Stack direction={{xs: 'column', sm: 'row'}} spacing={2} sx={{alignItems: {sm: 'flex-end'}}}>
+			{canEditPresets && <Stack direction={{xs: 'column', sm: 'row'}} spacing={2} sx={{alignItems: {sm: 'flex-end'}}}>
 				<TextField label="Save these settings as a preset" variant="standard" fullWidth value={presetName} onChange={e => setPresetName(e.target.value)}
 					helperText="Saving under an existing name replaces that preset" slotProps={{htmlInput: {maxLength: 40}}} />
 				<Button disabled={!canApply || presetName.trim() === ''} onClick={saveAsPreset}>Save preset</Button>
-			</Stack>
+			</Stack>}
 			{presets.length > 0 && <>
 				<Typography variant="subtitle2">Saved presets</Typography>
 				<Table size="small" aria-label="Presets">
@@ -318,7 +323,7 @@ const NextSessionPanel = () => {
 								<TableCell>{describePreset(p.settings, tracks)}</TableCell>
 								<TableCell align="right" sx={{whiteSpace: 'nowrap'}}>
 									<Button size="small" disabled={busy} onClick={() => usePreset(p)}>Apply</Button>
-									<Button size="small" color="error" onClick={() => setToDelete(p)}>Delete</Button>
+									{canEditPresets && <Button size="small" color="error" onClick={() => setToDelete(p)}>Delete</Button>}
 								</TableCell>
 							</TableRow>
 						))}
@@ -651,27 +656,190 @@ const AccountPanel = () => {
 	);
 };
 
+// ---------------------------------------------------------------- other admins (owner only)
+
+const ASSIGNABLE: Array<{role: Role, help: string}> = [
+	{role: 'ADMIN', help: 'Everything except managing other admins'},
+	{role: 'STEWARD', help: 'Race day only: kick, chat, next session and presets, penalties and video, live view and log'},
+];
+
+const AdminsPanel = () => {
+	const [users, setUsers] = useState<Array<IAdminUser> | null>(null);
+	const [name, setName] = useState('');
+	const [password, setPassword] = useState('');
+	const [role, setRole] = useState<Role>('STEWARD');
+	const [feedback, setFeedback] = useState<IFeedback | null>(null);
+	const [reset, setReset] = useState<{user: string, password: string} | null>(null);
+	const [toRemove, setToRemove] = useState<string | null>(null);
+	const [shown, setShown] = useState<{user: string, password: string} | null>(null);
+
+	const load = async () => {
+		const result = await fetchAdminUsers();
+		setUsers(result.ok ? result.data ?? [] : null);
+	};
+
+	useEffect(() => {
+		load();
+	}, []);
+
+	const validName = /^[A-Za-z0-9_.-]{3,32}$/.test(name.trim());
+	const validPassword = password.length >= MIN_PASSWORD && password.length <= 128;
+
+	const add = async () => {
+		const result = await createAdminUser(name.trim(), password, role);
+		setFeedback({text: result.message, severity: result.ok ? 'success' : 'error'});
+		if (result.ok) {
+			// The password is shown once, so the owner can hand it over
+			setShown({user: name.trim().toLowerCase(), password});
+			setName('');
+			setPassword('');
+			load();
+		}
+	};
+
+	const change = async (user: string, newRole: Role) => {
+		const result = await updateAdminUser(user, {role: newRole});
+		setFeedback({text: result.ok ? `${user} is now ${roleLabel(newRole)}` : result.message, severity: result.ok ? 'success' : 'error'});
+		load();
+	};
+
+	const doReset = async () => {
+		if (!reset) {
+			return;
+		}
+
+		const result = await updateAdminUser(reset.user, {password: reset.password});
+		setFeedback({text: result.ok ? `New password set for ${reset.user}. They were signed out everywhere.` : result.message, severity: result.ok ? 'success' : 'error'});
+		if (result.ok) {
+			setShown(reset);
+		}
+
+		setReset(null);
+	};
+
+	const remove = async () => {
+		if (!toRemove) {
+			return;
+		}
+
+		const result = await deleteAdminUser(toRemove);
+		setToRemove(null);
+		setFeedback({text: result.message, severity: result.ok ? 'success' : 'error'});
+		load();
+	};
+
+	return (
+		<Stack spacing={2} sx={{textAlign: 'left'}}>
+			<Typography variant="body2">
+				Give friends their own sign-in instead of sharing yours. Everything they do is in the activity log under their name.
+				You (the owner) are the only one who can manage this list.
+			</Typography>
+			{ASSIGNABLE.map(a => <Typography key={a.role} variant="body2"><strong>{roleLabel(a.role)}:</strong> {a.help}.</Typography>)}
+			{users && <Table size="small" aria-label="Admins">
+				<TableHead>
+					<TableRow>
+						<TableCell>User</TableCell>
+						<TableCell>Role</TableCell>
+						<TableCell />
+					</TableRow>
+				</TableHead>
+				<TableBody>
+					{users.map(u => (
+						<TableRow key={u.username}>
+							<TableCell component="th" scope="row">{u.username}</TableCell>
+							<TableCell>
+								{u.role === 'OWNER'
+									? roleLabel(u.role)
+									: <Select variant="standard" size="small" value={u.role} inputProps={{'aria-label': `Role of ${u.username}`}}
+										onChange={e => change(u.username, e.target.value as Role)}>
+										{ASSIGNABLE.map(a => <MenuItem key={a.role} value={a.role}>{roleLabel(a.role)}</MenuItem>)}
+									</Select>}
+							</TableCell>
+							<TableCell align="right" sx={{whiteSpace: 'nowrap'}}>
+								{u.role !== 'OWNER' && <>
+									<Button size="small" onClick={() => setReset({user: u.username, password: ''})}>Reset password</Button>
+									<Button size="small" color="error" onClick={() => setToRemove(u.username)}>Remove</Button>
+								</>}
+							</TableCell>
+						</TableRow>
+					))}
+				</TableBody>
+			</Table>}
+
+			<Typography variant="subtitle2">Add someone</Typography>
+			<Stack direction={{xs: 'column', sm: 'row'}} spacing={2} sx={{alignItems: {sm: 'flex-end'}}}>
+				<TextField label="User name" variant="standard" value={name} onChange={e => setName(e.target.value)}
+					error={name !== '' && !validName} helperText="3 to 32 letters, digits, . - _" />
+				<TextField label="Password" variant="standard" value={password} onChange={e => setPassword(e.target.value)} autoComplete="off"
+					error={password !== '' && !validPassword} helperText={`At least ${MIN_PASSWORD} characters`} />
+				<Button onClick={() => setPassword(generatePassword())}>Generate</Button>
+				<FormControl variant="standard" sx={{minWidth: 120}}>
+					<InputLabel id="new-admin-role">Role</InputLabel>
+					<Select labelId="new-admin-role" value={role} onChange={e => setRole(e.target.value as Role)}>
+						{ASSIGNABLE.map(a => <MenuItem key={a.role} value={a.role}>{roleLabel(a.role)}</MenuItem>)}
+					</Select>
+				</FormControl>
+				<Button variant="contained" disabled={!validName || !validPassword} onClick={add}>Add</Button>
+			</Stack>
+			{shown && <Alert severity="info" onClose={() => setShown(null)}>
+				Give {shown.user} this password; it is not shown again: <code>{shown.password}</code>. They can change it themselves under Account.
+			</Alert>}
+			<Feedback feedback={feedback} />
+
+			<Dialog open={reset !== null} onClose={() => setReset(null)}>
+				<DialogTitle>New password for {reset?.user}</DialogTitle>
+				<DialogContent>
+					<DialogContentText sx={{mb: 1}}>They are signed out everywhere and use this password from now on.</DialogContentText>
+					<Stack direction="row" spacing={2} sx={{alignItems: 'flex-end'}}>
+						<TextField label="New password" variant="standard" fullWidth autoComplete="off" value={reset?.password ?? ''}
+							onChange={e => setReset(reset && {...reset, password: e.target.value})} helperText={`At least ${MIN_PASSWORD} characters`} />
+						<Button onClick={() => setReset(reset && {...reset, password: generatePassword()})}>Generate</Button>
+					</Stack>
+				</DialogContent>
+				<DialogActions>
+					<Button onClick={() => setReset(null)}>Cancel</Button>
+					<Button variant="contained" disabled={(reset?.password.length ?? 0) < MIN_PASSWORD} onClick={doReset}>Set password</Button>
+				</DialogActions>
+			</Dialog>
+
+			<Dialog open={toRemove !== null} onClose={() => setToRemove(null)}>
+				<DialogTitle>Remove {toRemove}?</DialogTitle>
+				<DialogContent>
+					<DialogContentText>They are signed out at once and can&apos;t sign in again.</DialogContentText>
+				</DialogContent>
+				<DialogActions>
+					<Button onClick={() => setToRemove(null)}>Cancel</Button>
+					<Button color="error" onClick={remove}>Remove</Button>
+				</DialogActions>
+			</Dialog>
+		</Stack>
+	);
+};
+
 // ---------------------------------------------------------------- the group
 
-const sections = [
-	{id: 'bop', title: 'Balance of performance', body: <PerformancePanel />},
-	{id: 'rotation', title: 'Rotation builder', body: <RotationBuilder />},
-	{id: 'config', title: 'Server settings (server.cfg)', body: <ServerSettingsPanel />},
-	{id: 'next', title: 'Next session settings', body: <NextSessionPanel />},
-	{id: 'bans', title: 'Ban list', body: <BanListPanel />},
-	{id: 'whitelist', title: 'Whitelist', body: <WhitelistPanel />},
-	{id: 'log', title: 'Game server log', body: <GameLogPanel />},
-	{id: 'audit', title: 'Activity log', body: <AuditPanel />},
-	{id: 'account', title: 'Account', body: <AccountPanel />},
+// The least role that can use each tool; the server enforces the same rules
+const sections: Array<{id: string, title: string, needs: Role, body: React.ReactNode}> = [
+	{id: 'bop', title: 'Balance of performance', needs: 'ADMIN', body: <PerformancePanel />},
+	{id: 'rotation', title: 'Rotation builder', needs: 'ADMIN', body: <RotationBuilder />},
+	{id: 'config', title: 'Server settings (server.cfg)', needs: 'ADMIN', body: <ServerSettingsPanel />},
+	{id: 'next', title: 'Next session settings', needs: 'STEWARD', body: <NextSessionPanel />},
+	{id: 'bans', title: 'Ban list', needs: 'ADMIN', body: <BanListPanel />},
+	{id: 'whitelist', title: 'Whitelist', needs: 'ADMIN', body: <WhitelistPanel />},
+	{id: 'log', title: 'Game server log', needs: 'STEWARD', body: <GameLogPanel />},
+	{id: 'audit', title: 'Activity log', needs: 'ADMIN', body: <AuditPanel />},
+	{id: 'admins', title: 'Admins', needs: 'OWNER', body: <AdminsPanel />},
+	{id: 'account', title: 'Account', needs: 'STEWARD', body: <AccountPanel />},
 ];
 
 // Collapsed by default, and each section only loads its data when it is opened
 const AdminTools = () => {
 	const [open, setOpen] = useState<string | false>(false);
+	const {role} = useRole();
 
 	return (
 		<div style={{marginTop: 24}}>
-			{sections.map(s => (
+			{sections.filter(s => atLeast(role, s.needs)).map(s => (
 				<Accordion key={s.id} expanded={open === s.id} onChange={(_event, isOpen) => setOpen(isOpen ? s.id : false)}
 					disableGutters slotProps={{transition: {unmountOnExit: true}}}>
 					<AccordionSummary expandIcon={<ExpandMoreIcon />} aria-controls={`${s.id}-content`} id={`${s.id}-header`}>

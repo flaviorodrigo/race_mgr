@@ -74,7 +74,7 @@ public class JwtAuthenticationController {
         loginAttemptService.recordSuccess(client);
         auditLog.record(username, "login", "from " + client);
         final UserDetails userDetails = jwtUserDetailsService.loadUserByUsername(username);
-        final String token = jwtTokenUtil.generateToken(userDetails, jwtUserDetailsService.credentialVersion());
+        final String token = jwtTokenUtil.generateToken(userDetails, ((JwtUserDetailsService.RmUser) userDetails).getCredentialVersion());
         // Browsers get the session as an HttpOnly cookie; API clients can still use the token in the body
         SessionCookies.add(httpRequest, httpResponse, token, jwtTokenUtil.getValidity());
         return ResponseHandler.generateResponse("JWT token", HttpStatus.OK, new JwtResponse(token));

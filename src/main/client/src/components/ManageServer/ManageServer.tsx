@@ -18,6 +18,8 @@ import Tooltip from '@mui/material/Tooltip';
 import ApplyServerConfig from './ApplyServerConfig';
 import LivePanel from '../Live/LivePanel';
 import AdminTools from './AdminTools';
+import {atLeast} from '../../utils/roles';
+import {useRole} from '../Live/useRole';
 
 import Paper from '@mui/material/Paper';
 
@@ -42,6 +44,9 @@ const ManageServer = (props:IManageServerProps) => {
 
 	const dispatch = useDispatch();
 	const navigate = useNavigate();
+	// Stewards run race day: the series and rotation controls are for admins
+	const {role, loaded: roleLoaded} = useRole();
+	const isAdmin = atLeast(role, 'ADMIN');
 
 	useEffect(() => {
 		dispatch(getServerStatus());
@@ -107,27 +112,33 @@ const ManageServer = (props:IManageServerProps) => {
 					</IconButton>
 				</Typography>
 
-				<Typography variant="subtitle1" align="left" gutterBottom={true}>
-					Here you can create/manage race sessions & race rotations. Sessions can be thought of like a race series and they can have one to many rotations. A rotation is a configuration that consists of a various cars, tracks, weather, etc. When a race occurs, the active session & rotation ids are linked to the race results for historical tracking and querying.
-				</Typography>
+				{isAdmin && <>
+					<Typography variant="subtitle1" align="left" gutterBottom={true}>
+						Here you can create/manage race sessions & race rotations. Sessions can be thought of like a race series and they can have one to many rotations. A rotation is a configuration that consists of a various cars, tracks, weather, etc. When a race occurs, the active session & rotation ids are linked to the race results for historical tracking and querying.
+					</Typography>
 
-				<Typography variant="subtitle1" align="left" gutterBottom={true}>
-					<ServerConfig />
-				</Typography>
+					<Typography variant="subtitle1" align="left" gutterBottom={true}>
+						<ServerConfig />
+					</Typography>
 
-				<Typography variant="subtitle1" align="left" gutterBottom={true}>
-					<ApplyServerConfig
-						showNotification={showNotification}
-						setIsServerRunning={serverStatus.isRunning}
-					></ApplyServerConfig>
+					<Typography variant="subtitle1" align="left" gutterBottom={true}>
+						<ApplyServerConfig
+							showNotification={showNotification}
+							setIsServerRunning={serverStatus.isRunning}
+						></ApplyServerConfig>
 
-				</Typography>
+					</Typography>
 
-				{serverStatus.managed === false
-				&& <Alert severity="info" sx={{textAlign: 'left', mt: 2}}>
-					The game server is run outside Race Manager. After changing the rotation, restart the game server yourself for it to take effect.
-				</Alert>
-				}
+					{serverStatus.managed === false
+					&& <Alert severity="info" sx={{textAlign: 'left', mt: 2}}>
+						The game server is run outside Race Manager. After changing the rotation, restart the game server yourself for it to take effect.
+					</Alert>
+					}
+				</>}
+
+				{roleLoaded && !isAdmin && <Typography variant="subtitle1" align="left" gutterBottom={true}>
+					You are signed in as a steward: you can see who is online, kick and message players, set up the next session and give penalties.
+				</Typography>}
 
 				<LivePanel />
 

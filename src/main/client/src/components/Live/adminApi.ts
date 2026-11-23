@@ -1,5 +1,6 @@
 import RaceMgrApi from '../../api/RaceMgrApi';
 import {IPenalty} from '../../utils/penalties';
+import {Role} from '../../utils/roles';
 
 // Small helpers for the admin tools. Each resolves to {ok, message, data}; the message is the server's own
 // explanation (already safe to show) or a generic one.
@@ -75,6 +76,18 @@ export const fetchGameLog = (count: number) => call<Array<ILogEvent>>({url: `/ga
 export const saveRaceVideo = (raceId: string, url: string) => call({url: `/race/events/${raceId}/video`, method: 'put', data: {url}});
 export const saveRacePenalties = (raceId: string, penalties: Array<IPenalty>) =>
 	call({url: `/race/events/${raceId}/penalties`, method: 'put', data: {penalties}});
+
+export interface IAdminUser {
+	username: string,
+	role: Role,
+	created?: string,
+}
+
+export const fetchMe = () => call<IAdminUser>({url: '/me', method: 'get'});
+export const fetchAdminUsers = () => call<Array<IAdminUser>>({url: '/users', method: 'get'});
+export const createAdminUser = (username: string, password: string, role: Role) => call({url: '/users', method: 'post', data: {username, password, role}});
+export const updateAdminUser = (username: string, change: {role?: Role, password?: string}) => call({url: `/users/${username}`, method: 'put', data: change});
+export const deleteAdminUser = (username: string) => call({url: `/users/${username}`, method: 'delete'});
 
 export interface IAuditEvent {
 	id: string,
