@@ -1,7 +1,8 @@
-import React, {useState, useEffect} from 'react';
+import React, {useState, useEffect, useMemo} from 'react';
 import _ from 'lodash';
 
 import {IRace} from './interfaces';
+import {SortHeadCell, useSort} from './sorting';
 
 import {styled} from '@mui/material/styles';
 
@@ -21,6 +22,7 @@ interface IProps {
 }
 
 interface IPlayerSummary {
+    rank?: number,
     totalRaces: number,
     name:string,
 	isPlayer: boolean,
@@ -35,6 +37,21 @@ interface IPlayerSummary {
 
 const DEFAULT_SUMMARY_COUNT = 5;
 
+type SortKey = 'totalRaces' | 'name' | 'firstPlaceFinishes' | 'secondPlaceFinishes' | 'thirdPlaceFinishes'
+	| 'numberOfPodiums' | 'numberOfPolePositions' | 'numberOfFastestLaps' | 'totalPoints';
+
+const columns: Array<{key: SortKey, label: string, text?: boolean, left?: boolean}> = [
+	{key: 'totalRaces', label: 'Races', left: true},
+	{key: 'name', label: 'Driver', text: true},
+	{key: 'firstPlaceFinishes', label: 'Wins'},
+	{key: 'secondPlaceFinishes', label: 'Seconds'},
+	{key: 'thirdPlaceFinishes', label: 'Thirds'},
+	{key: 'numberOfPodiums', label: 'Podiums'},
+	{key: 'numberOfPolePositions', label: 'Poles'},
+	{key: 'numberOfFastestLaps', label: 'Fastest Laps'},
+	{key: 'totalPoints', label: 'Total Points'},
+];
+
 const StyledTableCell = styled(TableCell)(({theme}) => ({
 	[`&.${tableCellClasses.head}`]: {
 		backgroundColor: theme.palette.primary.dark,
@@ -47,7 +64,7 @@ const StyledTableCell = styled(TableCell)(({theme}) => ({
 
 const StyledTableRow = styled(TableRow)(({theme}) => ({
 	'&:nth-of-type(odd)': {
-		backgroundColor: '#EFF3F7',
+		backgroundColor: theme.palette.action.hover,
 	},
 	// Hide last border
 	'&:last-child td, &:last-child th': {
@@ -122,36 +139,41 @@ const generateRaceSummary = (filteredRaces: Array<IRace>):Array<IPlayerSummary> 
 
 const RaceSummary = (props:IProps) => {
 	const [maxSummary, setMaxSummary] = useState(DEFAULT_SUMMARY_COUNT);
+	const {orderBy, order, requestSort} = useSort<SortKey>('totalPoints', 'desc');
+
+	// Rank always means "position by points", whatever column the table is sorted by
+	const rows = useMemo(() => {
+		const ranked = _.orderBy(generateRaceSummary(props.filteredRaces), ['totalPoints'], ['desc'])
+			.map((r, i) => ({...r, rank: i + 1}));
+		const key = orderBy === 'name' ? (r: IPlayerSummary) => r.name.toLowerCase() : orderBy;
+		return _.orderBy(ranked, [key, 'totalPoints', (r: IPlayerSummary) => r.name.toLowerCase()], [order, 'desc', 'asc']);
+	}, [props.filteredRaces, orderBy, order]);
 
 	useEffect(() => {
 		setMaxSummary(DEFAULT_SUMMARY_COUNT);
 	}, [props.filteredRaces]);
 
 	return (<Box sx={{marginTop: '10px'}}>
-		<TableContainer component={Paper}>
-			<Table sx={{minWidth: 650}} aria-label="Race Summary" size="small">
+		<TableContainer component={Paper} sx={{maxHeight: '70vh'}}>
+			<Table stickyHeader sx={{minWidth: 650}} aria-label="Race Summary" size="small">
 				<TableHead>
 					<StyledTableRow>
-						<StyledTableCell></StyledTableCell>
-						<StyledTableCell>Races</StyledTableCell>
-						<StyledTableCell >Driver</StyledTableCell >
-						<StyledTableCell align="right">Wins</StyledTableCell>
-						<StyledTableCell align="right">Seconds</StyledTableCell>
-						<StyledTableCell align="right">Thirds</StyledTableCell>
-						<StyledTableCell align="right">Podiums</StyledTableCell>
-						<StyledTableCell align="right">Poles</StyledTableCell>
-						<StyledTableCell align="right">Fastest Laps</StyledTableCell>
-						<StyledTableCell align="right">Total Points</StyledTableCell>
+						<StyledTableCell>#</StyledTableCell>
+						{columns.map(col => (
+							<SortHeadCell key={col.key} cell={StyledTableCell} sortKey={col.key} label={col.label}
+								align={col.text || col.left ? 'left' : 'right'} text={col.text}
+								orderBy={orderBy} order={order} onSort={requestSort} />
+						))}
 					</StyledTableRow>
 				</TableHead>
 				<TableBody>
-					{_.take(_.orderBy(generateRaceSummary(props.filteredRaces), ['totalPoints'], ['desc']), maxSummary).map((row:any, idx:number) => (
+					{_.take(rows, maxSummary).map((row:IPlayerSummary) => (
 						<StyledTableRow
 							key={row.name}
 							sx={{'&:last-child td, &:last-child th': {border: 0}}}
 						>
 							<StyledTableCell component="th" scope="row">
-								{idx + 1}
+								{row.rank}
 							</StyledTableCell>
 							<StyledTableCell component="th" scope="row">
 								{row.totalRaces}

@@ -1,5 +1,7 @@
 import React from 'react';
-import {styled, createTheme, ThemeProvider} from '@mui/material/styles';
+import {styled, useTheme, ThemeProvider} from '@mui/material/styles';
+import useMediaQuery from '@mui/material/useMediaQuery';
+import Stack from '@mui/material/Stack';
 import CssBaseline from '@mui/material/CssBaseline';
 import MuiDrawer from '@mui/material/Drawer';
 import Box from '@mui/material/Box';
@@ -8,6 +10,8 @@ import Toolbar from '@mui/material/Toolbar';
 import RaceMgrApi from '../../api/RaceMgrApi';
 import List from '@mui/material/List';
 import Typography from '@mui/material/Typography';
+import theme from '../../theme';
+import ColorModeToggle from './ColorModeToggle';
 import Divider from '@mui/material/Divider';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
@@ -43,6 +47,7 @@ interface AppBarProps extends MuiAppBarProps {
   open?: boolean;
 }
 
+// On wide screens the app bar shifts right when the (mini) drawer is expanded
 const AppBar = styled(MuiAppBar, {
 	shouldForwardProp: prop => prop !== 'open',
 })<AppBarProps>(({theme, open}) => ({
@@ -87,31 +92,57 @@ const Drawer = styled(MuiDrawer, {shouldForwardProp: prop => prop !== 'open'})(
 	}),
 );
 
-const mdTheme = createTheme({
-	palette: {
-		primary: {
-			main: '#ff2800',
-		},
-		secondary: {
-			main: '#636262',
-		},
-	},
+// Router link that looks like plain text in the nav
+const NavLink = styled(RouterLink)({
+	textDecoration: 'none',
+	color: 'inherit',
 });
 
-// Router link that looks like plain text in the nav
-const NavLink = styled(RouterLink)(({theme}) => ({
-	textDecoration: 'none',
-	color: theme.palette.text.primary,
-}));
+interface INavItemsProps {
+	isAuthenticated: boolean,
+	onNavigate?: () => void,
+}
+
+const NavItems = ({isAuthenticated, onNavigate}: INavItemsProps) => (
+	<List component="nav">
+		<NavLink to="/" onClick={onNavigate}>
+			<ListItemButton>
+				<ListItemIcon>
+					<BarChartIcon />
+				</ListItemIcon>
+				<ListItemText primary="Leader Board" />
+			</ListItemButton>
+		</NavLink>
+
+		{isAuthenticated
+		&& <NavLink to="/manageserver" onClick={onNavigate}>
+			<ListItemButton>
+				<ListItemIcon>
+					<PermDataSettingIcon />
+				</ListItemIcon>
+				<ListItemText primary="Manage Server" />
+			</ListItemButton>
+		</NavLink>
+		}
+	</List>
+);
 
 const DashboardContent = () => {
+	const muiTheme = useTheme();
+	// Phones and small tablets get an overlay drawer instead of a permanent one
+	const isCompact = useMediaQuery(muiTheme.breakpoints.down('md'));
+
 	const [open, setOpen] = React.useState(true);
+	const [mobileOpen, setMobileOpen] = React.useState(false);
 	// Start from the session marker so a reload on an admin page doesn't bounce to the login page first
 	const [isAuthenticated, setIsAuthenticated] = React.useState(() => new RaceMgrApi().hasSession());
 
-	// Set the defaults
 	const toggleDrawer = () => {
-		setOpen(!open);
+		if (isCompact) {
+			setMobileOpen(!mobileOpen);
+		} else {
+			setOpen(!open);
+		}
 	};
 
 	const handleLogout = async () => {
@@ -119,135 +150,112 @@ const DashboardContent = () => {
 		setIsAuthenticated(false);
 	};
 
+	const showMenuButton = isCompact || !open;
+
 	return (
-		<ThemeProvider theme={mdTheme}>
-			<Router>
-				<Box sx={{display: 'flex'}}>
-					<CssBaseline />
-					<AppBar position="absolute" open={open}>
-						<Toolbar
+		<Router>
+			<Box sx={{display: 'flex'}}>
+				<CssBaseline enableColorScheme />
+				<AppBar position="absolute" open={open && !isCompact} color="primary" enableColorOnDark>
+					<Toolbar sx={{pr: {xs: 1, sm: '24px'}}}>
+						<IconButton
+							edge="start"
+							color="inherit"
+							aria-label="open menu"
+							onClick={toggleDrawer}
 							sx={{
-								pr: '24px', // Keep right padding when drawer closed
+								marginRight: {xs: 1, sm: '36px'},
+								...(!showMenuButton && {display: 'none'}),
 							}}
 						>
-							<IconButton
-								edge="start"
-								color="inherit"
-								aria-label="open drawer"
-								onClick={toggleDrawer}
-								sx={{
-									marginRight: '36px',
-									...(open && {display: 'none'}),
-								}}
-							>
-								<MenuIcon />
-							</IconButton>
-							<Typography
-								component="h1"
-								variant="h6"
-								color="inherit"
-								noWrap
-								sx={{flexGrow: 1}}
-							>
-								<div style={{
-									marginRight: '8px',
-									top: '-8px',
-									position: 'relative',
-									display: 'inline',
-								}}>Race Manager</div>
-								<img src="race_mgr_logo.png" alt="logo" width="50px" />
+							<MenuIcon />
+						</IconButton>
+						<Stack direction="row" spacing={1.5} sx={{flexGrow: 1, minWidth: 0, alignItems: 'center', justifyContent: 'center'}}>
+							<Typography component="h1" variant="h6" color="inherit" noWrap>
+								Race Manager
 							</Typography>
+							<Box component="img" src="/race_mgr_logo.png" alt="" sx={{height: 36, display: {xs: 'none', sm: 'block'}}} />
+						</Stack>
 
-							{!isAuthenticated
-							&& 	<NavLink to="/login">
-								<IconButton sx={{color: 'white'}} aria-label="Login">
-									<Tooltip title="Login">
-										<LoginIcon/>
-									</Tooltip>
-								</IconButton>
-							</NavLink>
-							}
+						<ColorModeToggle />
 
-							{isAuthenticated
-							&& <IconButton sx={{color: 'white'}} aria-label="Logout" onClick={handleLogout}>
-								<Tooltip title="Logout">
-									<LogoutIcon/>
-								</Tooltip>
+						{!isAuthenticated
+						&& <Tooltip title="Login">
+							<IconButton color="inherit" aria-label="Login" component={RouterLink} to="/login">
+								<LoginIcon />
 							</IconButton>
-							}
-						</Toolbar>
-					</AppBar>
+						</Tooltip>
+						}
 
-					<Drawer variant="permanent" open={open}>
-						<Toolbar
-							sx={{
-								display: 'flex',
-								alignItems: 'center',
-								justifyContent: 'flex-end',
-								px: [1],
-							}}
-						>
-							<IconButton onClick={toggleDrawer}>
+						{isAuthenticated
+						&& <Tooltip title="Logout">
+							<IconButton color="inherit" aria-label="Logout" onClick={handleLogout}>
+								<LogoutIcon />
+							</IconButton>
+						</Tooltip>
+						}
+					</Toolbar>
+				</AppBar>
+
+				{isCompact
+					? <MuiDrawer
+						variant="temporary"
+						open={mobileOpen}
+						onClose={() => setMobileOpen(false)}
+						ModalProps={{keepMounted: true}}
+						sx={{'& .MuiDrawer-paper': {width: drawerWidth, boxSizing: 'border-box'}}}
+					>
+						<Toolbar sx={{display: 'flex', alignItems: 'center', justifyContent: 'flex-end', px: [1]}}>
+							<IconButton onClick={() => setMobileOpen(false)} aria-label="close menu">
 								<ChevronLeftIcon />
 							</IconButton>
 						</Toolbar>
 						<Divider />
-						<List component="nav">
-							<NavLink to="/">
-								<ListItemButton>
-									<ListItemIcon>
-										<BarChartIcon />
-									</ListItemIcon>
-									<ListItemText primary="Leader Board" />
-								</ListItemButton>
-							</NavLink>
-
-							{isAuthenticated
-							&&							<NavLink to="/manageserver">
-								<ListItemButton>
-									<ListItemIcon>
-										<PermDataSettingIcon />
-									</ListItemIcon>
-									<ListItemText primary="Mange Server" />
-								</ListItemButton>
-							</NavLink>
-							}
-
-						</List>
+						<NavItems isAuthenticated={isAuthenticated} onNavigate={() => setMobileOpen(false)} />
+					</MuiDrawer>
+					: <Drawer variant="permanent" open={open}>
+						<Toolbar sx={{display: 'flex', alignItems: 'center', justifyContent: 'flex-end', px: [1]}}>
+							<IconButton onClick={toggleDrawer} aria-label="collapse menu">
+								<ChevronLeftIcon />
+							</IconButton>
+						</Toolbar>
+						<Divider />
+						<NavItems isAuthenticated={isAuthenticated} />
 					</Drawer>
+				}
 
-					<Box
-						component="main"
-						sx={{
-							backgroundColor: theme =>
-								theme.palette.mode === 'light'
-									? theme.palette.grey[100]
-									: theme.palette.grey[900],
-							flexGrow: 1,
-							height: '100vh',
-							overflow: 'auto',
-						}}
-					>
-						<Toolbar />
-						<Container maxWidth="lg" sx={{mt: 4, mb: 4}}>
-							<Routes>
-								<Route path="/" element={<LeaderBoard />} />
-								<Route path="/manageServer" element={<ManageServer isAuthenticated={isAuthenticated} />} />
-								<Route path="/login" element={<Login isAuthenticated={isAuthenticated} setIsAuthenticated={setIsAuthenticated} />} />
-								<Route path="/serverstopped" element={<ServerStopped />} />
-								<Route path="/serverconfigerror" element={<ServerConfigError />} />
-								<Route path="/serverstatuserror" element={<ServerStatusError />} />
-							</Routes>
-							<Footer />
-						</Container>
-					</Box>
+				<Box
+					component="main"
+					sx={{
+						bgcolor: 'background.default',
+						flexGrow: 1,
+						minWidth: 0, // Lets wide tables scroll inside instead of stretching the page
+						height: '100vh',
+						overflow: 'auto',
+					}}
+				>
+					<Toolbar />
+					<Container maxWidth="lg" sx={{mt: {xs: 2, md: 4}, mb: 4, px: {xs: 1.5, sm: 3}}}>
+						<Routes>
+							<Route path="/" element={<LeaderBoard />} />
+							<Route path="/manageServer" element={<ManageServer isAuthenticated={isAuthenticated} />} />
+							<Route path="/login" element={<Login isAuthenticated={isAuthenticated} setIsAuthenticated={setIsAuthenticated} />} />
+							<Route path="/serverstopped" element={<ServerStopped />} />
+							<Route path="/serverconfigerror" element={<ServerConfigError />} />
+							<Route path="/serverstatuserror" element={<ServerStatusError />} />
+						</Routes>
+						<Footer />
+					</Container>
 				</Box>
-			</Router>
-
-		</ThemeProvider>
+			</Box>
+		</Router>
 	);
 };
 
 export default function Dashboard() {
-	return <DashboardContent />;
+	return (
+		<ThemeProvider theme={theme}>
+			<DashboardContent />
+		</ThemeProvider>
+	);
 }

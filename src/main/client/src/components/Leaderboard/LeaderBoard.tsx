@@ -24,10 +24,11 @@ import RaceSummary from './RaceSummary';
 import {IRace} from './interfaces';
 import {IAdvancedFilter} from './AdvancedFiltersDialog';
 
-import Grid from '@mui/material/Grid';
 import Paper from '@mui/material/Paper';
 import Link from '@mui/material/Link';
 import Typography from '@mui/material/Typography';
+import Box from '@mui/material/Box';
+import Stack from '@mui/material/Stack';
 
 import Backdrop from '@mui/material/Backdrop';
 import CircularProgress from '@mui/material/CircularProgress';
@@ -155,28 +156,22 @@ const LeaderBoard:React.FC = () => {
 						</Link>
 					</Typography>
 
-					<Grid container spacing={3}>
-						<Grid size={{xs: 12, md: 12, lg: 12}}>
-							<Typography variant="h6" sx={{marginTop: '5px', marginBottom: '5px'}}>
-								{ filteredRaces.length} Races
-							</Typography>
-						</Grid>
-					</Grid>
+					<Typography variant="h6" sx={{mt: 2, mb: 2}}>
+						{filteredRaces.length} Races
+					</Typography>
 
-					<Grid container spacing={3} sx={{marginBottom: '25px', marginTop: '-35px'}}>
-						<Grid size={{xs: 12, md: 12, lg: 12}} sx={{display: filteredRaces.length > 0 ? '' : 'none'}}>
+					{filteredRaces.length > 0
+					&& <Stack spacing={4} sx={{mb: 3}}>
+						<Box>
 							<Typography variant="h6" align="left">Session Leaders</Typography>
 							<RaceSummary filteredRaces={filteredRaces} />
-
-						</Grid>
-					</Grid>
-
-					<Grid container spacing={3}>
-						<Grid size={{xs: 12, md: 12, lg: 12}} sx={{display: filteredRaces.length > 0 ? '' : 'none'}}>
+						</Box>
+						<Box>
 							<Typography variant="h6" align="left">Race Summary</Typography>
 							<RaceResults filteredRaces={filteredRaces}/>
-						</Grid>
-					</Grid>
+						</Box>
+					</Stack>
+					}
 					< AdvancedFiltersDialog open={advancedFilterIsOpen} setOpen={setAdvancedFilterIsOpen} advancedFilters={advancedFilters} setAdvancedFilters={setAdvancedFilters} />
 					<Backdrop
 						sx={{color: '#fff', zIndex: theme => theme.zIndex.drawer + 1}}

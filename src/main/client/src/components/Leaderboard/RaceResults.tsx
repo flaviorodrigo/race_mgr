@@ -8,6 +8,7 @@ import {convertEpochDate, convertEpochTime} from '../../utils/epochUtils';
 import {convertEpochTimeToRaceResult} from '../../utils/dateTimeUtils';
 
 import {fetchTrackData, fetchVehicleData} from './utilities';
+import {SortHeadCell, useSort} from './sorting';
 
 import Box from '@mui/material/Box';
 import Collapse from '@mui/material/Collapse';
@@ -27,6 +28,28 @@ import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 interface IProps {
     filteredRaces: Array<IRace>;
 }
+
+type SortKey = 'trackName' | 'startDate' | 'gridSize' | 'laps' | 'aiStrength' | 'polePosition' | 'fastestLap' | 'winner';
+
+interface IColumn {
+	label: string,
+	key?: SortKey,
+	text?: boolean,
+	align?: 'left' | 'right',
+}
+
+const columns: Array<IColumn> = [
+	{label: 'Track', key: 'trackName', text: true},
+	{label: 'Start Date', key: 'startDate'},
+	{label: 'Start Time'},
+	{label: 'End Time'},
+	{label: 'Grid Size', key: 'gridSize', align: 'right'},
+	{label: 'Laps', key: 'laps', align: 'right'},
+	{label: 'AI Strength', key: 'aiStrength', align: 'right'},
+	{label: 'Pole Position', key: 'polePosition', text: true, align: 'right'},
+	{label: 'Fastest Lap', key: 'fastestLap', text: true, align: 'right'},
+	{label: 'Winner', key: 'winner', text: true, align: 'right'},
+];
 
 const isHuman = (driverName:string) => driverName.slice(-4) !== '(AI)';
 
@@ -153,32 +176,36 @@ const RaceResults = (props:IProps) => {
 	const [trackData, setTrackData] = React.useState<Array<ITrackData>>([]);
 	const [vehicleData, setVehicleData] = React.useState<Array<IVehicleData>>([]);
 
+	const {orderBy, order, requestSort} = useSort<SortKey>('startDate', 'desc');
+
 	useEffect(() => {
 		fetchTrackData().then(td => setTrackData(td));
 		fetchVehicleData().then(vd => setVehicleData(vd));
 	}, []);
 
+	const sortedRaces = React.useMemo(() => {
+		const trackName = (r: IRace) => (trackData.find(td => td.id === r.trackName)?.name ?? r.trackName ?? '').toLowerCase();
+		const iteratee = orderBy === 'trackName' ? trackName : orderBy;
+		return _.orderBy(props.filteredRaces, [iteratee, 'startDate'], [order, 'desc']);
+	}, [props.filteredRaces, trackData, orderBy, order]);
+
 	return (
 		<Box sx={{marginTop: '10px'}}>
-			<TableContainer component={Paper}>
-				<Table size="small" aria-label="collapsible table">
+			<TableContainer component={Paper} sx={{maxHeight: '75vh'}}>
+				<Table stickyHeader size="small" aria-label="collapsible table">
 					<TableHead>
 						<TableRow>
 							<TableCell />
-							<TableCell>Track</TableCell>
-							<TableCell>Start Date</TableCell>
-							<TableCell>Start Time</TableCell>
-							<TableCell>End Time</TableCell>
-							<TableCell align="right">Grid Size</TableCell>
-							<TableCell align="right">Laps</TableCell>
-							<TableCell align="right">AI Strength</TableCell>
-							<TableCell align="right">Pole Position</TableCell>
-							<TableCell align="right">Fastest Lap</TableCell>
-							<TableCell align="right">Winner</TableCell>
+							{columns.map(col => (
+								col.key
+									? <SortHeadCell key={col.key} sortKey={col.key} label={col.label} align={col.align} text={col.text}
+										orderBy={orderBy} order={order} onSort={requestSort} />
+									: <TableCell key={col.label} align={col.align}>{col.label}</TableCell>
+							))}
 						</TableRow>
 					</TableHead>
 					<TableBody>
-						{_.orderBy(props.filteredRaces, ['startDate'], ['desc']).map((row, idx) => (
+						{sortedRaces.map((row, idx) => (
 							<Row key={idx} row={row} trackData={trackData} vehicleData={vehicleData} />
 						))}
 					</TableBody>

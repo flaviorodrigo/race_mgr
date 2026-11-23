@@ -21,3 +21,6 @@ Run from this directory (Node 22+; the Maven build downloads its own Node).
 - The server sends a strict Content-Security-Policy (`script-src 'self'`, no inline scripts, no external hosts).
   Keep scripts, fonts and images bundled; don't add CDN links to `index.html`.
 - Icons are imported from `@mui/icons-material/<Name>`; `vite.config.ts` aliases them to the ES module build.
+- Light and dark colour schemes live in `src/theme.ts` (MUI colour schemes + CSS variables). The default follows the
+  system setting; the app bar toggle overrides it and MUI stores the choice in `localStorage`.
+- Below the `md` breakpoint the navigation becomes an overlay drawer. Use `sx` breakpoints for new responsive layout.

@@ -97,7 +97,7 @@ const ManageServer = (props:IManageServerProps) => {
 				flexDirection: 'column',
 			}}>
 				<Typography variant="h5" align="left" gutterBottom={true}>
-				Manage Server   <IconButton sx={{color: 'red', visibility: serverStatus.isRunning ? 'hidden' : 'visible'}}>
+				Manage Server   <IconButton sx={{color: 'error.main', visibility: serverStatus.isRunning ? 'hidden' : 'visible'}}>
 
 						<Tooltip title="Server is not Running">
 							<ReportProblemIcon />
