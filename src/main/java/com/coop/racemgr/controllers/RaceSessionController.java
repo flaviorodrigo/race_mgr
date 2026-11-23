@@ -1,6 +1,7 @@
 package com.coop.racemgr.controllers;
 
 import com.coop.racemgr.RacemgrApplication;
+import com.coop.racemgr.audit.AuditLog;
 import com.coop.racemgr.gameserver.GameServerProxy;
 import com.coop.racemgr.model.RaceSession;
 import com.coop.racemgr.model.ScoringConfig;
@@ -13,6 +14,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
@@ -21,6 +23,9 @@ import java.util.ArrayList;
 public class RaceSessionController {
     @Autowired
     private RaceSessionRepository raceSessionRepository;
+
+    @Autowired
+    private AuditLog auditLog;
 
     private GameServerProxy gameServerProxy = new GameServerProxy();
 
@@ -46,7 +51,7 @@ public class RaceSessionController {
     /** ADMIN ENDPOINTS **/
 
     @PostMapping("/api/v1/admin/race/session")
-    public ResponseEntity<Object> raceSession(@RequestBody RaceSessionRequest request) {
+    public ResponseEntity<Object> raceSession(@RequestBody RaceSessionRequest request, Authentication authentication) {
         try {
             var scoringProblem = request.scoring == null ? null : request.scoring.validate();
             if (scoringProblem != null) {
@@ -57,6 +62,7 @@ public class RaceSessionController {
             var raceSession = new RaceSession(request.name, request.raceRotationIds);
             raceSession.setScoring(normalizedScoring(request.scoring));
             raceSessionRepository.save(raceSession);
+            auditLog.record(authentication.getName(), "session created", request.name);
             return ResponseHandler.generateResponse("Successfully created race session!", HttpStatus.OK, raceSession);
         } catch (Exception e) {
             logger.error(e);
@@ -65,7 +71,7 @@ public class RaceSessionController {
     }
 
     @PutMapping("/api/v1/admin/race/session/{id}")
-    public ResponseEntity<Object> updateRaceSession(@RequestBody RaceSessionRequest request, @PathVariable String id) {
+    public ResponseEntity<Object> updateRaceSession(@RequestBody RaceSessionRequest request, @PathVariable String id, Authentication authentication) {
         var rs = raceSessionRepository.findItemById(id);
         if (rs == null) {
             return ResponseHandler.generateResponse("Race session not found!", HttpStatus.NOT_FOUND, null);
@@ -84,6 +90,7 @@ public class RaceSessionController {
             }
             rs.setUpdated(System.currentTimeMillis());
             raceSessionRepository.save(rs);
+            auditLog.record(authentication.getName(), request.scoring == null ? "session updated" : "session scoring changed", rs.getName());
             return ResponseHandler.generateResponse("Successfully updated race session!", HttpStatus.OK, null);
         } catch (Exception e) {
             logger.error(e);
@@ -92,7 +99,7 @@ public class RaceSessionController {
     }
 
     @DeleteMapping("/api/v1/admin/race/session/{id}")
-    public ResponseEntity<Object> deleteRaceSession(@PathVariable String id) {
+    public ResponseEntity<Object> deleteRaceSession(@PathVariable String id, Authentication authentication) {
         var rs = raceSessionRepository.findItemById(id);
         if (rs == null) {
             return ResponseHandler.generateResponse("Race session not found!", HttpStatus.NOT_FOUND, null);
@@ -102,6 +109,7 @@ public class RaceSessionController {
             rs.setActive(false);
             rs.setUpdated(System.currentTimeMillis());
             raceSessionRepository.save(rs);
+            auditLog.record(authentication.getName(), "session deleted", rs.getName());
             return ResponseHandler.generateResponse("Successfully deleted race session!", HttpStatus.OK, null);
         } catch (Exception e) {
             logger.error(e);

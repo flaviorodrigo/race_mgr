@@ -13,6 +13,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -30,6 +31,24 @@ public class RaceController {
     private static final Logger logger = LogManager.getLogger(RacemgrApplication.class);
 
     /** PUBLIC ENDPOINTS **/
+
+    // One race, for shareable links (/race/<id>). The id is the race's hash, never a database query fragment.
+    @GetMapping("/api/v1/race/events/{raceId}")
+    public ResponseEntity<Object> raceById(@PathVariable String raceId) {
+        if (!raceId.matches("^[0-9a-f]{64}$")) {
+            return ResponseHandler.generateResponse("Race not found", HttpStatus.NOT_FOUND, null);
+        }
+
+        try {
+            Race race = raceRepository.findItemByRaceId(raceId);
+            return race == null
+                    ? ResponseHandler.generateResponse("Race not found", HttpStatus.NOT_FOUND, null)
+                    : ResponseHandler.generateResponse("Race", HttpStatus.OK, race);
+        } catch (Exception e) {
+            logger.error(e);
+            return ResponseHandler.generateResponse("Request failed", HttpStatus.MULTI_STATUS, null);
+        }
+    }
 
     @GetMapping("/api/v1/race/events")
     public ResponseEntity<Object> raceEventList(

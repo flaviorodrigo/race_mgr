@@ -5,6 +5,8 @@ import com.coop.racemgr.gameserver.GameServerProxy;
 import com.coop.racemgr.model.Race;
 import com.coop.racemgr.repositories.RaceMgrConfigRepository;
 import com.coop.racemgr.repositories.RaceRepository;
+import com.coop.racemgr.notify.DiscordNotifier;
+import com.coop.racemgr.notify.RaceAnnouncement;
 import com.coop.racemgr.utils.RacemgrUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -16,15 +18,53 @@ public class RaceEventProcessor {
     private RaceRepository raceRepository;
     private RaceMgrConfigRepository raceMgrConfigRepository;
     private GameServerProxy gameServerProxy;
+    private DiscordNotifier notifier;
     private static volatile boolean warnedNotConfigured = false;
 
     private static final Logger logger = LogManager.getLogger(RacemgrApplication.class);
 
     // @FIXME: Figure out how to autowire these
     public RaceEventProcessor(RaceRepository raceRepository, RaceMgrConfigRepository raceMgrConfigRepository) {
+        this(raceRepository, raceMgrConfigRepository, null);
+    }
+
+    public RaceEventProcessor(RaceRepository raceRepository, RaceMgrConfigRepository raceMgrConfigRepository, DiscordNotifier notifier) {
+        this.notifier = notifier;
         this.gameServerProxy = new GameServerProxy();
         this.raceRepository = raceRepository;
         this.raceMgrConfigRepository = raceMgrConfigRepository;
+    }
+
+    private void announce(Race race) {
+        if (notifier == null || !notifier.isEnabled()) {
+            return;
+        }
+
+        try {
+            RaceAnnouncement.prepare(race, System.currentTimeMillis() / 1000).ifPresent(p -> {
+                String track = null;
+                try {
+                    track = trackName(p.trackId());
+                } catch (Exception e) {
+                    // The announcement is still useful without the track name
+                }
+                notifier.raceFinished(track, 0, p.results());
+            });
+        } catch (Exception e) {
+            logger.warn("Could not announce a race: " + e);
+        }
+    }
+
+    private String trackName(String trackId) {
+        if (trackId == null) {
+            return null;
+        }
+        for (Object track : gameServerProxy.getTracks()) {
+            if (track instanceof java.util.Map<?, ?> map && trackId.equals(String.valueOf(map.get("id")))) {
+                return String.valueOf(map.get("name")).replace('_', ' ');
+            }
+        }
+        return null;
     }
 
     // (String == "" compared object identity, so an empty or missing id was never detected)
@@ -63,6 +103,7 @@ public class RaceEventProcessor {
                     var r = raceRepository.findItemByRaceId(race.getRace_id());
                     if (r == null) {
                         raceRepository.save(race);
+                        announce(race);
                     }
                 }
 

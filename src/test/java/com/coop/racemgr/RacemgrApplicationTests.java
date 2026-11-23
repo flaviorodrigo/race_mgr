@@ -44,6 +44,10 @@ class RacemgrApplicationTests {
     private RaceRotationRepository raceRotationRepository;
     @MockitoBean
     private RaceSessionRepository raceSessionRepository;
+    @MockitoBean
+    private com.coop.racemgr.audit.AuditEventRepository auditEventRepository;
+    @MockitoBean
+    private com.coop.racemgr.repositories.AdminCredentialRepository adminCredentialRepository;
 
     private static final String LOGIN_OK = "{\"username\":\"admin\",\"password\":\"correct-horse-battery\"}";
     private static final String LOGIN_BAD = "{\"username\":\"admin\",\"password\":\"wrong\"}";
@@ -321,5 +325,58 @@ class RacemgrApplicationTests {
         } finally {
             System.clearProperty("RM_GAMESERVER_CONTROL");
         }
+    }
+
+    // ---- Small admin features ----
+
+    @Test
+    void auditLogAndNewAdminEndpointsRequireLogin() throws Exception {
+        mvc.perform(get("/api/v1/admin/audit")).andExpect(status().isUnauthorized());
+        mvc.perform(get("/api/v1/admin/gameserver/banlist")).andExpect(status().isUnauthorized());
+        Cookie xsrf = xsrfCookie();
+        mvc.perform(post("/api/v1/admin/gameserver/session/next").cookie(xsrf).header("X-XSRF-TOKEN", xsrf.getValue())
+                .contentType(MediaType.APPLICATION_JSON).content("{\"RaceLength\":5}")).andExpect(status().isUnauthorized());
+        mvc.perform(post("/api/v1/admin/password").cookie(xsrf).header("X-XSRF-TOKEN", xsrf.getValue())
+                .contentType(MediaType.APPLICATION_JSON).content("{}")).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void settingsForTheNextSessionAreValidatedBeforeAnythingIsSent() throws Exception {
+        Cookie session = adminSession();
+        for (String bad : new String[]{"{}", "{\"RaceLength\":0}", "{\"ServerControlsSetup\":1}", "{\"TrackId\":99999999999}", "{\"OpponentDifficulty\":101}"}) {
+            int code = mvc.perform(adminJson(post("/api/v1/admin/gameserver/session/next"), session, bad)).andReturn().getResponse().getStatus();
+            assertThat(code).as(bad).isIn(400, 422);
+        }
+    }
+
+    @Test
+    void banListEndpointsRejectBadSteamIds() throws Exception {
+        Cookie session = adminSession();
+        mvc.perform(adminJson(post("/api/v1/admin/gameserver/banlist"), session, "{\"steamId\":\"nope\"}")).andExpect(status().isBadRequest());
+        mvc.perform(adminJson(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete("/api/v1/admin/gameserver/banlist/12345"), session, "{}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void aSingleRaceCanBeFetchedByItsHashOnly() throws Exception {
+        String hash = "a".repeat(64);
+        mvc.perform(get("/api/v1/race/events/not-a-hash")).andExpect(status().isNotFound());
+        mvc.perform(get("/api/v1/race/events/" + hash)).andExpect(status().isNotFound());
+
+        var race = new com.coop.racemgr.model.Race();
+        race.setRace_id(hash);
+        race.setIndex(3);
+        org.mockito.Mockito.when(raceRepository.findItemByRaceId(hash)).thenReturn(race);
+        mvc.perform(get("/api/v1/race/events/" + hash)).andExpect(status().isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.data.race_id").value(hash));
+    }
+
+    @Test
+    void auditLogShowsRecentAdminActivityToAdminsOnly() throws Exception {
+        Cookie session = adminSession();
+        org.mockito.Mockito.when(auditEventRepository.findAllByOrderByTimeDesc(org.mockito.ArgumentMatchers.any()))
+                .thenReturn(java.util.List.of(new com.coop.racemgr.audit.AuditEvent(java.time.Instant.parse("2026-01-01T10:00:00Z"), "admin", "kick", "player refid 7")));
+        mvc.perform(get("/api/v1/admin/audit").cookie(session)).andExpect(status().isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.data[0].action").value("kick"));
     }
 }

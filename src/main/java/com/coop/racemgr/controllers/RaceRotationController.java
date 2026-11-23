@@ -1,6 +1,7 @@
 package com.coop.racemgr.controllers;
 
 import com.coop.racemgr.RacemgrApplication;
+import com.coop.racemgr.audit.AuditLog;
 import com.coop.racemgr.gameserver.GameServerMgr;
 import com.coop.racemgr.gameserver.GameServerProxy;
 import com.coop.racemgr.model.RaceRotation;
@@ -16,6 +17,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import java.util.UUID;
 
@@ -26,6 +28,9 @@ import java.util.UUID;
 public class RaceRotationController {
     @Autowired
     private RaceRotationRepository raceRotationRepository;
+
+    @Autowired
+    private AuditLog auditLog;
 
     @Data
     public static class RaceRotationCustomRequest {
@@ -76,13 +81,14 @@ public class RaceRotationController {
     }
 
     @PostMapping("/api/v1/admin/race/rotation/generate")
-    public ResponseEntity<Object> rotationGeneration(@RequestBody RaceRotationGenerationRequest request) {
+    public ResponseEntity<Object> rotationGeneration(@RequestBody RaceRotationGenerationRequest request, Authentication authentication) {
         // Generate rotation config
         RacemgrRotationConfigMaker rotationConfig = new RacemgrRotationConfigMaker(new GameServerProxy(), request.raceCount, request.allowKarts, request.persist);
 
         try {
             var raceRotation = new RaceRotation(request.name, rotationConfig);
             raceRotationRepository.save(raceRotation);
+            auditLog.record(authentication.getName(), "rotation generated", request.name);
             return ResponseHandler.generateResponse("Successfully generated new rotation", HttpStatus.OK, raceRotation);
         } catch (Exception e) {
             logger.error(e);
@@ -91,7 +97,7 @@ public class RaceRotationController {
     }
 
     @DeleteMapping("/api/v1/admin/race/rotation/{id}")
-    public ResponseEntity<Object> deleteRaceRotation(@PathVariable String id) {
+    public ResponseEntity<Object> deleteRaceRotation(@PathVariable String id, Authentication authentication) {
         var rr = raceRotationRepository.findItemById(id);
         if (rr == null) {
             return ResponseHandler.generateResponse("Race rotation not found!", HttpStatus.NOT_FOUND, null);
@@ -101,6 +107,7 @@ public class RaceRotationController {
             rr.setActive(false);
             rr.setUpdated(System.currentTimeMillis());
             raceRotationRepository.save(rr);
+            auditLog.record(authentication.getName(), "rotation deleted", rr.getName());
             return ResponseHandler.generateResponse("Successfully deleted race rotation!", HttpStatus.OK, null);
         } catch (Exception e) {
             logger.error(e);
@@ -109,7 +116,7 @@ public class RaceRotationController {
     }
 
     @PostMapping("/api/v1/admin/race/rotation/{id}/activate")
-    public ResponseEntity<Object> activateRaceRotation(@PathVariable String id) {
+    public ResponseEntity<Object> activateRaceRotation(@PathVariable String id, Authentication authentication) {
         RaceRotation rr = raceRotationRepository.findItemById(id);
         if (rr == null) {
             return ResponseHandler.generateResponse("Race rotation not found!", HttpStatus.NOT_FOUND, null);
@@ -118,6 +125,7 @@ public class RaceRotationController {
         try {
             var rotationFileMaker = new RacemgrRotationFileMaker(rr);
             rotationFileMaker.writeGeneratedRotationFile();
+            auditLog.record(authentication.getName(), "rotation activated", rr.getName());
             if (GameServerMgr.isExternal()) {
                 return ResponseHandler.generateResponse(
                         "Rotation written. Restart the game server to apply it (it is managed outside Race Manager).", HttpStatus.OK, null);

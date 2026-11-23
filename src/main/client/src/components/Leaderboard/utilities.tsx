@@ -71,7 +71,7 @@ export const fetchVehicleData = async () => {
 	}
 };
 
-const mapRaceDataToRaceResultsObject = (data:Array<any>, scoring?: IScoring | null):Array<IRace> => {
+export const mapRaceDataToRaceResultsObject = (data:Array<any>, scoring?: IScoring | null):Array<IRace> => {
 	const raceResults:Array<IRace> = [];
 
 	const finishedRaces = data.filter(d => d.finished === true && d.stages.race1);
@@ -94,6 +94,8 @@ const mapRaceDataToRaceResultsObject = (data:Array<any>, scoring?: IScoring | nu
 		}
 
 		const raceResult:IRace = {
+			raceId: thisRace.race_id,
+			sessionId: thisRace.race_session_id,
 			trackName: thisRace.setup.TrackId,
 			startDate: thisRace.start_time,
 			endDate: thisRace.end_time,

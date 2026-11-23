@@ -18,6 +18,7 @@ import Tooltip from '@mui/material/Tooltip';
 import Container from '@mui/material/Container';
 
 import LeaderBoard from '../Leaderboard/LeaderBoard';
+import RacePage from '../Leaderboard/RacePage';
 import ManageServer from '../ManageServer/ManageServer';
 import Login from '../Login/Login';
 
@@ -239,6 +240,7 @@ const DashboardContent = () => {
 						<Routes>
 							<Route path="/" element={<LeaderBoard />} />
 							<Route path="/manageServer" element={<ManageServer isAuthenticated={isAuthenticated} />} />
+							<Route path="/race/:raceId" element={<RacePage />} />
 							<Route path="/login" element={<Login isAuthenticated={isAuthenticated} setIsAuthenticated={setIsAuthenticated} />} />
 							<Route path="/serverstopped" element={<ServerStopped />} />
 							<Route path="/serverconfigerror" element={<ServerConfigError />} />

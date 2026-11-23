@@ -112,6 +112,18 @@ public class GameServerProxy {
         REST_CLIENT.get().uri(LiveSession.chatUri(gameServerBaseUrl, message)).retrieve().toBodilessEntity();
     }
 
+    /** Changes settings for the next session (or the next lobby), e.g. track or race length. */
+    public void setNextAttributes(java.util.Map<String, Integer> settings) {
+        REST_CLIENT.get().uri(SessionSettings.setNextUri(gameServerBaseUrl, settings)).retrieve().toBodilessEntity();
+        cachedStatus = null;
+    }
+
+    /** Moves the running session on to its next stage. */
+    public void advanceSession() {
+        REST_CLIENT.get().uri(SessionSettings.advanceUri(gameServerBaseUrl)).retrieve().toBodilessEntity();
+        cachedStatus = null;
+    }
+
     // @TODO: Support game server basic auth
     // @TODO: Add error handling
     private List getData(String url) {

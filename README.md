@@ -88,6 +88,21 @@ Race Manager doesn't have to launch the game server. Set `RM_GAMESERVER_CONTROL=
 
 `docker/docker-compose.external-server.yml` is a ready example (Race Manager plus MongoDB, both on the host's loopback). It assumes the game server container uses host networking and keeps its API on `127.0.0.1` via `httpApiInterface : "127.0.0.1"` in `server.cfg`.
 
+## Admin tools
+
+Under *Manage Server*, below the live session, each tool opens on its own:
+
+- **Next session settings** changes the track, race laps, practice and qualifying minutes or AI difficulty for the *next* session without restarting the game server, and can advance the running session to its next stage. Only fields you fill in are sent. A rotation may set the track again when the next session starts.
+- **Ban list** edits the game server's permanent ban file (`blacklist.cfg` in its folder), one Steam ID per line. It only edits files in that format and refuses anything else, so it can't damage the file. The game server reads the file when it loads its configuration, so restart it for a change to be sure to apply.
+- **Activity log** lists recent admin actions (logins, kicks, settings, scoring, rotations, password changes), kept for 180 days.
+- **Account** changes the admin password (12 characters or more). It's stored hashed in the database, overrides `RM_ADMIN_PASSWORD`, and signs every other device out. If you ever lock yourself out, start Race Manager once with `RM_ADMIN_PASSWORD_RESET=true` to go back to `RM_ADMIN_PASSWORD`.
+
+Everyone can open a single race at `/race/<id>` (the link button next to each round in the race list copies it) and see the **Fastest Laps** table, the quickest lap at each track from qualifying or the race.
+
+## Discord notifications
+
+Set `RM_DISCORD_WEBHOOK_URL` to a Discord channel webhook (`https://discord.com/api/webhooks/...`) and Race Manager posts the podium and fastest lap when a race finishes, and a notice when the game server goes offline or comes back. Only races that finished in the last 30 minutes are announced, so importing old history never floods the channel. Messages can't ping anyone whatever a driver is called. Leave it unset to turn this off.
+
 ## Troubleshooting Tips
 - If the console window appears and disappears immediate after launch, there is likely a configuration error (i.e.) something incorrect with the values you supplied to the installer and/or entered directly into the required Windows environment variables. For example, Race Manager is unable to connect to Mongo because the wrong password was supplied. It could also be a Java version mismatch (installing from the link provided above would rule this problem out).
   
@@ -136,6 +151,8 @@ When using the installer .exe the required Windows environment variables will be
 - `RM_ADMIN_PASSWORD`: Set to whatever you want the admin password to be.  
 - `RM_GAMESERVER_CONTROL` (optional): `external` when something else runs the game server (see above).  
 - `RM_GAMESERVER_USER` / `RM_GAMESERVER_PASSWORD` (optional): HTTP basic auth for the game server's API.  
+- `RM_DISCORD_WEBHOOK_URL` (optional): a Discord webhook for race and server notifications (see Discord notifications).  
+- `RM_ADMIN_PASSWORD_RESET` (optional): `true` for one start to discard a password changed in the UI.  
 - `RM_COOKIE_SECURE` (optional): Set to `true` when a TLS proxy in front connects to Race Manager over plain HTTP, so the session cookies are marked `Secure`.  
 - `RM_BIND_ADDRESS` (optional): Address to listen on, default `127.0.0.1`. `RM_PORT` (optional) changes the port, default `8080`.  
 - `RM_JWT_SECRET`: This is used as part of user authentication. It must be a random string of at least 32 characters (64 recommended) that is unique to each installation. Generate it locally (e.g. `openssl rand -hex 32`), not with an online tool. Admin logins last 12 hours by default; set `RM_JWT_VALIDITY_HOURS` to change that. After 5 failed logins from one address, further attempts are refused for 15 minutes. We recommend using [this tool](http://www.unit-conversion.info/texttools/random-string-generator/) to generate one.  

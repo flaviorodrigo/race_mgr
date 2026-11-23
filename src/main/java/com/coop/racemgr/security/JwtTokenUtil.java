@@ -18,6 +18,8 @@ public class JwtTokenUtil {
     private static final int MIN_SECRET_LENGTH = 32;
     private static final long DEFAULT_VALIDITY_HOURS = 12;
 
+    private static final String CREDENTIAL_VERSION = "cv";
+
     private final SecretKey key;
     private final long validityMillis;
 
@@ -62,18 +64,21 @@ public class JwtTokenUtil {
     }
 
     // Generate token for user
-    public String generateToken(UserDetails userDetails) {
+    public String generateToken(UserDetails userDetails, long credentialVersion) {
         long now = System.currentTimeMillis();
         return Jwts.builder()
                 .subject(userDetails.getUsername())
+                .claim(CREDENTIAL_VERSION, credentialVersion)
                 .issuedAt(new Date(now))
                 .expiration(new Date(now + validityMillis))
                 .signWith(key) // algorithm (HS256/384/512) chosen from the key length
                 .compact();
     }
 
-    // Validate token against the user it claims to belong to
-    public Boolean validateToken(String token, UserDetails userDetails) {
-        return getUsernameFromToken(token).equals(userDetails.getUsername());
+    // Validate token against the user it claims to belong to, and the password it was issued under
+    public Boolean validateToken(String token, UserDetails userDetails, long credentialVersion) {
+        Number issuedUnder = getClaimFromToken(token, c -> c.get(CREDENTIAL_VERSION, Number.class));
+        long version = issuedUnder == null ? 0 : issuedUnder.longValue();
+        return getUsernameFromToken(token).equals(userDetails.getUsername()) && version == credentialVersion;
     }
 }

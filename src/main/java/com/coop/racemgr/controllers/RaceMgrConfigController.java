@@ -1,6 +1,7 @@
 package com.coop.racemgr.controllers;
 
 import com.coop.racemgr.RacemgrApplication;
+import com.coop.racemgr.audit.AuditLog;
 import com.coop.racemgr.controllers.ResponseHandler;
 import com.coop.racemgr.model.RaceMgrConfig;
 import com.coop.racemgr.repositories.RaceMgrConfigRepository;
@@ -10,6 +11,7 @@ import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -19,6 +21,9 @@ import org.springframework.web.bind.annotation.RestController;
 public class RaceMgrConfigController {
     @Autowired
     private RaceMgrConfigRepository raceMgrConfigRepository;
+
+    @Autowired
+    private AuditLog auditLog;
 
     private static final Logger logger = LogManager.getLogger(RacemgrApplication.class);
 
@@ -32,7 +37,7 @@ public class RaceMgrConfigController {
     /** ADMIN ENDPOINTS **/
 
     @PutMapping("/api/v1/admin/config")
-    public ResponseEntity<Object> updateRaceMgrConfigDetails(@RequestBody RaceMgrConfigRequest request) {
+    public ResponseEntity<Object> updateRaceMgrConfigDetails(@RequestBody RaceMgrConfigRequest request, Authentication authentication) {
         var rmc = raceMgrConfigRepository.findItemById("1");
         if (rmc == null) {
             rmc = new RaceMgrConfig(request.activeRaceSessionId, request.activeRaceRotationId);
@@ -44,6 +49,7 @@ public class RaceMgrConfigController {
 
         try {
             raceMgrConfigRepository.save(rmc);
+            auditLog.record(authentication.getName(), "active session and rotation set", request.activeRaceSessionId + " / " + request.activeRaceRotationId);
             return ResponseHandler.generateResponse("Successfully set race mgr config!", HttpStatus.OK, null);
         } catch (Exception e) {
             logger.error(e);

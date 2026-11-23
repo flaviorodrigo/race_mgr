@@ -18,6 +18,8 @@ services:
       RM_MONGO_PORT: "27017"
       RM_MONGO_USER: ${RM_MONGO_USER:?set in .env}
       RM_MONGO_PASS: ${RM_MONGO_PASS:?set in .env}
+      # Optional Discord notifications
+      RM_DISCORD_WEBHOOK_URL: ${RM_DISCORD_WEBHOOK_URL:-}
     ports:
       - "127.0.0.1:8080:8080"     # web UI / API: host reverse proxy only
       - "8766:8766/udp"           # AMS2 game ports

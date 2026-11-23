@@ -10,6 +10,7 @@ import {convertEpochTimeToRaceResult} from '../../utils/dateTimeUtils';
 import {fetchTrackData, fetchVehicleData} from './utilities';
 import {SortHeadCell, useSort} from './sorting';
 import {roundsOf} from './RoundPoints';
+import CopyLinkButton from './CopyLinkButton';
 
 import Box from '@mui/material/Box';
 import Collapse from '@mui/material/Collapse';
@@ -71,7 +72,10 @@ function Row(props: { row: IRace, round: number, trackData: Array<ITrackData>, v
 						{open ? <KeyboardArrowUpIcon /> : <KeyboardArrowDownIcon />}
 					</IconButton>
 				</TableCell>
-				<TableCell component="th" scope="row">{props.round}</TableCell>
+				<TableCell component="th" scope="row">
+					{props.round}
+					{row.raceId && <CopyLinkButton raceId={row.raceId} />}
+				</TableCell>
 				<TableCell component="th" scope="row">
 					{ props.trackData?.filter(td => td.id === row.trackName)[0]?.name.replaceAll('_', ' ') }
 				</TableCell>

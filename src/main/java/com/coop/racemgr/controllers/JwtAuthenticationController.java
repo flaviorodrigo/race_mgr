@@ -4,6 +4,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 import com.coop.racemgr.RacemgrApplication;
+import com.coop.racemgr.audit.AuditLog;
 import com.coop.racemgr.security.JwtTokenUtil;
 import com.coop.racemgr.security.LoginAttemptService;
 import com.coop.racemgr.security.SessionCookies;
@@ -16,7 +17,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
+import com.coop.racemgr.service.JwtUserDetailsService;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
@@ -35,10 +36,13 @@ public class JwtAuthenticationController {
     private JwtTokenUtil jwtTokenUtil;
 
     @Autowired
-    private UserDetailsService jwtUserDetailsService;
+    private JwtUserDetailsService jwtUserDetailsService;
 
     @Autowired
     private LoginAttemptService loginAttemptService;
+
+    @Autowired
+    private AuditLog auditLog;
 
     @PostMapping("/api/v1/authenticate")
     public ResponseEntity<Object> createAuthenticationToken(@RequestBody JwtRequest authenticationRequest,
@@ -68,8 +72,9 @@ public class JwtAuthenticationController {
         }
 
         loginAttemptService.recordSuccess(client);
+        auditLog.record(username, "login", "from " + client);
         final UserDetails userDetails = jwtUserDetailsService.loadUserByUsername(username);
-        final String token = jwtTokenUtil.generateToken(userDetails);
+        final String token = jwtTokenUtil.generateToken(userDetails, jwtUserDetailsService.credentialVersion());
         // Browsers get the session as an HttpOnly cookie; API clients can still use the token in the body
         SessionCookies.add(httpRequest, httpResponse, token, jwtTokenUtil.getValidity());
         return ResponseHandler.generateResponse("JWT token", HttpStatus.OK, new JwtResponse(token));

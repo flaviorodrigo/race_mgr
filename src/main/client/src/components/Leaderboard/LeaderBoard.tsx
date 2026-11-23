@@ -20,6 +20,7 @@ import SessionsFilter from './ServerConfig/SessionsFilter';
 import DateFilter from './DateFilter';
 import RaceResults from './RaceResults';
 import RoundPoints from './RoundPoints';
+import FastestLaps from './FastestLaps';
 import LiveStrip from '../Live/LiveStrip';
 import RaceSummary from './RaceSummary';
 
@@ -174,6 +175,10 @@ const LeaderBoard:React.FC = () => {
 						<Box>
 							<Typography variant="h6" align="left">Points by Round</Typography>
 							<RoundPoints filteredRaces={filteredRaces} />
+						</Box>
+						<Box>
+							<Typography variant="h6" align="left">Fastest Laps</Typography>
+							<FastestLaps filteredRaces={filteredRaces} />
 						</Box>
 						<Box>
 							<Typography variant="h6" align="left">Race Summary</Typography>
