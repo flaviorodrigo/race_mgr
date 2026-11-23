@@ -31,6 +31,8 @@ services:
       RM_MONGO_PORT: "27017"
       RM_MONGO_USER: ${RM_MONGO_USER:?set in .env}
       RM_MONGO_PASS: ${RM_MONGO_PASS:?set in .env}
+      # Race Manager shares the host's network, so this port must be free there (change it if something else uses 8080)
+      RM_PORT: ${RM_PORT:-8080}
       RM_GAMESERVER_HOST: 127.0.0.1
       RM_GAMESERVER_PORT: "9000"
       # Only if the game server's API is NOT reached from 127.0.0.1: its HTTP basic auth user (see
