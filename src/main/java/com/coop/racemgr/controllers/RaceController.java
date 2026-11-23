@@ -60,7 +60,7 @@ public class RaceController {
                 raceSessions = raceRepository.findAll(paging);
             }
 
-            return ResponseHandler.generateResponse("Race event list", HttpStatus.OK, raceSessions);
+            return ResponseHandler.generateResponse("Race event list", HttpStatus.OK, PageResponse.of(raceSessions));
         } catch (Exception e) {
             logger.error(e);
             return ResponseHandler.generateResponse("Request failed", HttpStatus.MULTI_STATUS, null);

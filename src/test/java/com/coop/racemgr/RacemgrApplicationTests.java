@@ -6,7 +6,7 @@ import com.coop.racemgr.repositories.RaceRotationRepository;
 import com.coop.racemgr.repositories.RaceSessionRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.http.MediaType;
@@ -27,7 +27,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         "RM_ADMIN_PASSWORD=correct-horse-battery",
         "spring.data.mongodb.auto-index-creation=false",
         // Never connected to: the repositories are mocked
-        "spring.data.mongodb.uri=mongodb://localhost:27017/racemgr_test",
+        "spring.mongodb.uri=mongodb://localhost:27017/racemgr_test",
         "RM_GAMESERVER_HOST=localhost",
         "RM_GAMESERVER_PORT=1"
 })
@@ -97,7 +97,7 @@ class RacemgrApplicationTests {
     @Test
     void validTokenReachesAdminPaths() throws Exception {
         MvcResult res = mvc.perform(loginRequest(LOGIN_OK)).andExpect(status().isOk()).andReturn();
-        String token = new com.fasterxml.jackson.databind.ObjectMapper()
+        String token = new tools.jackson.databind.json.JsonMapper()
                 .readTree(res.getResponse().getContentAsString()).path("data").path("token").asText();
         assertThat(token).isNotBlank();
         // Authenticated: passes security and falls through to "no such handler" instead of 401
@@ -118,8 +118,19 @@ class RacemgrApplicationTests {
     }
 
     @Test
-    void paginationIsBounded() throws Exception {
-        mvc.perform(get("/api/v1/race/session?page=-5&limit=999999999")).andExpect(status().is2xxSuccessful());
+    void paginationIsBoundedAndHasAStableShape() throws Exception {
+        org.mockito.Mockito.when(raceSessionRepository.findAll(org.mockito.ArgumentMatchers.any(org.springframework.data.domain.Pageable.class)))
+                .thenAnswer(inv -> {
+                    var pageable = (org.springframework.data.domain.Pageable) inv.getArgument(0);
+                    // The controller must have clamped the client's page=-5&limit=999999999
+                    assertThat(pageable.getPageNumber()).isZero();
+                    assertThat(pageable.getPageSize()).isEqualTo(1000);
+                    return new org.springframework.data.domain.PageImpl<com.coop.racemgr.model.RaceSession>(java.util.List.of(), pageable, 0);
+                });
+
+        mvc.perform(get("/api/v1/race/session?page=-5&limit=999999999")).andExpect(status().isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.data.content").isArray())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.data.totalElements").value(0));
     }
 
     @Test

@@ -1,13 +1,13 @@
 package com.coop.racemgr.utils;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.json.JsonReadFeature;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.json.JsonMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.core.json.JsonReadFeature;
+import tools.jackson.databind.DeserializationFeature;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import tools.jackson.databind.ObjectMapper;
 import org.springframework.data.domain.PageRequest;
 
 import java.io.BufferedReader;
@@ -27,6 +27,7 @@ public class RacemgrUtils {
             .enable(JsonReadFeature.ALLOW_TRAILING_COMMA)
             .enable(JsonReadFeature.ALLOW_UNESCAPED_CONTROL_CHARS)
             .enable(DeserializationFeature.USE_LONG_FOR_INTS)
+            .enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
             .build();
 
     public static List filterList(List incomingLIst, int count, boolean random) {
@@ -89,25 +90,16 @@ public class RacemgrUtils {
     }
 
     public static String getValueFromObj(String key, Object obj) {
-        String val = null;
-        try {
-            String objStr = JSON.writeValueAsString(obj);
-            ObjectNode node = JSON.readValue(objStr, ObjectNode.class);
-            if (node != null && node.get(key) != null) {
-                val = node.get(key).textValue();
-            }
-        } catch (JsonProcessingException e) {
-            e.printStackTrace();
-        }
-
-        return val;
+        JsonNode node = JSON.valueToTree(obj);
+        JsonNode value = node == null ? null : node.get(key);
+        return value == null ? null : value.textValue();
     }
 
     // Parses JSON into plain Maps/Lists. Returns null when the text isn't valid JSON.
     public static Object jsonStrToObj(String jsonString) {
         try {
             return JSON.readValue(jsonString, Object.class);
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             logger.warn("Could not parse JSON: " + e.getOriginalMessage());
             return null;
         }

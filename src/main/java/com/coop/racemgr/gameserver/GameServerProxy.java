@@ -2,9 +2,9 @@ package com.coop.racemgr.gameserver;
 
 import com.coop.racemgr.utils.RacemgrUtils;
 import org.apache.commons.io.FileUtils;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.core.JacksonException;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.JsonNode;
 import org.springframework.stereotype.Component;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
@@ -55,13 +55,13 @@ public class GameServerProxy {
     private List serverResponseToJson(String jsonString) {
         try {
             return parseListResponse(jsonString);
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             throw new IllegalStateException("Unreadable response from the game server", e);
         }
     }
 
     // The game server wraps lists as {"response": {"list": [...]}}
-    static List<Object> parseListResponse(String jsonString) throws JsonProcessingException {
+    static List<Object> parseListResponse(String jsonString) {
         JsonNode list = RacemgrUtils.JSON.readTree(jsonString).path("response").path("list");
         if (!list.isArray()) {
             throw new IllegalStateException("Unexpected response from the game server");
@@ -162,7 +162,12 @@ public class GameServerProxy {
         if (jsonStart < 0 || jsonEnd < jsonStart) {
             throw new IOException("No JSON found in the game server stats file");
         }
-        JsonNode stats = RacemgrUtils.JSON.readTree(dataString.substring(jsonStart, jsonEnd + 1)).path("stats");
+        JsonNode stats;
+        try {
+            stats = RacemgrUtils.JSON.readTree(dataString.substring(jsonStart, jsonEnd + 1)).path("stats");
+        } catch (JacksonException e) {
+            throw new IOException("Unreadable game server stats file", e);
+        }
         if (stats.isMissingNode()) {
             throw new IOException("No stats found in the game server stats file");
         }

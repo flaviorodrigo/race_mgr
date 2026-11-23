@@ -143,7 +143,7 @@ public class RaceRotationController {
         Pageable paging = RacemgrUtils.boundedPageRequest(page, limit, MAX_PAGE_SIZE);
         try {
             var raceRotations = raceRotationRepository.findAll(paging);
-            return ResponseHandler.generateResponse("Race rotation list", HttpStatus.OK, raceRotations);
+            return ResponseHandler.generateResponse("Race rotation list", HttpStatus.OK, PageResponse.of(raceRotations));
         }  catch (Exception e) {
             logger.error(e);
             return ResponseHandler.generateResponse("Request failed", HttpStatus.MULTI_STATUS, null);

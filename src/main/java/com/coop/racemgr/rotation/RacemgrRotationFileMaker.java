@@ -3,8 +3,9 @@ package com.coop.racemgr.rotation;
 import com.coop.racemgr.gameserver.GameServerPaths;
 import com.coop.racemgr.model.RaceRotation;
 import com.coop.racemgr.utils.RacemgrUtils;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.SerializationFeature;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.io.File;
 import java.io.IOException;
@@ -32,7 +33,7 @@ public class RacemgrRotationFileMaker {
     public void writeGeneratedRotationFile() throws IOException {
         File rotationFileToUpdate = GameServerPaths.defaultRotationFile().toFile();
 
-        ObjectMapper mapper = new ObjectMapper().enable(SerializationFeature.INDENT_OUTPUT);
+        ObjectMapper mapper = JsonMapper.builder().enable(SerializationFeature.INDENT_OUTPUT).build();
 
         // Convert config object to JSON file
         mapper.writerWithDefaultPrettyPrinter().writeValue(rotationFileToUpdate, this);

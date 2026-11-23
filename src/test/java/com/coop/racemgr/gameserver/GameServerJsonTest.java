@@ -2,7 +2,7 @@ package com.coop.racemgr.gameserver;
 
 import com.coop.racemgr.model.Race;
 import com.coop.racemgr.utils.RacemgrUtils;
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;

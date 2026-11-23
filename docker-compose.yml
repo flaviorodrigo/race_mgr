@@ -45,10 +45,13 @@ services:
       - mongo-data:/data/db
       - ./docker/mongo-init:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      # Authenticates as the app user, so it only passes once the init script has created it (the
+      # temporary server used during first-run init also answers an unauthenticated ping).
+      test: ["CMD-SHELL", "mongosh --quiet -u \"$$RM_MONGO_USER\" -p \"$$RM_MONGO_PASS\" --authenticationDatabase admin racemgr --eval \"db.runCommand({ping:1}).ok\" | grep -q 1"]
       interval: 10s
-      timeout: 5s
+      timeout: 10s
       retries: 10
+      start_period: 60s   # first start runs the init scripts before the real server is up
     networks: [backend]
     cap_drop: [ALL]
     cap_add: [SETUID, SETGID, CHOWN, DAC_OVERRIDE, FOWNER]
