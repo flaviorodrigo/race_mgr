@@ -122,6 +122,12 @@ const ManageServer = (props:IManageServerProps) => {
 
 				</Typography>
 
+				{serverStatus.managed === false
+				&& <Alert severity="info" sx={{textAlign: 'left', mt: 2}}>
+					The game server is run outside Race Manager. After changing the rotation, restart the game server yourself for it to take effect.
+				</Alert>
+				}
+
 				<LivePanel />
 
 				<Snackbar

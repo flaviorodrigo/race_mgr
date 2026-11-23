@@ -36,6 +36,12 @@ public class GameServerController {
         var status = RacemgrUtils.getValueFromObj("status", requestBodyObj);
         var gameServerMgr = new GameServerMgr();
 
+        if (GameServerMgr.isExternal()) {
+            return ResponseHandler.generateResponse(
+                    "The game server is managed outside Race Manager. Start, stop and restart it where it runs.",
+                    HttpStatus.CONFLICT, null);
+        }
+
         if (status == null) {
             return ResponseHandler.generateResponse("Missing status parameter!", HttpStatus.BAD_REQUEST, null);
         } else if (status.equals(ServerStatuses.start.toString())) {
@@ -124,7 +130,7 @@ public class GameServerController {
 
     @GetMapping("/api/v1/gameserver")
     public ResponseEntity<Object> gameserver() throws InterruptedException, IOException {
-        Map<String, Object> response = Map.of("isRunning", GameServerMgr.isRunning());
+        Map<String, Object> response = Map.of("isRunning", GameServerMgr.isRunning(), "managed", !GameServerMgr.isExternal());
         return ResponseHandler.generateResponse("Current external game server status", HttpStatus.OK, response);
     }
 

@@ -2,12 +2,14 @@ import {createSlice} from '@reduxjs/toolkit';
 
 export interface IServerStatusState {
     isRunning: boolean,
+	managed: boolean,
 	isLoading: boolean,
 	hasError: boolean
   }
 
 const initialState: IServerStatusState = {
 	isRunning: true,
+	managed: true,
 	isLoading: true,
 	hasError: false,
 };
@@ -21,6 +23,8 @@ export const serverStatusSlice = createSlice({
 		},
 		getServerStatusSuccess(state, action) {
 			state.isRunning = action.payload.isRunning;
+			// False when the game server is run by something else (e.g. its own container)
+			state.managed = action.payload.managed !== false;
 			state.isLoading = false;
 		},
 		getServerStatusFailure(state) {

@@ -1,0 +1,38 @@
+# Race Manager only (no Wine, no game server). For setups where the AMS2 dedicated server already runs
+# somewhere else, e.g. in its own container on a NAS. See docker/docker-compose.external-server.yml.
+
+# ---- Build the jar (frontend + backend). The Windows-only artifacts are skipped.
+FROM eclipse-temurin:21-jdk@sha256:8ad118b146aa92da815b576441acd6b42b38236797ad0b6edc8c200b85bb0734 AS build
+WORKDIR /src
+COPY .mvn .mvn
+COPY mvnw pom.xml ./
+COPY src src
+RUN ./mvnw -B -DskipTests -P '!windows-dist' package \
+ && cp target/racemgr-*.jar /racemgr.jar
+
+# ---- Runtime
+FROM eclipse-temurin:21-jre@sha256:d77e090ae1f6970c047b443c6f0a6c1358b0426d44432bb5a7753408cd43de0d
+
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends tini curl \
+ && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# UID 1000 matches the usual owner of the game server's files; change it with `user:` in compose if yours differ
+RUN (userdel -r ubuntu 2>/dev/null || true) && useradd -m -u 1000 racemgr \
+ && mkdir -p /app /data/ams2-server && chown -R racemgr:racemgr /app /data
+
+COPY --from=build --chown=racemgr:racemgr /racemgr.jar /app/racemgr.jar
+
+USER racemgr
+WORKDIR /app
+
+ENV RM_GAMESERVER_CONTROL=external \
+    RM_PATH_TO_DEDICATED_SERVER=/data/ams2-server \
+    RM_PORT=8080 \
+    RM_BIND_ADDRESS=127.0.0.1
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
+  CMD curl -fsS http://127.0.0.1:${RM_PORT}/api > /dev/null || exit 1
+
+ENTRYPOINT ["/usr/bin/tini", "--"]
+CMD ["sh", "-c", "exec java ${JAVA_OPTS:--XX:MaxRAMPercentage=60} -jar /app/racemgr.jar"]

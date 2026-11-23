@@ -118,6 +118,11 @@ public class RaceRotationController {
         try {
             var rotationFileMaker = new RacemgrRotationFileMaker(rr);
             rotationFileMaker.writeGeneratedRotationFile();
+            if (GameServerMgr.isExternal()) {
+                return ResponseHandler.generateResponse(
+                        "Rotation written. Restart the game server to apply it (it is managed outside Race Manager).", HttpStatus.OK, null);
+            }
+
             GameServerMgr.restart();
             return ResponseHandler.generateResponse("Successfully activated race rotation, restarting server now to apply!", HttpStatus.OK, null);
         } catch (Exception e) {

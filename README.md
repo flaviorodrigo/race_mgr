@@ -78,6 +78,16 @@ When the game server is running with its HTTP API enabled, Race Manager shows wh
 
 The game server treats kick and chat as admin actions and by default only accepts them from `127.0.0.1`, which is where Race Manager runs. Banning isn't offered yet; use the game server's own ban list for that. All of this goes through `/api/v1/gameserver/session` (public), `/api/v1/admin/gameserver/session`, `/api/v1/admin/gameserver/kick` and `/api/v1/admin/gameserver/chat` (admin).
 
+## Game server that runs somewhere else (e.g. its own container on a NAS)
+
+Race Manager doesn't have to launch the game server. Set `RM_GAMESERVER_CONTROL=external` and it leaves starting, stopping and restarting to whatever runs the server. In this mode:
+
+- "Running" means the game server's HTTP API answers. The Manage Server page hides Start/Stop and shows a notice, and after you change the rotation you restart the game server yourself.
+- Race Manager still needs the server's files (a shared folder or bind mount) to read `lua_config/sms_stats_data.json` and to write the rotation files, so point `RM_PATH_TO_DEDICATED_SERVER` at it.
+- If the game server's API isn't reachable from `127.0.0.1` (where it trusts local callers as admin), give Race Manager the API user from `httpApiUsers` with `RM_GAMESERVER_USER` and `RM_GAMESERVER_PASSWORD`. The game server speaks plain HTTP, so only do that on a network you trust.
+
+`docker/docker-compose.external-server.yml` is a ready example (Race Manager plus MongoDB, both on the host's loopback). It assumes the game server container uses host networking and keeps its API on `127.0.0.1` via `httpApiInterface : "127.0.0.1"` in `server.cfg`.
+
 ## Troubleshooting Tips
 - If the console window appears and disappears immediate after launch, there is likely a configuration error (i.e.) something incorrect with the values you supplied to the installer and/or entered directly into the required Windows environment variables. For example, Race Manager is unable to connect to Mongo because the wrong password was supplied. It could also be a Java version mismatch (installing from the link provided above would rule this problem out).
   
@@ -124,6 +134,8 @@ When using the installer .exe the required Windows environment variables will be
 - `RM_MONGO_PORT`: Use the mongo default port, (i.e.) `27017`, unless you've customized  
 - `RM_ADMIN_USER`: All `admin` features/API endpoints require authentication (a JWT, sent as an HttpOnly cookie by the web UI or as a `Bearer` token by API clients). Set to whatever you want the admin username to be.  
 - `RM_ADMIN_PASSWORD`: Set to whatever you want the admin password to be.  
+- `RM_GAMESERVER_CONTROL` (optional): `external` when something else runs the game server (see above).  
+- `RM_GAMESERVER_USER` / `RM_GAMESERVER_PASSWORD` (optional): HTTP basic auth for the game server's API.  
 - `RM_COOKIE_SECURE` (optional): Set to `true` when a TLS proxy in front connects to Race Manager over plain HTTP, so the session cookies are marked `Secure`.  
 - `RM_BIND_ADDRESS` (optional): Address to listen on, default `127.0.0.1`. `RM_PORT` (optional) changes the port, default `8080`.  
 - `RM_JWT_SECRET`: This is used as part of user authentication. It must be a random string of at least 32 characters (64 recommended) that is unique to each installation. Generate it locally (e.g. `openssl rand -hex 32`), not with an online tool. Admin logins last 12 hours by default; set `RM_JWT_VALIDITY_HOURS` to change that. After 5 failed logins from one address, further attempts are refused for 15 minutes. We recommend using [this tool](http://www.unit-conversion.info/texttools/random-string-generator/) to generate one.  

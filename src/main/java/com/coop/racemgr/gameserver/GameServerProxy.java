@@ -21,8 +21,8 @@ import java.util.stream.Collectors;
 
 @Component
 public class GameServerProxy {
-    final private String gameServerHost = System.getenv("RM_GAMESERVER_HOST"); // e.g. localhost
-    final private String gameServerPort = System.getenv("RM_GAMESERVER_PORT");
+    final private String gameServerHost = GameServerSettings.get("RM_GAMESERVER_HOST"); // e.g. localhost
+    final private String gameServerPort = GameServerSettings.get("RM_GAMESERVER_PORT");
 
     // e.g. http://localhost:9000/api
     final private String gameServerBaseUrl = "http://" + gameServerHost + ":" + gameServerPort + "/api";
@@ -32,6 +32,15 @@ public class GameServerProxy {
     // Bounded timeouts: this is called from public endpoints, so a hung game server must not pile up threads
     private static final RestClient REST_CLIENT = RestClient.builder()
             .requestFactory(timeouts())
+            // Optional HTTP basic auth for a game server whose API isn't open to Race Manager's address.
+            // Read per request. NOTE: the game server speaks plain HTTP, so keep this on a trusted network.
+            .defaultRequest(spec -> {
+                String user = GameServerSettings.get("RM_GAMESERVER_USER");
+                String password = GameServerSettings.get("RM_GAMESERVER_PASSWORD");
+                if (user != null && !user.isBlank() && password != null) {
+                    spec.headers(h -> h.setBasicAuth(user, password));
+                }
+            })
             .build();
 
     private static JdkClientHttpRequestFactory timeouts() {
@@ -71,6 +80,21 @@ public class GameServerProxy {
         cachedStatus = response;
         cachedStatusAt = now;
         return response;
+    }
+
+    /** True when the game server's HTTP API answers. Used instead of a process check when it runs elsewhere. */
+    public boolean isReachable() {
+        try {
+            getSessionStatus();
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    // Tests share the static cache
+    static void clearStatusCache() {
+        cachedStatus = null;
     }
 
     public void kick(int refid) {

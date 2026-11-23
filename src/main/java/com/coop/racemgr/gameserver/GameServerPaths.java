@@ -13,7 +13,7 @@ public final class GameServerPaths {
     private GameServerPaths() {}
 
     public static Path root() {
-        String root = System.getenv("RM_PATH_TO_DEDICATED_SERVER");
+        String root = GameServerSettings.get("RM_PATH_TO_DEDICATED_SERVER");
         if (root == null || root.isBlank()) {
             throw new IllegalStateException("RM_PATH_TO_DEDICATED_SERVER is not set");
         }

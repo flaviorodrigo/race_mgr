@@ -307,4 +307,18 @@ class RacemgrApplicationTests {
         assertThat(res.getStatus()).isEqualTo(207);
         assertThat(res.getContentAsString()).contains("Request failed").doesNotContain("Connection").doesNotContain("127.0.0.1");
     }
+
+    @Test
+    void startStopRestartAreRefusedWhenTheGameServerIsManagedElsewhere() throws Exception {
+        Cookie session = adminSession();
+        System.setProperty("RM_GAMESERVER_CONTROL", "external");
+        try {
+            mvc.perform(adminJson(post("/api/v1/admin/gameserver"), session, "{\"status\":\"restart\"}"))
+                    .andExpect(status().isConflict());
+            mvc.perform(get("/api/v1/gameserver")).andExpect(status().isOk())
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.data.managed").value(false));
+        } finally {
+            System.clearProperty("RM_GAMESERVER_CONTROL");
+        }
+    }
 }

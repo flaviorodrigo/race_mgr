@@ -38,7 +38,7 @@ public class GameServerMgr implements Runnable {
 
     private static synchronized GameServerProcess linuxProcess() {
         if (linuxProcess == null) {
-            String configured = System.getenv("RM_GAMESERVER_LAUNCH_CMD");
+            String configured = GameServerSettings.get("RM_GAMESERVER_LAUNCH_CMD");
             String[] command = (configured == null || configured.isBlank())
                     ? new String[]{"wine", GameServerPaths.EXE_NAME}
                     : configured.trim().split("\\s+");
@@ -50,7 +50,17 @@ public class GameServerMgr implements Runnable {
         return linuxProcess;
     }
 
+    /** True when another system (e.g. a separate Docker container) runs the game server. */
+    public static boolean isExternal() {
+        return GameServerSettings.isExternalControl();
+    }
+
     public static void start() throws InterruptedException, IOException {
+        if (isExternal()) {
+            logger.info("The game server is managed outside Race Manager (RM_GAMESERVER_CONTROL=external), not starting it.");
+            return;
+        }
+
         if (isRunning() == true) {
             logger.info("External game server already running, forcing restart!");
             GameServerMgr.stop();
@@ -78,6 +88,10 @@ public class GameServerMgr implements Runnable {
 
     @PreDestroy
     public static void stop() throws IOException {
+        if (isExternal()) {
+            return;
+        }
+
         if (isRunning() == true) {
             logger.info("Stopping the external game server!");
             if (IS_WINDOWS) {
@@ -94,6 +108,11 @@ public class GameServerMgr implements Runnable {
     }
 
     public static boolean isRunning() throws IOException {
+        if (isExternal()) {
+            // We can't see its process: it counts as running when its HTTP API answers
+            return new GameServerProxy().isReachable();
+        }
+
         if (IS_WINDOWS) {
             return WindowsUtils.isProcessRunning(GameServerPaths.EXE_NAME);
         }

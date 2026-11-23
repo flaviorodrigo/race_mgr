@@ -32,6 +32,9 @@ const ApplyServerConfig = (props:IProps) => {
 
 	const dispatch = useDispatch();
 
+	// When the game server isn't run by Race Manager there is nothing to start or stop from here
+	const available = serverStatus.managed === false ? [options[0]] : options;
+
 	useEffect(() => {
 		const formIsValid
 			= sessions.selectedSessionId !== ''
@@ -109,7 +112,7 @@ const ApplyServerConfig = (props:IProps) => {
 		<React.Fragment>
 			<ButtonGroup disabled={!formIsValid} variant="contained" ref={anchorRef} aria-label="split button">
 				<Button onClick={handleClick}>{options[selectedIndex]}</Button>
-				<Button
+				{available.length > 1 && <Button
 					size="small"
 					aria-controls={open ? 'split-button-menu' : undefined}
 					aria-expanded={open ? 'true' : undefined}
@@ -118,7 +121,7 @@ const ApplyServerConfig = (props:IProps) => {
 					onClick={handleToggle}
 				>
 					<ArrowDropDownIcon />
-				</Button>
+				</Button>}
 			</ButtonGroup>
 
 			<Popper
@@ -142,7 +145,7 @@ const ApplyServerConfig = (props:IProps) => {
 						<Paper>
 							<ClickAwayListener onClickAway={handleClose}>
 								<MenuList id="split-button-menu" autoFocusItem>
-									{options.map((option, index) => (
+									{available.map((option, index) => (
 										<MenuItem
 											key={option}
 											selected={index === selectedIndex}
