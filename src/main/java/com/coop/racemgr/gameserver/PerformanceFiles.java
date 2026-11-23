@@ -162,13 +162,7 @@ public class PerformanceFiles {
             if (Files.exists(file)) {
                 Files.copy(file, file.resolveSibling(file.getFileName() + ".bak"), StandardCopyOption.REPLACE_EXISTING);
             }
-            Path temp = Files.createTempFile(folder, "perf", ".tmp");
-            try {
-                Files.writeString(temp, output.getValue(), StandardCharsets.UTF_8);
-                Files.move(temp, file, StandardCopyOption.REPLACE_EXISTING);
-            } finally {
-                Files.deleteIfExists(temp);
-            }
+            GameServerFiles.replace(file, output.getValue());
         }
     }
 

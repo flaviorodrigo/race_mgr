@@ -138,13 +138,7 @@ public class ServerConfigFile {
         }
 
         Files.copy(file, file.resolveSibling(FILE_NAME + ".bak"), StandardCopyOption.REPLACE_EXISTING);
-        Path temp = Files.createTempFile(file.toAbsolutePath().getParent(), FILE_NAME, ".tmp");
-        try {
-            Files.writeString(temp, text, StandardCharsets.UTF_8);
-            Files.move(temp, file, StandardCopyOption.REPLACE_EXISTING);
-        } finally {
-            Files.deleteIfExists(temp);
-        }
+        GameServerFiles.replace(file, text);
     }
 
     // --- finding a key's value ---------------------------------------------------------------------------

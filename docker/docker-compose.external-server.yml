@@ -47,6 +47,9 @@ services:
       # The game server's install folder: Race Manager reads lua_config/sms_stats_data.json and writes the
       # rotation files under lua/ and lua_config/. Set AMS2_DATA_DIR to where your server keeps them.
       - ${AMS2_DATA_DIR:?set in .env}:/data/ams2-server
+      # If your server.cfg lives outside that folder and is mounted into the game server on its own, mount the same
+      # file here too, so Race Manager reads and edits the one the game server uses (it is then written in place):
+      # - /volume1/docker/ams2-server/server.cfg:/data/ams2-server/server.cfg
     depends_on:
       mongo:
         condition: service_healthy

@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -200,13 +199,10 @@ public class SteamIdList {
         return lines;
     }
 
+    // One line separator after every line, as Files.write(lines) does
     private void write(List<String> lines) throws IOException {
-        Path temp = Files.createTempFile(file.toAbsolutePath().getParent(), fileName(), ".tmp");
-        try {
-            Files.write(temp, lines, StandardCharsets.UTF_8);
-            Files.move(temp, file, StandardCopyOption.REPLACE_EXISTING);
-        } finally {
-            Files.deleteIfExists(temp);
-        }
+        StringBuilder text = new StringBuilder();
+        lines.forEach(line -> text.append(line).append(System.lineSeparator()));
+        GameServerFiles.replace(file, text.toString());
     }
 }
