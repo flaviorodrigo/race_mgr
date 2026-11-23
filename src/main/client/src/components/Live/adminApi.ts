@@ -1,4 +1,5 @@
 import RaceMgrApi from '../../api/RaceMgrApi';
+import {IPenalty} from '../../utils/penalties';
 
 // Small helpers for the admin tools. Each resolves to {ok, message, data}; the message is the server's own
 // explanation (already safe to show) or a generic one.
@@ -38,6 +39,31 @@ export interface IBanEntry {
 export const fetchBanList = () => call<Array<IBanEntry>>({url: '/gameserver/banlist', method: 'get'});
 export const addBan = (steamId: string, note: string) => call({url: '/gameserver/banlist', method: 'post', data: {steamId, note}});
 export const removeBan = (steamId: string) => call({url: `/gameserver/banlist/${steamId}`, method: 'delete'});
+
+export interface IWhitelist {
+	entries: Array<IBanEntry>,
+	// Whether server.cfg points its whiteList at whitelist.cfg
+	active: boolean,
+}
+
+export const fetchWhitelist = () => call<IWhitelist>({url: '/gameserver/whitelist', method: 'get'});
+export const addToWhitelist = (steamId: string, note: string) => call({url: '/gameserver/whitelist', method: 'post', data: {steamId, note}});
+export const removeFromWhitelist = (steamId: string) => call({url: `/gameserver/whitelist/${steamId}`, method: 'delete'});
+
+export interface ILogEvent {
+	index?: number,
+	time?: number,
+	name: string,
+	refid?: number,
+	participantid?: number,
+	attributes: Record<string, string>,
+}
+
+export const fetchGameLog = (count: number) => call<Array<ILogEvent>>({url: `/gameserver/log?count=${count}`, method: 'get'});
+
+export const saveRaceVideo = (raceId: string, url: string) => call({url: `/race/events/${raceId}/video`, method: 'put', data: {url}});
+export const saveRacePenalties = (raceId: string, penalties: Array<IPenalty>) =>
+	call({url: `/race/events/${raceId}/penalties`, method: 'put', data: {penalties}});
 
 export interface IAuditEvent {
 	id: string,

@@ -2,6 +2,7 @@ package com.coop.racemgr.controllers;
 
 import com.coop.racemgr.RacemgrApplication;
 import com.coop.racemgr.model.Race;
+import com.coop.racemgr.model.RaceNotes;
 import com.coop.racemgr.repositories.RaceMgrConfigRepository;
 import com.coop.racemgr.repositories.RaceRepository;
 import com.coop.racemgr.utils.RacemgrUtils;
@@ -17,6 +18,7 @@ import lombok.Data;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -65,6 +67,83 @@ public class RaceController {
             logger.error(e);
             return ResponseHandler.generateResponse("Request failed", HttpStatus.MULTI_STATUS, null);
         }
+    }
+
+    @Data
+    public static class VideoRequest {
+        private String url;
+    }
+
+    @Data
+    public static class PenaltiesRequest {
+        private java.util.List<RaceNotes.Penalty> penalties;
+    }
+
+    @PutMapping("/api/v1/admin/race/events/{raceId}/video")
+    public ResponseEntity<Object> setVideo(@PathVariable String raceId, @RequestBody VideoRequest request, Authentication authentication) {
+        String url = RaceNotes.cleanVideoUrl(request.getUrl());
+        if (!raceId.matches("^[0-9a-f]{64}$") || url == null) {
+            return ResponseHandler.generateResponse("The link must be an https YouTube or Twitch address", HttpStatus.BAD_REQUEST, null);
+        }
+
+        try {
+            Race race = raceRepository.findItemByRaceId(raceId);
+            if (race == null) {
+                return ResponseHandler.generateResponse("Race not found", HttpStatus.NOT_FOUND, null);
+            }
+
+            race.setVideoUrl(url.isEmpty() ? null : url);
+            raceRepository.save(race);
+            auditLog.record(authentication.getName(), url.isEmpty() ? "race video removed" : "race video set", "race " + raceId.substring(0, 8));
+            return ResponseHandler.generateResponse(url.isEmpty() ? "Video link removed" : "Video link saved", HttpStatus.OK, null);
+        } catch (Exception e) {
+            logger.error(e);
+            return ResponseHandler.generateResponse("Request failed", HttpStatus.MULTI_STATUS, null);
+        }
+    }
+
+    // Replaces the race's penalties. The standings follow: results are re-ordered when a race is shown.
+    @PutMapping("/api/v1/admin/race/events/{raceId}/penalties")
+    public ResponseEntity<Object> setPenalties(@PathVariable String raceId, @RequestBody PenaltiesRequest request, Authentication authentication) {
+        if (!raceId.matches("^[0-9a-f]{64}$")) {
+            return ResponseHandler.generateResponse("Race not found", HttpStatus.NOT_FOUND, null);
+        }
+
+        try {
+            Race race = raceRepository.findItemByRaceId(raceId);
+            if (race == null) {
+                return ResponseHandler.generateResponse("Race not found", HttpStatus.NOT_FOUND, null);
+            }
+
+            var cleaned = RaceNotes.cleanPenalties(request.getPenalties(), driversOf(race));
+            if (cleaned == null) {
+                return ResponseHandler.generateResponse("Each penalty needs a driver of this race and 1 to " + RaceNotes.MAX_PENALTY_SECONDS
+                        + " seconds, or a disqualification (at most " + RaceNotes.MAX_PENALTIES + ")", HttpStatus.BAD_REQUEST, null);
+            }
+
+            race.setPenalties(cleaned.isEmpty() ? null : cleaned);
+            raceRepository.save(race);
+            auditLog.record(authentication.getName(), "race penalties", "race " + raceId.substring(0, 8) + ": " + cleaned.size() + " penalties");
+            return ResponseHandler.generateResponse("Penalties saved", HttpStatus.OK, null);
+        } catch (Exception e) {
+            logger.error(e);
+            return ResponseHandler.generateResponse("Request failed", HttpStatus.MULTI_STATUS, null);
+        }
+    }
+
+    // The driver names in the race result
+    @SuppressWarnings("unchecked")
+    private static java.util.Set<String> driversOf(Race race) {
+        java.util.Set<String> names = new java.util.HashSet<>();
+        if (race.getStages() != null && race.getStages().get("race1") instanceof java.util.Map<?, ?> stage
+                && stage.get("results") instanceof java.util.List<?> results) {
+            for (Object r : results) {
+                if (r instanceof java.util.Map<?, ?> m && m.get("name") instanceof String name) {
+                    names.add(name);
+                }
+            }
+        }
+        return names;
     }
 
     /** PUBLIC ENDPOINTS **/

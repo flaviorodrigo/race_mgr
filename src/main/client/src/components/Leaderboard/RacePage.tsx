@@ -9,9 +9,11 @@ import {convertEpochDate, convertEpochTime} from '../../utils/epochUtils';
 import {convertEpochTimeToRaceResult} from '../../utils/dateTimeUtils';
 import CopyLinkButton from './CopyLinkButton';
 import LapAnalysis from './LapAnalysis';
+import RaceNotesDialog from './RaceNotesDialog';
 
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
 import Chip from '@mui/material/Chip';
 import Link from '@mui/material/Link';
 import Paper from '@mui/material/Paper';
@@ -58,6 +60,8 @@ const RacePage = () => {
 	const [state, setState] = useState<State>({status: 'loading'});
 	const [tracks, setTracks] = useState<Array<ITrackData>>([]);
 	const [vehicles, setVehicles] = useState<Array<IVehicleData>>([]);
+	const [editing, setEditing] = useState(false);
+	const isAdmin = new RaceMgrApi().hasSession();
 
 	useEffect(() => {
 		loadRace(raceId).then(setState);
@@ -87,7 +91,11 @@ const RacePage = () => {
 		<Paper sx={{p: 2, textAlign: 'left'}}>
 			<Box sx={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1}}>
 				<Typography variant="h5" component="h2">{trackName ?? 'Race'}</Typography>
-				<CopyLinkButton raceId={raceId} />
+				<Box sx={{display: 'flex', gap: 1, flexWrap: 'wrap'}}>
+					{race.videoUrl && <Button component="a" href={race.videoUrl} target="_blank" rel="noopener noreferrer">Watch the race</Button>}
+					{isAdmin && <Button onClick={() => setEditing(true)}>Penalties and video</Button>}
+					<CopyLinkButton raceId={raceId} />
+				</Box>
 			</Box>
 			<Typography variant="body2" color="text.secondary" sx={{mb: 2}}>
 				{convertEpochDate(race.startDate)?.toString()} · {convertEpochTime(race.startDate)} to {convertEpochTime(race.endDate)}
@@ -115,6 +123,7 @@ const RacePage = () => {
 									{r.driverName}
 									{r.state === 'Disqualified' && <Chip size="small" label="DSQ" color="error" sx={{ml: 1}} />}
 									{r.state === 'Retired' && <Chip size="small" label="DNF" sx={{ml: 1}} />}
+									{r.penaltySeconds !== undefined && <Chip size="small" color="warning" label={`+${r.penaltySeconds} s`} title={r.penaltyNote} sx={{ml: 1}} />}
 								</TableCell>
 								<TableCell>{vehicleName(r.vehicleId)}</TableCell>
 								<TableCell align="right" sx={{fontWeight: r.hadFastestLap ? 'bold' : undefined}}>
@@ -157,6 +166,13 @@ const RacePage = () => {
 			{race.qualifyingDrivers && race.qualifyingDrivers.length > 0 && <LapAnalysis drivers={race.qualifyingDrivers} title="Qualifying pace" />}
 
 			<Link component={RouterLink} to="/">Back to the leaderboard</Link>
+
+			{editing && <RaceNotesDialog raceId={raceId} drivers={results.map(r => r.driverName)} penalties={race.penalties ?? []} videoUrl={race.videoUrl ?? ''}
+				onClose={() => setEditing(false)}
+				onSaved={() => {
+					setEditing(false);
+					loadRace(raceId).then(setState);
+				}} />}
 		</Paper>
 	);
 };

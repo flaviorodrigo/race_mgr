@@ -11,8 +11,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * The game server's permanent ban list (the file named by `blackList` in server.cfg). The server's own sample is a
- * bracketed list with one Steam ID per line and "//" comments:
+ * One of the game server's Steam ID lists: the permanent ban list (`blackList` in server.cfg) or the whitelist
+ * (`whiteList`). The server's own samples are bracketed lists with one Steam ID per line and "//" comments:
  *
  * <pre>
  * // note
@@ -24,8 +24,9 @@ import java.util.regex.Pattern;
  * Commas between entries and quoted IDs are tolerated (the format allows them) and kept as they are. Anything else in
  * the file is never rewritten: a file with a shape this class doesn't understand is reported as unsupported.
  */
-public class BlackList {
+public class SteamIdList {
     public static final String FILE_NAME = "blacklist.cfg";
+    public static final String WHITELIST_FILE_NAME = "whitelist.cfg";
 
     // 5+ digits so the server's own placeholder sample entry can be seen and removed; adding needs a real 17 digit id
     private static final Pattern ENTRY = Pattern.compile("^(\"?)(\\d{5,20})\"?\\s*(,?)\\s*(?://\\s*(.*))?$");
@@ -43,12 +44,32 @@ public class BlackList {
 
     private final Path file;
 
-    public BlackList(Path file) {
+    public SteamIdList(Path file) {
         this.file = file;
     }
 
-    public static BlackList forServer() {
-        return new BlackList(GameServerPaths.root().resolve(FILE_NAME));
+    public static SteamIdList forServer() {
+        return new SteamIdList(GameServerPaths.root().resolve(FILE_NAME));
+    }
+
+    public static SteamIdList whitelistForServer() {
+        return new SteamIdList(GameServerPaths.root().resolve(WHITELIST_FILE_NAME));
+    }
+
+    /**
+     * True when server.cfg points its (uncommented) whiteList at whitelist.cfg. While it does, the game server lets
+     * only the listed players in, and an empty list lets everybody in.
+     */
+    public static boolean whitelistReferenced() {
+        try {
+            Path config = GameServerPaths.root().resolve("server.cfg");
+            return Files.exists(config) && Files.readAllLines(config, StandardCharsets.UTF_8).stream()
+                    .map(String::trim)
+                    .filter(l -> !l.startsWith("//"))
+                    .anyMatch(l -> l.contains("whiteList") && l.contains(WHITELIST_FILE_NAME));
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     /** Any id that can appear in the list (the server's sample has a short placeholder), so it can be removed too. */
@@ -92,7 +113,7 @@ public class BlackList {
             lines.add(entry);
             lines.add("]");
         } else if (close < 0) {
-            throw new UnsupportedFormatException("The ban list has no closing bracket. Edit " + FILE_NAME + " by hand.");
+            throw new UnsupportedFormatException("The list has no closing bracket. Edit " + fileName() + " by hand.");
         } else {
             lines.add(close, entry);
         }
@@ -114,6 +135,10 @@ public class BlackList {
             write(normalizeCommas(kept));
         }
         return removed;
+    }
+
+    private String fileName() {
+        return file.getFileName().toString();
     }
 
     private static int lastIndexOf(List<String> lines, Pattern p) {
@@ -163,20 +188,20 @@ public class BlackList {
             boolean understood = t.isEmpty() || t.startsWith("//") || OPEN.matcher(t).matches() || CLOSE.matcher(t).matches()
                     || ENTRY.matcher(t).matches();
             if (!understood) {
-                throw new UnsupportedFormatException("The ban list file has a layout Race Manager doesn't edit (one Steam ID per line between [ and ]). Edit "
-                        + FILE_NAME + " by hand.");
+                throw new UnsupportedFormatException("The list file has a layout Race Manager doesn't edit (one Steam ID per line between [ and ]). Edit "
+                        + fileName() + " by hand.");
             }
         }
         boolean hasEntries = lines.stream().anyMatch(l -> ENTRY.matcher(l.trim()).matches());
         boolean hasBrackets = lines.stream().anyMatch(l -> OPEN.matcher(l.trim()).matches());
         if (hasEntries && !hasBrackets) {
-            throw new UnsupportedFormatException("The ban list file has no [ ] list. Edit " + FILE_NAME + " by hand.");
+            throw new UnsupportedFormatException("The list file has no [ ] list. Edit " + fileName() + " by hand.");
         }
         return lines;
     }
 
     private void write(List<String> lines) throws IOException {
-        Path temp = Files.createTempFile(file.toAbsolutePath().getParent(), FILE_NAME, ".tmp");
+        Path temp = Files.createTempFile(file.toAbsolutePath().getParent(), fileName(), ".tmp");
         try {
             Files.write(temp, lines, StandardCharsets.UTF_8);
             Files.move(temp, file, StandardCopyOption.REPLACE_EXISTING);

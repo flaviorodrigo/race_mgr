@@ -433,6 +433,55 @@ class RacemgrApplicationTests {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
+    void anAdminCanAddAVideoLinkAndPenaltiesToARace() throws Exception {
+        String hash = "d".repeat(64);
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put("/api/v1/admin/race/events/" + hash + "/video")
+                .cookie(xsrfCookie()).contentType(MediaType.APPLICATION_JSON).content("{\"url\":\"https://youtu.be/x\"}")).andExpect(status().is4xxClientError());
+
+        Cookie session = adminSession();
+        var race = new com.coop.racemgr.model.Race();
+        race.setRace_id(hash);
+        race.setStages(java.util.Map.of("race1", java.util.Map.of("results", java.util.List.of(java.util.Map.of("name", "Ann"), java.util.Map.of("name", "Bob")))));
+        org.mockito.Mockito.when(raceRepository.findItemByRaceId(hash)).thenReturn(race);
+
+        var video = "/api/v1/admin/race/events/" + hash + "/video";
+        for (String bad : new String[]{"javascript:alert(1)", "http://youtu.be/x", "https://evil.example/watch", "https://youtu.be.evil.example/x", "https://user@youtu.be/x"}) {
+            mvc.perform(adminJson(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put(video), session, "{\"url\":\"" + bad + "\"}"))
+                    .andExpect(status().isBadRequest());
+        }
+        mvc.perform(adminJson(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put(video), session, "{\"url\":\"https://www.youtube.com/watch?v=abc\"}")).andExpect(status().isOk());
+        assertThat(race.getVideoUrl()).isEqualTo("https://www.youtube.com/watch?v=abc");
+        mvc.perform(adminJson(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put(video), session, "{\"url\":\"\"}")).andExpect(status().isOk());
+        assertThat(race.getVideoUrl()).isNull();
+
+        var penalties = "/api/v1/admin/race/events/" + hash + "/penalties";
+        for (String bad : new String[]{"{}", "{\"penalties\":[{\"driver\":\"Nobody\",\"seconds\":5}]}", "{\"penalties\":[{\"driver\":\"Ann\",\"seconds\":0}]}",
+                "{\"penalties\":[{\"driver\":\"Ann\",\"seconds\":99999}]}"}) {
+            mvc.perform(adminJson(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put(penalties), session, bad)).andExpect(status().isBadRequest());
+        }
+        mvc.perform(adminJson(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put(penalties), session,
+                "{\"penalties\":[{\"driver\":\"Ann\",\"seconds\":10,\"note\":\"track limits\"},{\"driver\":\"Bob\",\"disqualify\":true}]}")).andExpect(status().isOk());
+        assertThat(race.getPenalties()).extracting(com.coop.racemgr.model.RaceNotes.Penalty::driver).containsExactly("Ann", "Bob");
+        assertThat(race.getPenalties().get(1).seconds()).isZero();
+        mvc.perform(adminJson(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put(penalties), session, "{\"penalties\":[]}")).andExpect(status().isOk());
+        assertThat(race.getPenalties()).isNull();
+    }
+
+    @Test
+    void liveTimingIsPublicAndTheLogIsAdminOnly() throws Exception {
+        // Public, and (with no game server in tests) a generic failure that gives nothing away
+        var res = mvc.perform(get("/api/v1/gameserver/timing")).andReturn().getResponse();
+        assertThat(res.getStatus()).isEqualTo(207);
+        assertThat(res.getContentAsString()).doesNotContain("Connection").doesNotContain("127.0.0.1");
+
+        mvc.perform(get("/api/v1/admin/gameserver/log")).andExpect(status().isUnauthorized());
+        mvc.perform(get("/api/v1/admin/gameserver/whitelist")).andExpect(status().isUnauthorized());
+        Cookie session = adminSession();
+        mvc.perform(adminJson(post("/api/v1/admin/gameserver/whitelist"), session, "{\"steamId\":\"nope\"}")).andExpect(status().isBadRequest());
+    }
+
+    @Test
     void serverConfigEndpointsNeedLoginAndValidateInput() throws Exception {
         mvc.perform(get("/api/v1/admin/gameserver/config")).andExpect(status().isUnauthorized());
         Cookie session = adminSession();

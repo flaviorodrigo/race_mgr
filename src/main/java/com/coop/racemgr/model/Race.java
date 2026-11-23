@@ -28,6 +28,9 @@ public class Race {
     public Integer index;
     // An admin can void a race: it stays visible but no longer counts towards the standings
     public Boolean voided;
+    // Added by an admin after the race: time penalties and disqualifications (applied when results are shown) and a video link
+    public java.util.List<RaceNotes.Penalty> penalties;
+    public String videoUrl;
 
     // We may want to further model the nested objects below but there is some variability in the
     // properties plus we aren't using in the backend, just storing and returning to the UI for now.

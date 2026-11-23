@@ -118,6 +118,19 @@ public class GameServerProxy {
         cachedStatus = null;
     }
 
+    /** The latest events of the game server's own log. */
+    public JsonNode getLog(int count) {
+        String body = REST_CLIENT.get()
+                .uri(gameServerBaseUrl + "/log/range?offset=-" + count + "&count=" + count)
+                .retrieve()
+                .body(String.class);
+        try {
+            return RacemgrUtils.JSON.readTree(body).path("response");
+        } catch (JacksonException e) {
+            throw new IllegalStateException("Unreadable response from the game server", e);
+        }
+    }
+
     /** Moves the running session on to its next stage. */
     public void advanceSession() {
         REST_CLIENT.get().uri(SessionSettings.advanceUri(gameServerBaseUrl)).retrieve().toBodilessEntity();

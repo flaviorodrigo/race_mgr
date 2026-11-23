@@ -1,7 +1,8 @@
 import _ from 'lodash';
 
 import {calculatePoints, IScoring} from '../../utils/pointsCalculator';
-import {IRace} from './interfaces';
+import {applyPenalties} from '../../utils/penalties';
+import {IRace, IRaceResults} from './interfaces';
 
 import RaceMgrApi from '../../api/RaceMgrApi';
 
@@ -78,15 +79,17 @@ export const mapRaceDataToRaceResultsObject = (data:Array<any>, scoring?: IScori
 
 	for (const d in finishedRaces) {
 		const thisRace = finishedRaces[d];
-		const fastestLapTimes = thisRace.stages.race1?.results.map(result => ({
+		// Time penalties and disqualifications an admin added after the race
+		const race1Results = applyPenalties(thisRace.stages.race1?.results ?? [], thisRace.penalties);
+		const fastestLapTimes = race1Results.map(result => ({
 			driverName: result.name,
 			fastestLapTime: result.attributes.FastestLapTime,
 			disqualified: result.attributes.State === 'Disqualified',
 		}));
 
-		const winnerLaps = Math.max(0, ...(thisRace.stages.race1?.results ?? []).map((x:any) => x.attributes.Lap ?? 0));
+		const winnerLaps = Math.max(0, ...race1Results.map((x:any) => x.attributes.Lap ?? 0));
 		const polePositionName = _.head(thisRace.stages.qualifying1?.results)?.name;
-		const winnerName = _.head(thisRace.stages.race1?.results)?.name;
+		const winnerName = _.head(race1Results)?.name;
 		const fastestLapName = _.head(_.orderBy(fastestLapTimes?.filter(fl => fl.fastestLapTime > 0 && !fl.disqualified), ['fastestLapTime'], ['asc']))?.driverName;
 
 		const participantList:Array<string> = [];
@@ -98,6 +101,8 @@ export const mapRaceDataToRaceResultsObject = (data:Array<any>, scoring?: IScori
 		const raceResult:IRace = {
 			raceId: thisRace.race_id,
 			voided: thisRace.voided === true,
+			videoUrl: thisRace.videoUrl ?? undefined,
+			penalties: thisRace.penalties ?? [],
 			sessionId: thisRace.race_session_id,
 			trackName: thisRace.setup.TrackId,
 			startDate: thisRace.start_time,
@@ -107,7 +112,8 @@ export const mapRaceDataToRaceResultsObject = (data:Array<any>, scoring?: IScori
 			laps: thisRace.setup.RaceLength,
 			aiStrength: thisRace.setup.OpponentDifficulty,
 			participants: participantList,
-			raceResults: thisRace.stages.race1?.results?.map((r:any) => ({
+			// (A race result has no qualifying fields)
+			raceResults: race1Results.map((r:any) => ({
 				driverName: r.name,
 				isPlayer: r.is_player,
 				finishPosition: r.attributes.RacePosition,
@@ -121,7 +127,9 @@ export const mapRaceDataToRaceResultsObject = (data:Array<any>, scoring?: IScori
 					? 0
 					: calculatePoints(r.attributes.RacePosition, Object.keys(thisRace.participants).length, {tookPole: r.name === polePositionName, fastestLap: r.name === fastestLapName, scoring}),
 				hadFastestLap: r.name === fastestLapName,
-			})),
+				penaltySeconds: r.penalty && !r.penalty.disqualify ? r.penalty.seconds : undefined,
+				penaltyNote: r.penalty?.note || undefined,
+			})) as Array<IRaceResults>,
 			qualifyingResults: thisRace.stages.qualifying1?.results.map((r:any) => ({
 				driverName: r.name,
 				bestQualifyingTime: r.attributes.FastestLapTime,

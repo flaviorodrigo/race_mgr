@@ -1,3 +1,5 @@
+import {IPenalty} from '../../utils/penalties';
+
 export interface ILap {
 	lap: number,
 	time: number | null,
@@ -23,6 +25,8 @@ export interface IRace {
 	qualifyingDrivers?: Array<ILapDriver>,
 	raceId?: string,
 	voided?: boolean,
+	videoUrl?: string,
+	penalties?: Array<IPenalty>,
 	sessionId?: string,
 	trackName: string,
 	startDate: number,
@@ -53,4 +57,6 @@ export interface IRaceResults {
 	tookPole: boolean,
 	hadFastestLap: boolean,
 	state?: string,
+	penaltySeconds?: number,
+	penaltyNote?: string,
 }

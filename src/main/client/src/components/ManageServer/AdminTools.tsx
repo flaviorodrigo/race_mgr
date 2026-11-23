@@ -1,8 +1,9 @@
 import React, {useEffect, useState} from 'react';
 
 import {
-	addBan, advanceSession, applyNextSession, changePassword, fetchAudit, fetchBanList, fetchServerConfig, removeBan, saveServerConfig,
-	IAuditEvent, IBanEntry, INextSessionSettings, ServerConfigValues,
+	addBan, addToWhitelist, advanceSession, applyNextSession, changePassword, fetchAudit, fetchBanList, fetchGameLog, fetchServerConfig, fetchWhitelist,
+	removeBan, removeFromWhitelist, saveServerConfig,
+	IApiResult, IAuditEvent, IBanEntry, ILogEvent, INextSessionSettings, IWhitelist, ServerConfigValues,
 } from '../Live/adminApi';
 import {fetchTrackData} from '../Leaderboard/utilities';
 import RotationBuilder from './RotationBuilder';
@@ -273,10 +274,24 @@ const NextSessionPanel = () => {
 	);
 };
 
-// ---------------------------------------------------------------- ban list
+// ---------------------------------------------------------------- ban list and whitelist
 
-const BanListPanel = () => {
-	const [entries, setEntries] = useState<Array<IBanEntry> | null>(null);
+interface IListConfig {
+	ariaLabel: string,
+	intro: string,
+	empty: string,
+	addLabel: string,
+	removeTitle: (steamId: string) => string,
+	load: () => Promise<IApiResult<IWhitelist>>,
+	add: (steamId: string, note: string) => Promise<IApiResult>,
+	remove: (steamId: string) => Promise<IApiResult>,
+	// Extra explanation under the intro, from what the list holds
+	status?: (list: IWhitelist) => React.ReactNode,
+}
+
+// Both lists are the game server's own files of Steam IDs, edited the same way
+const SteamIdListPanel = ({config}: {config: IListConfig}) => {
+	const [list, setList] = useState<IWhitelist | null>(null);
 	const [problem, setProblem] = useState('');
 	const [steamId, setSteamId] = useState('');
 	const [note, setNote] = useState('');
@@ -284,8 +299,8 @@ const BanListPanel = () => {
 	const [toRemove, setToRemove] = useState<IBanEntry | null>(null);
 
 	const load = async () => {
-		const result = await fetchBanList();
-		setEntries(result.ok ? result.data ?? [] : null);
+		const result = await config.load();
+		setList(result.ok ? result.data ?? null : null);
 		setProblem(result.ok ? '' : result.message);
 	};
 
@@ -294,7 +309,7 @@ const BanListPanel = () => {
 	}, []);
 
 	const add = async () => {
-		const result = await addBan(steamId.trim(), note);
+		const result = await config.add(steamId.trim(), note);
 		setFeedback({text: result.message, severity: result.ok ? 'success' : 'error'});
 		if (result.ok) {
 			setSteamId('');
@@ -308,7 +323,7 @@ const BanListPanel = () => {
 			return;
 		}
 
-		const result = await removeBan(toRemove.steamId);
+		const result = await config.remove(toRemove.steamId);
 		setToRemove(null);
 		setFeedback({text: result.message, severity: result.ok ? 'success' : 'error'});
 		load();
@@ -316,13 +331,12 @@ const BanListPanel = () => {
 
 	return (
 		<Stack spacing={2} sx={{textAlign: 'left'}}>
-			<Typography variant="body2">
-				Players on this list can&apos;t join. It&apos;s the game server&apos;s ban file; the server reads it when it loads its configuration, so restart it for a change to be sure to apply.
-			</Typography>
+			<Typography variant="body2">{config.intro}</Typography>
 			{problem && <Alert severity="warning">{problem}</Alert>}
-			{entries && <>
-				{entries.length > 0
-					? <Table size="small" aria-label="Ban list">
+			{list && <>
+				{config.status?.(list)}
+				{list.entries.length > 0
+					? <Table size="small" aria-label={config.ariaLabel}>
 						<TableHead>
 							<TableRow>
 								<TableCell>Steam ID</TableCell>
@@ -331,7 +345,7 @@ const BanListPanel = () => {
 							</TableRow>
 						</TableHead>
 						<TableBody>
-							{entries.map(e => (
+							{list.entries.map(e => (
 								<TableRow key={e.steamId}>
 									<TableCell>{e.steamId}</TableCell>
 									<TableCell>{e.note}</TableCell>
@@ -340,25 +354,133 @@ const BanListPanel = () => {
 							))}
 						</TableBody>
 					</Table>
-					: <Typography variant="body2" color="text.secondary">Nobody is banned.</Typography>
+					: <Typography variant="body2" color="text.secondary">{config.empty}</Typography>
 				}
 				<Stack direction={{xs: 'column', sm: 'row'}} spacing={2} sx={{alignItems: {sm: 'flex-end'}}}>
 					<TextField label="Steam ID (17 digits)" variant="standard" value={steamId} onChange={e => setSteamId(e.target.value)}
 						error={steamId !== '' && !/^\d{17}$/.test(steamId.trim())} slotProps={{htmlInput: {maxLength: 17}}} />
 					<TextField label="Note (optional)" variant="standard" fullWidth value={note} onChange={e => setNote(e.target.value)}
 						slotProps={{htmlInput: {maxLength: 100}}} />
-					<Button disabled={!/^\d{17}$/.test(steamId.trim())} onClick={add}>Ban</Button>
+					<Button disabled={!/^\d{17}$/.test(steamId.trim())} onClick={add}>{config.addLabel}</Button>
 				</Stack>
 			</>}
 			<Feedback feedback={feedback} />
 
 			<Dialog open={toRemove !== null} onClose={() => setToRemove(null)}>
-				<DialogTitle>Remove {toRemove?.steamId} from the ban list?</DialogTitle>
+				<DialogTitle>{toRemove ? config.removeTitle(toRemove.steamId) : ''}</DialogTitle>
 				<DialogActions>
 					<Button onClick={() => setToRemove(null)}>Cancel</Button>
 					<Button color="error" onClick={remove}>Remove</Button>
 				</DialogActions>
 			</Dialog>
+		</Stack>
+	);
+};
+
+const banListConfig: IListConfig = {
+	ariaLabel: 'Ban list',
+	intro: 'Players on this list can\'t join. It\'s the game server\'s ban file; the server reads it when it loads its configuration, so restart it for a change to be sure to apply.',
+	empty: 'Nobody is banned.',
+	addLabel: 'Ban',
+	removeTitle: id => `Remove ${id} from the ban list?`,
+	async load() {
+		const result = await fetchBanList();
+		return {...result, data: result.data ? {entries: result.data, active: true} : undefined};
+	},
+	add: addBan,
+	remove: removeBan,
+};
+
+const whitelistConfig: IListConfig = {
+	ariaLabel: 'Whitelist',
+	intro: 'For a closed server: when the game server uses its whitelist, only the players listed here can join (the ban list is then ignored). It\'s the game server\'s whitelist.cfg; restart the server for a change to be sure to apply.',
+	empty: 'Nobody is listed.',
+	addLabel: 'Allow',
+	removeTitle: id => `Remove ${id} from the whitelist?`,
+	load: fetchWhitelist,
+	add: addToWhitelist,
+	remove: removeFromWhitelist,
+	status(list) {
+		if (!list.active) {
+			return (
+				<Alert severity="info" sx={{textAlign: 'left'}}>
+					The game server isn&apos;t using this list yet, so anybody can join. To use it, add the line{' '}
+					<code>{'whiteList : { "whitelist" : "whitelist.cfg" }'}</code> to server.cfg and restart the server.
+				</Alert>
+			);
+		}
+
+		return list.entries.length > 0
+			? <Alert severity="warning" sx={{textAlign: 'left'}}>The whitelist is in use: only the {list.entries.length} listed player{list.entries.length === 1 ? '' : 's'} can join.</Alert>
+			: <Alert severity="info" sx={{textAlign: 'left'}}>The whitelist is in use but empty, so everybody can join. Add players to close the server to everyone else.</Alert>;
+	},
+};
+
+const BanListPanel = () => <SteamIdListPanel config={banListConfig} />;
+const WhitelistPanel = () => <SteamIdListPanel config={whitelistConfig} />;
+
+// ---------------------------------------------------------------- game server log
+
+const LOG_SIZES = [50, 100, 250, 500];
+
+const GameLogPanel = () => {
+	const [events, setEvents] = useState<Array<ILogEvent> | null>(null);
+	const [problem, setProblem] = useState('');
+	const [count, setCount] = useState(100);
+	const [filter, setFilter] = useState('');
+
+	const load = async () => {
+		const result = await fetchGameLog(count);
+		setEvents(result.ok ? result.data ?? [] : null);
+		setProblem(result.ok ? '' : 'The game server isn\'t answering. Start it, and make sure its HTTP API is enabled.');
+	};
+
+	useEffect(() => {
+		load();
+	}, [count]);
+
+	const shown = (events ?? []).filter(e => {
+		const text = `${e.name} ${Object.entries(e.attributes).map(([k, v]) => `${k}=${v}`).join(' ')}`.toLowerCase();
+		return text.includes(filter.trim().toLowerCase());
+	});
+
+	return (
+		<Stack spacing={2} sx={{textAlign: 'left'}}>
+			<Typography variant="body2">What the game server itself recorded recently (joins, leaves, stage changes, chat, results), newest first. It only keeps a limited amount.</Typography>
+			{problem && <Alert severity="warning">{problem}</Alert>}
+			<Stack direction={{xs: 'column', sm: 'row'}} spacing={2} sx={{alignItems: {sm: 'flex-end'}}}>
+				<TextField label="Filter" variant="standard" value={filter} onChange={e => setFilter(e.target.value)} />
+				<FormControl variant="standard" sx={{minWidth: 140}}>
+					<InputLabel id="log-size">Show latest</InputLabel>
+					<Select labelId="log-size" value={String(count)} onChange={e => setCount(Number(e.target.value))}>
+						{LOG_SIZES.map(n => <MenuItem key={n} value={String(n)}>{n} events</MenuItem>)}
+					</Select>
+				</FormControl>
+				<Button onClick={load}>Refresh</Button>
+			</Stack>
+			{events && (shown.length > 0
+				? <Table size="small" aria-label="Game server log">
+					<TableHead>
+						<TableRow>
+							<TableCell>When</TableCell>
+							<TableCell>Event</TableCell>
+							<TableCell>Details</TableCell>
+						</TableRow>
+					</TableHead>
+					<TableBody>
+						{shown.map(e => (
+							<TableRow key={e.index ?? `${e.time}-${e.name}`}>
+								<TableCell sx={{whiteSpace: 'nowrap'}}>{e.time ? new Date(e.time * 1000).toLocaleString() : ''}</TableCell>
+								<TableCell>{e.name}</TableCell>
+								<TableCell sx={{wordBreak: 'break-word'}}>
+									{[e.refid !== undefined && e.refid !== null ? `player ${e.refid}` : '', ...Object.entries(e.attributes).map(([k, v]) => `${k}: ${v}`)].filter(Boolean).join(' · ')}
+								</TableCell>
+							</TableRow>
+						))}
+					</TableBody>
+				</Table>
+				: <Typography variant="body2" color="text.secondary">{events.length === 0 ? 'The game server has no events yet.' : 'No event matches the filter.'}</Typography>)
+			}
 		</Stack>
 	);
 };
@@ -460,6 +582,8 @@ const sections = [
 	{id: 'config', title: 'Server settings (server.cfg)', body: <ServerSettingsPanel />},
 	{id: 'next', title: 'Next session settings', body: <NextSessionPanel />},
 	{id: 'bans', title: 'Ban list', body: <BanListPanel />},
+	{id: 'whitelist', title: 'Whitelist', body: <WhitelistPanel />},
+	{id: 'log', title: 'Game server log', body: <GameLogPanel />},
 	{id: 'audit', title: 'Activity log', body: <AuditPanel />},
 	{id: 'account', title: 'Account', body: <AccountPanel />},
 ];

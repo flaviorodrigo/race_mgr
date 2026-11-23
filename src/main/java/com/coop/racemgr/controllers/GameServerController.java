@@ -3,12 +3,14 @@ package com.coop.racemgr.controllers;
 import com.coop.racemgr.RacemgrApplication;
 import com.coop.racemgr.gameserver.GameServerMgr;
 import com.coop.racemgr.audit.AuditLog;
-import com.coop.racemgr.gameserver.BlackList;
+import com.coop.racemgr.gameserver.SteamIdList;
 import com.coop.racemgr.gameserver.GameServerProxy;
 import com.coop.racemgr.gameserver.PerformanceFiles;
 import com.coop.racemgr.gameserver.ServerConfigFile;
 import com.coop.racemgr.gameserver.SessionSettings;
+import com.coop.racemgr.gameserver.GameServerLog;
 import com.coop.racemgr.gameserver.LiveSession;
+import com.coop.racemgr.gameserver.LiveTiming;
 import com.coop.racemgr.utils.RacemgrUtils;
 
 import lombok.Data;
@@ -118,51 +120,88 @@ public class GameServerController {
 
     @GetMapping("/api/v1/admin/gameserver/banlist")
     public ResponseEntity<Object> banList() {
-        try {
-            return ResponseHandler.generateResponse("Ban list", HttpStatus.OK, BlackList.forServer().list());
-        } catch (BlackList.UnsupportedFormatException e) {
-            return ResponseHandler.generateResponse(e.getMessage(), HttpStatus.CONFLICT, null);
-        } catch (Exception e) {
-            logger.warn("Reading the ban list failed: " + e);
-            return ResponseHandler.generateResponse("Request failed", HttpStatus.MULTI_STATUS, null);
-        }
+        return listEntries(SteamIdList::forServer, "Ban list");
     }
 
     @PostMapping("/api/v1/admin/gameserver/banlist")
     public ResponseEntity<Object> banListAdd(@RequestBody BanListRequest request, Authentication authentication) {
-        if (!BlackList.isSteamId(request.getSteamId())) {
-            return ResponseHandler.generateResponse("A Steam ID is 17 digits", HttpStatus.BAD_REQUEST, null);
-        }
-
-        try {
-            BlackList.forServer().add(request.getSteamId(), request.getNote());
-            auditLog.record(authentication.getName(), "ban list add", request.getSteamId());
-            return ResponseHandler.generateResponse("Added to the ban list. The game server reads it when it next loads its configuration.", HttpStatus.OK, null);
-        } catch (BlackList.UnsupportedFormatException e) {
-            return ResponseHandler.generateResponse(e.getMessage(), HttpStatus.CONFLICT, null);
-        } catch (Exception e) {
-            logger.warn("Updating the ban list failed: " + e);
-            return ResponseHandler.generateResponse("Request failed", HttpStatus.MULTI_STATUS, null);
-        }
+        return addEntry(SteamIdList::forServer, request, authentication, "ban list add", "Added to the ban list. The game server reads it when it next loads its configuration.");
     }
 
     @DeleteMapping("/api/v1/admin/gameserver/banlist/{steamId}")
     public ResponseEntity<Object> banListRemove(@PathVariable String steamId, Authentication authentication) {
-        if (!BlackList.isListedId(steamId)) {
+        return removeEntry(SteamIdList::forServer, steamId, authentication, "ban list remove", "the ban list");
+    }
+
+    // The whitelist: while server.cfg references it, only these players can join
+    @GetMapping("/api/v1/admin/gameserver/whitelist")
+    public ResponseEntity<Object> whitelist() {
+        try {
+            var entries = SteamIdList.whitelistForServer().list();
+            return ResponseHandler.generateResponse("Whitelist", HttpStatus.OK,
+                    Map.of("entries", entries, "active", SteamIdList.whitelistReferenced()));
+        } catch (SteamIdList.UnsupportedFormatException e) {
+            return ResponseHandler.generateResponse(e.getMessage(), HttpStatus.CONFLICT, null);
+        } catch (Exception e) {
+            logger.warn("Reading the whitelist failed: " + e);
+            return ResponseHandler.generateResponse("Request failed", HttpStatus.MULTI_STATUS, null);
+        }
+    }
+
+    @PostMapping("/api/v1/admin/gameserver/whitelist")
+    public ResponseEntity<Object> whitelistAdd(@RequestBody BanListRequest request, Authentication authentication) {
+        return addEntry(SteamIdList::whitelistForServer, request, authentication, "whitelist add", "Added to the whitelist. The game server reads it when it next loads its configuration.");
+    }
+
+    @DeleteMapping("/api/v1/admin/gameserver/whitelist/{steamId}")
+    public ResponseEntity<Object> whitelistRemove(@PathVariable String steamId, Authentication authentication) {
+        return removeEntry(SteamIdList::whitelistForServer, steamId, authentication, "whitelist remove", "the whitelist");
+    }
+
+    private ResponseEntity<Object> listEntries(java.util.function.Supplier<SteamIdList> list, String title) {
+        try {
+            return ResponseHandler.generateResponse(title, HttpStatus.OK, list.get().list());
+        } catch (SteamIdList.UnsupportedFormatException e) {
+            return ResponseHandler.generateResponse(e.getMessage(), HttpStatus.CONFLICT, null);
+        } catch (Exception e) {
+            logger.warn("Reading the " + title.toLowerCase() + " failed: " + e);
+            return ResponseHandler.generateResponse("Request failed", HttpStatus.MULTI_STATUS, null);
+        }
+    }
+
+    private ResponseEntity<Object> addEntry(java.util.function.Supplier<SteamIdList> list, BanListRequest request, Authentication authentication, String action, String okMessage) {
+        if (!SteamIdList.isSteamId(request.getSteamId())) {
             return ResponseHandler.generateResponse("A Steam ID is 17 digits", HttpStatus.BAD_REQUEST, null);
         }
 
         try {
-            boolean removed = BlackList.forServer().remove(steamId);
-            if (removed) {
-                auditLog.record(authentication.getName(), "ban list remove", steamId);
-            }
-            return ResponseHandler.generateResponse(removed ? "Removed from the ban list" : "Not on the ban list",
-                    removed ? HttpStatus.OK : HttpStatus.NOT_FOUND, null);
-        } catch (BlackList.UnsupportedFormatException e) {
+            list.get().add(request.getSteamId(), request.getNote());
+            auditLog.record(authentication.getName(), action, request.getSteamId());
+            return ResponseHandler.generateResponse(okMessage, HttpStatus.OK, null);
+        } catch (SteamIdList.UnsupportedFormatException e) {
             return ResponseHandler.generateResponse(e.getMessage(), HttpStatus.CONFLICT, null);
         } catch (Exception e) {
-            logger.warn("Updating the ban list failed: " + e);
+            logger.warn("Updating the list failed: " + e);
+            return ResponseHandler.generateResponse("Request failed", HttpStatus.MULTI_STATUS, null);
+        }
+    }
+
+    private ResponseEntity<Object> removeEntry(java.util.function.Supplier<SteamIdList> list, String steamId, Authentication authentication, String action, String listName) {
+        if (!SteamIdList.isListedId(steamId)) {
+            return ResponseHandler.generateResponse("A Steam ID is 17 digits", HttpStatus.BAD_REQUEST, null);
+        }
+
+        try {
+            boolean removed = list.get().remove(steamId);
+            if (removed) {
+                auditLog.record(authentication.getName(), action, steamId);
+            }
+            return ResponseHandler.generateResponse(removed ? "Removed from " + listName : "Not on " + listName,
+                    removed ? HttpStatus.OK : HttpStatus.NOT_FOUND, null);
+        } catch (SteamIdList.UnsupportedFormatException e) {
+            return ResponseHandler.generateResponse(e.getMessage(), HttpStatus.CONFLICT, null);
+        } catch (Exception e) {
+            logger.warn("Updating the list failed: " + e);
             return ResponseHandler.generateResponse("Request failed", HttpStatus.MULTI_STATUS, null);
         }
     }
@@ -309,7 +348,29 @@ public class GameServerController {
         }
     }
 
+    // The game server's own event log, newest first
+    @GetMapping("/api/v1/admin/gameserver/log")
+    public ResponseEntity<Object> log(@RequestParam(required = false) Integer count) {
+        try {
+            var events = GameServerLog.latestFirst(this.gameServerProxy.getLog(GameServerLog.clampCount(count)));
+            return ResponseHandler.generateResponse("Game server log", HttpStatus.OK, events);
+        } catch (Exception e) {
+            logger.warn("Game server log unavailable: " + e);
+            return ResponseHandler.generateResponse("Request failed", HttpStatus.MULTI_STATUS, null);
+        }
+    }
+
     /** PUBLIC ENDPOINTS **/
+
+    // Live timing: the cars in race order with lap and sector times. Names only: no reference or Steam ids.
+    @GetMapping("/api/v1/gameserver/timing")
+    public ResponseEntity<Object> timing() {
+        try {
+            return ResponseHandler.generateResponse("Live timing", HttpStatus.OK, LiveTiming.summarize(this.gameServerProxy.getSessionStatus()));
+        } catch (Exception e) {
+            return ResponseHandler.generateResponse("Request failed", HttpStatus.MULTI_STATUS, null);
+        }
+    }
 
     // Who is online right now. Names and ping only: no reference or Steam ids.
     @GetMapping("/api/v1/gameserver/session")
