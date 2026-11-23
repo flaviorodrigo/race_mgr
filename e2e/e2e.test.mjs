@@ -474,6 +474,32 @@ scenario('the owner gives a friend a steward sign-in that only reaches race day,
   await signIn('admin', state.adminPassword);
 });
 
+// Not a test: with E2E_SCREENSHOTS=<folder> the app, filled with the sample races, is photographed for the README
+scenario('screenshots for the documentation (only when E2E_SCREENSHOTS is set)', async () => {
+  const folder = process.env.E2E_SCREENSHOTS;
+  if (!folder) {
+    return;
+  }
+
+  fs.mkdirSync(folder, {recursive: true});
+  // The page scrolls inside the app frame, so a taller window is what shows more of it
+  const shoot = async (url, name, options = {}) => {
+    await state.page.setViewport({width: 1400, height: options.height ?? 900});
+    await go(url);
+    await options.before?.();
+    await state.page.screenshot({path: path.join(folder, name)});
+  };
+
+  await shoot('/', 'race_mgr_home.png', {height: 1000});
+  await shoot(`/race/${state.raceId}`, 'race_page.png', {height: 1500});
+  await shoot('/live', 'live_timing.png');
+  await shoot('/records', 'records.png');
+  await shoot('/manageserver', 'manage_server.png', {height: 1700, before: async () => {
+    await openSection('Admins');
+  }});
+  await state.page.setViewport({width: 1400, height: 1100});
+});
+
 scenario('signing out ends the admin session', async () => {
   await go('/');
   await state.page.click('button[aria-label="Logout"]');

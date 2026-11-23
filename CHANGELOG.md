@@ -15,7 +15,7 @@ Notable changes, newest first. This file starts with the security and modernisat
 - Championship rules (dropped rounds, point adjustments, teams), voided races, CSV export, driver pages, fastest laps table, shareable race pages.
 - Admin tools: server.cfg form, rotation builder, next-session settings, ban list, balance of performance, activity log, password change. Live session panel with kick, temporary ban and chat. Discord notifications.
 - Docker: one container with Wine and the game server, or Race Manager against a game server that runs elsewhere (`RM_GAMESERVER_CONTROL=external`). `docker/backup-mongo.sh` and `docker/restore-mongo.sh`.
-- End-to-end tests (`e2e/`) and a CI workflow.
+- End-to-end tests (`e2e/`) and a CI workflow. The README screenshots come from them (`E2E_SCREENSHOTS=folder npm test`).
 
 ### Changed
 - Spring Boot 4, Java 21, React 19, MUI 9, Vite 8; all dependencies updated.

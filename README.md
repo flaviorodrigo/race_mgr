@@ -3,11 +3,37 @@
 # Race Manager (RM)  
 RM is an advanced (unofficial) [Automobilista 2](https://www.game-automobilista2.com/) server management interface. It supports online championships with permanent history tracking, easy rotation management/generation, general server management, etc. It's now easier than every to race with your friends and brag about your results (or blame them on someone else).  
   
-![Race Manager home screen](https://github.com/cauld/race_mgr/blob/main/screenshots/race_mgr_home.png?raw=true)  
+![Race Manager home screen](screenshots/race_mgr_home.png)  
+
+This fork of [cauld/race_mgr](https://github.com/cauld/race_mgr) brings the stack up to date (Spring Boot 4, Java 21, React 19), hardens the security model, runs in Docker, and adds a lot of features. See the [changelog](CHANGELOG.md).
+
+## What it does
+
+**For everyone (no login):**
+- **Leader Board**: championship standings with your own points table, pole and fastest-lap bonuses, dropped rounds, point adjustments and team standings; points by round; the race list; a fastest laps table; CSV export.
+- **Race pages** you can share: result, qualifying, and (with the optional `ams2_stats` addon) sector times, the ideal lap and a lap-time chart; DSQ/DNF badges, penalties and a *Watch the race* link.
+- **Driver pages**, **Records** (career totals, lap record per track) and **Live Timing** of the running session, plus who is online.
+
+**For admins** (each person has their own sign-in; stewards get race-day tools only):
+- Sessions (championships) and rotations, including a rotation builder; server settings (`server.cfg`), next-session settings and **presets**, advance the session.
+- Live session: kick (with a temporary ban) and message players. Ban list, **whitelist**, balance of performance (ballast, power, drag), the game server log, an activity log.
+- Penalties, disqualifications, voiding races, video links. Discord notifications.
+
+**Runs** on Windows, or in Docker with the game server under Wine, or against a game server that runs elsewhere (a NAS, another container). MongoDB keeps the history; there are [backup scripts](#backups).
+
+| | |
+|---|---|
+| ![A race](screenshots/race_page.png) | ![Live timing](screenshots/live_timing.png) |
+| ![Records](screenshots/records.png) | ![Manage server](screenshots/manage_server.png) |
+
+*(Screenshots are made from the committed sample races: `E2E_SCREENSHOTS=folder npm test` in `e2e/`.)*
+
+### Contents
+[Demos](#demos) · [Installation](#installationupgrade) · [Web UI access](#accessing-the-web-ui) · [Docker](#running-in-docker-linux--wine) · [Championships](#championships--scoring) · [Live session](#live-session) · [Game server elsewhere](#game-server-that-runs-somewhere-else-eg-its-own-container-on-a-nas) · [Admin tools](#admin-tools) · [Admins and stewards](#admins-and-stewards) · [Discord](#discord-notifications) · [Sector times](#sector-times-and-lap-by-lap-pace-optional-ams2_stats-addon) · [Backups](#backups) · [Settings (environment variables)](#windows-environment-variables) · [Developer setup](#developer-setup) · [API](#api-endpoints)
   
 ### Demos
  - Here is a [demo video](https://www.youtube.com/watch?v=Kuyp4uOb0OQ&t=13s) of Race Manager Server in action.
- - Here is live [demo server](http://racemgr.ddns.net:8080/) that showcases the non-admin stats view from some example races.
+ - The original project's live [demo server](http://racemgr.ddns.net:8080/) showcases the non-admin stats view from some example races.
 
 ## Installation/Upgrade  
 Official Race Manager releases/downloads can found on [the releases page](https://github.com/cauld/race_mgr/releases). With each new release you'll find 3 main files; an installer .exe, a standalone .exe and a .jar file. We'll cover their differences in the sections below.  
@@ -17,8 +43,8 @@ For reference, here is a [demo video](https://www.youtube.com/watch?v=EE4GzKiXl3
 ### Prerequisites for all Installation Types
 First, let's start with the prerequisites that are required by all installations. The following 4 items are required regardless of setup type:  
   
-1. **Windows OS**: Some day we may support Linux as well, but for now Windows is the only option. *NOTE:* Most of our testing is done with Windows 10 & 11.  
-2. **Automobilista 2 - Dedicated Server (AM2DS)**: Race Manager must be installed on the same machine as [AM2DS](https://steamdb.info/app/1338040/z). A lot of interactions are done against the API which would support remote deployments, but Race Manager also interacts directly with the core files used in AM2DS (e.g.) sms_rotation, eventually server.cfg, etc. In addition to installing AM2DS, you must also create a `server.cfg` file in the AM2DS installation directory (e.g.) `C:\Program Files (x86)\Steam\steamapps\common\Automobilista 2 - Dedicated Server`. Inside the AM2DS directory you'll find some sample configs in the `config_sample` sub-directory. You can start by copying one of those into the AM2DS parent directory (make sure to rename it to `server.cfg`). Alternatively, you can [download](https://raw.githubusercontent.com/cauld/race_mgr/main/sample_files/server.cfg) and use our starter config (back up the original one first just in case). You'll find a file called `UserGuide.pdf` in the AM2DS directory that explains the various configuration options. The most important one for Race Manager is `enableHttpApi`. This setting must be set to `true` for Race Manager to interact with the AM2DS APIs. Others you may want to tweak include GridSize (total driver count - human + AI) & MaxPlayers (number of humans before filling the rest with AI).
+1. **Windows OS**, or Linux with Docker: the installer and `.exe` are for Windows (most testing is on Windows 10 & 11, the Windows installer has not been re-tested since the upgrade). On Linux, use the [Docker setup](#running-in-docker-linux--wine) instead, which also covers a game server that runs on a NAS or in its own container.  
+2. **Automobilista 2 - Dedicated Server (AM2DS)**: Race Manager needs the game server's API and its files: put it on the same machine as [AM2DS](https://steamdb.info/app/1338040/z), or give it a shared folder or bind mount of the server's folder (see [Game server that runs somewhere else](#game-server-that-runs-somewhere-else-eg-its-own-container-on-a-nas)). Race Manager reads and writes files there: the rotation, `server.cfg`, the ban list and whitelist, the balance-of-performance files and the stats addon's data. In addition to installing AM2DS, you must also create a `server.cfg` file in the AM2DS installation directory (e.g.) `C:\Program Files (x86)\Steam\steamapps\common\Automobilista 2 - Dedicated Server`. Inside the AM2DS directory you'll find some sample configs in the `config_sample` sub-directory. You can start by copying one of those into the AM2DS parent directory (make sure to rename it to `server.cfg`). Alternatively, you can [download](https://raw.githubusercontent.com/cauld/race_mgr/main/sample_files/server.cfg) and use our starter config (back up the original one first just in case). You'll find a file called `UserGuide.pdf` in the AM2DS directory that explains the various configuration options. The most important one for Race Manager is `enableHttpApi`. This setting must be set to `true` for Race Manager to interact with the AM2DS APIs. Others you may want to tweak include GridSize (total driver count - human + AI) & MaxPlayers (number of humans before filling the rest with AI).
 - (Optional) In the AM2DS `server.cfg` file, set `eventsLogSize` to a smaller value (e.g.) 1000. The default is something like 10000. One each pass RM checks and processes each record so the more there are the longer it takes to do so. We are capturing them in the mongo database at roughly 1s intervals. This recommendation is already applied if using our Race Manager starter config file.  
 3. **Java 21+**: Race Manager requires a recent version of Java. If not already present on the machine, install the **Java 21 JDK**. Updated standalone JRE versions are no longer offered by the main Java projects. These days the JRE is bundled with the JDK. Any standard JDK from Oracle or OpenJDK should work fine. We find the version of OpenJDK offered by Amazon ([Corsetto](https://docs.aws.amazon.com/corretto/latest/corretto-21-ug/downloads-list.html)) easiest for most people because it offers an .MSI installer. Here is a [direct link](https://corretto.aws/downloads/latest/amazon-corretto-21-x64-windows-jdk.msi) for the .MSI download.  
 4. **MongoDB**:  Race Manager uses MongoDB, a popular open source NoSQL database, to store race history data. Follow the [MongoDB Setup section](#mongodb-setup) below and then return back here to continue with the rest of the setup.  
@@ -39,7 +65,7 @@ The easiest way to upgrade Race Manager is to stop the application and then simp
 `RaceManager.exe` wraps the Race Manager `.jar` file to bring a native Windows application look and feel, make it easy to launch, etc. If you prefer, you can also choose to run Race Manager directly from the released `.jar` file. You must set the required Windows environment variables manually first given that the installer normally does that (*see that section below*). With that done simply download the released `.jar` file, place it wherever you want, launch the Windows command prompt, browse to the location you placed the `.jar` and run `java -jar racemgr-x.x.x.jar` (where `x` is dependent on the version you downloaded). Then use `Ctrl + c` to stop the application as needed. To upgrade simply stop the application and replace the `.jar` file with the latest one from the releases page.  
   
 ### Accessing the Web UI  
-As long as Race Manager is running, the main web application UI is available at http://localhost:8080/. General race data is available for browsing by anyone that can access the URL. If you are running this on your home network then by default that generally means just your computer. Admin related features like the creation/update of sessions & rotations, management of the underlying AM2DS, etc are secured behind the admin user/password that you created during installation.  You'll have to login to access those features.
+As long as Race Manager is running, the main web application UI is available at http://localhost:8080/. General race data is available for browsing by anyone that can access the URL. If you are running this on your home network then by default that generally means just your computer. Admin related features like the creation/update of sessions & rotations, management of the underlying AM2DS, etc are secured behind the admin user/password that you created during installation (the *owner*). You'll have to login to access those features. The owner can give friends their own sign-in with fewer rights, see [Admins and stewards](#admins-and-stewards).
   
 **SECURITY NOTE:** Race Manager listens on `127.0.0.1` (this computer only) by default. Set `RM_BIND_ADDRESS` (e.g. `0.0.0.0`) only if you deliberately want other machines to connect directly. Do **not** port-forward Race Manager's port straight to the Internet: it speaks plain HTTP, so the admin password and login token would travel unencrypted. To let friends browse results, put a TLS reverse proxy in front that forwards only the public paths and blocks `/api/v1/admin*` and `/api/v1/authenticate`, then log in as admin from the machine itself. Example (Caddy):
 ```
@@ -247,13 +273,14 @@ If you are looking to add or enhance features, fix bugs, etc then this is the se
 - Use APIs against running server  
 - Here is a [demo/explanation video](https://www.youtube.com/watch?v=LBpREwPQ514) of our APIs and Postman usage.
 
-# Custom Rotations
-- We do currently support custom rotations, but only through the API. See the API Exploration/API demo video linked too in the section below. Examples are included in our Postman collection.
-  
-## Future TODOs (based on demand/request)  
-  
-- Support for custom (vs randomly generated) rotations  
-- Support for rotation exporting/sharing  
-- Track and car images added for enhanced UI  
-- Support for Linux  
-- A ready-made Docker image
+## Custom rotations
+- Build one in the web UI: *Manage Server → Rotation builder* (a vehicle class, then the track and weather for each round; import or export the game server's own file format).
+- Or send one to the API (`POST /api/v1/admin/race/rotation`); the Postman collection has examples, including a set of sample F1 rotations in `sample_files/rotations`.
+- Rotations are validated before they are written (known settings, simple values, at most 200 rounds).
+
+## Not built yet
+- A race calendar with sign-ups (it needs a way to tell friends apart without giving everyone an account).
+- Driver ratings and licences, with a minimum-licence rule.
+- Mod cars and tracks, installing or updating the game server from the web UI, several game servers in one Race Manager.
+- A *Restart game server* button for a game server that runs elsewhere. The game server's API has an `api/restart` method whose documentation just repeats the text of `api/session/advance`, and it needs the server's API user, so what it really does is untested.
+- Track and car images.

@@ -1,6 +1,6 @@
 # Race Manager web UI
 
-React 17 + TypeScript + Redux Toolkit/Saga + MUI, built with [Vite](https://vite.dev/).
+React 19 + TypeScript + Redux Toolkit/Saga + MUI 9, built with [Vite](https://vite.dev/).
 
 ## Scripts
 
