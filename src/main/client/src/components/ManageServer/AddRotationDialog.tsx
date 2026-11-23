@@ -3,7 +3,7 @@ import {useSelector, useDispatch} from 'react-redux';
 
 import {addRotation} from '../../state/rotations';
 
-import {withStyles} from '@material-ui/core/styles';
+import {styled} from '@mui/material/styles';
 
 // Import {addRotation} from './utilities';
 import {sanitizeString} from '../../utils/stringUtils';
@@ -23,11 +23,9 @@ import DialogTitle from '@mui/material/DialogTitle';
 import Grid from '@mui/material/Grid';
 import TextField from '@mui/material/TextField';
 
-const ErrorTypography = withStyles({
-	root: {
-		color: 'red',
-	},
-})(Typography);
+const ErrorTypography = styled(Typography)(({theme}) => ({
+	color: theme.palette.error.main,
+}));
 
 interface IProps {
     open: boolean,

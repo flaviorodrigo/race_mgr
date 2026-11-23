@@ -1,5 +1,5 @@
 import React, {useState} from 'react';
-import {withStyles} from '@material-ui/core/styles';
+import {styled} from '@mui/material/styles';
 
 import {doAuth} from './utilites';
 
@@ -17,11 +17,9 @@ interface ILoginProps {
 	setIsAuthenticated: (isAuthenticated:boolean) => void
 }
 
-const ErrorTypography = withStyles({
-	root: {
-		color: 'red',
-	},
-})(Typography);
+const ErrorTypography = styled(Typography)(({theme}) => ({
+	color: theme.palette.error.main,
+}));
 
 const Login = (props:ILoginProps) => {
 	const [loading, setLoading] = useState(false);

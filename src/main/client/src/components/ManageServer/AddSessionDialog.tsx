@@ -1,6 +1,6 @@
 import React, {useState, useEffect} from 'react';
 import {useSelector, useDispatch} from 'react-redux';
-import {withStyles} from '@material-ui/core/styles';
+import {styled} from '@mui/material/styles';
 
 import {sanitizeString} from '../../utils/stringUtils';
 
@@ -16,13 +16,11 @@ import DialogTitle from '@mui/material/DialogTitle';
 
 import Grid from '@mui/material/Grid';
 import TextField from '@mui/material/TextField';
-import {Typography} from '@material-ui/core';
+import Typography from '@mui/material/Typography';
 
-const ErrorTypography = withStyles({
-	root: {
-		color: 'red',
-	},
-})(Typography);
+const ErrorTypography = styled(Typography)(({theme}) => ({
+	color: theme.palette.error.main,
+}));
 
 interface IProps {
     open: boolean,

@@ -13,8 +13,6 @@ import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
 import Container from '@mui/material/Container';
 
-import {makeStyles} from '@material-ui/core/styles';
-
 import LeaderBoard from '../Leaderboard/LeaderBoard';
 import ManageServer from '../ManageServer/ManageServer';
 import Login from '../Login/Login';
@@ -100,6 +98,12 @@ const mdTheme = createTheme({
 	},
 });
 
+// Router link that looks like plain text in the nav
+const NavLink = styled(RouterLink)(({theme}) => ({
+	textDecoration: 'none',
+	color: theme.palette.text.primary,
+}));
+
 const DashboardContent = () => {
 	const [open, setOpen] = React.useState(true);
 	// Start from the session marker so a reload on an admin page doesn't bounce to the login page first
@@ -109,19 +113,6 @@ const DashboardContent = () => {
 	const toggleDrawer = () => {
 		setOpen(!open);
 	};
-
-	const useStyles = makeStyles(theme => ({
-		drawerPaper: {width: 'inherit'},
-		link: {
-			textDecoration: 'none',
-			color: theme.palette.text.primary,
-		},
-		list: {
-			width: '300px',
-		},
-	}));
-
-	const classes = useStyles();
 
 	const handleLogout = async () => {
 		await new RaceMgrApi().doLogout();
@@ -168,13 +159,13 @@ const DashboardContent = () => {
 							</Typography>
 
 							{!isAuthenticated
-							&& 	<RouterLink to="/login" className={classes.link}>
+							&& 	<NavLink to="/login">
 								<IconButton sx={{color: 'white'}}>
 									<Tooltip title="Login">
 										<LoginIcon/>
 									</Tooltip>
 								</IconButton>
-							</RouterLink>
+							</NavLink>
 							}
 
 							{isAuthenticated
@@ -202,24 +193,24 @@ const DashboardContent = () => {
 						</Toolbar>
 						<Divider />
 						<List component="nav">
-							<RouterLink to="/" className={classes.link}>
+							<NavLink to="/">
 								<ListItemButton>
 									<ListItemIcon>
 										<BarChartIcon />
 									</ListItemIcon>
 									<ListItemText primary="Leader Board" />
 								</ListItemButton>
-							</RouterLink>
+							</NavLink>
 
 							{isAuthenticated
-							&&							<RouterLink to="/manageserver" className={classes.link}>
+							&&							<NavLink to="/manageserver">
 								<ListItemButton>
 									<ListItemIcon>
 										<PermDataSettingIcon />
 									</ListItemIcon>
 									<ListItemText primary="Mange Server" />
 								</ListItemButton>
-							</RouterLink>
+							</NavLink>
 							}
 
 						</List>
