@@ -4,11 +4,11 @@ import com.coop.racemgr.RacemgrApplication;
 import com.coop.racemgr.gameserver.GameServerProxy;
 import com.coop.racemgr.model.RaceSession;
 import com.coop.racemgr.repositories.RaceSessionRepository;
+import com.coop.racemgr.utils.RacemgrUtils;
 import lombok.Data;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -22,6 +22,8 @@ public class RaceSessionController {
     private RaceSessionRepository raceSessionRepository;
 
     private GameServerProxy gameServerProxy = new GameServerProxy();
+
+    private static final int MAX_PAGE_SIZE = 1000;
 
     private static final Logger logger = LogManager.getLogger(RacemgrApplication.class);
 
@@ -44,7 +46,7 @@ public class RaceSessionController {
             return ResponseHandler.generateResponse("Successfully created race session!", HttpStatus.OK, raceSession);
         } catch (Exception e) {
             logger.error(e);
-            return ResponseHandler.generateResponse(e.getMessage(), HttpStatus.MULTI_STATUS, null);
+            return ResponseHandler.generateResponse("Request failed", HttpStatus.MULTI_STATUS, null);
         }
     }
 
@@ -63,7 +65,7 @@ public class RaceSessionController {
             return ResponseHandler.generateResponse("Successfully updated race session!", HttpStatus.OK, null);
         } catch (Exception e) {
             logger.error(e);
-            return ResponseHandler.generateResponse(e.getMessage(), HttpStatus.MULTI_STATUS, null);
+            return ResponseHandler.generateResponse("Request failed", HttpStatus.MULTI_STATUS, null);
         }
     }
 
@@ -81,7 +83,7 @@ public class RaceSessionController {
             return ResponseHandler.generateResponse("Successfully deleted race session!", HttpStatus.OK, null);
         } catch (Exception e) {
             logger.error(e);
-            return ResponseHandler.generateResponse(e.getMessage(), HttpStatus.MULTI_STATUS, null);
+            return ResponseHandler.generateResponse("Request failed", HttpStatus.MULTI_STATUS, null);
         }
     }
 
@@ -99,13 +101,13 @@ public class RaceSessionController {
 
     @GetMapping("/api/v1/race/session")
     public ResponseEntity<Object> raceSessionList(@RequestParam(defaultValue = "0") Integer page, @RequestParam(defaultValue = "10") Integer limit) {
-        Pageable paging = PageRequest.of(page, limit);
+        Pageable paging = RacemgrUtils.boundedPageRequest(page, limit, MAX_PAGE_SIZE);
         try {
             var raceSessions = raceSessionRepository.findAll(paging);
             return ResponseHandler.generateResponse("Race session list", HttpStatus.OK, raceSessions);
         } catch (Exception e) {
             logger.error(e);
-            return ResponseHandler.generateResponse(e.getMessage(), HttpStatus.MULTI_STATUS, null);
+            return ResponseHandler.generateResponse("Request failed", HttpStatus.MULTI_STATUS, null);
         }
     }
 }

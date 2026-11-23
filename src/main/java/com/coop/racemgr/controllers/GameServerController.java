@@ -33,7 +33,9 @@ public class GameServerController {
         var status = RacemgrUtils.getValueFromObj("status", requestBodyObj);
         var gameServerMgr = new GameServerMgr();
 
-        if (status.equals(ServerStatuses.start.toString())) {
+        if (status == null) {
+            return ResponseHandler.generateResponse("Missing status parameter!", HttpStatus.BAD_REQUEST, null);
+        } else if (status.equals(ServerStatuses.start.toString())) {
             gameServerMgr.start();
         } else if (status.equals(ServerStatuses.restart.toString())) {
             gameServerMgr.restart();
@@ -64,7 +66,7 @@ public class GameServerController {
             return ResponseHandler.generateResponse("List of weather options", HttpStatus.OK, weather);
         }  catch (Exception e) {
             logger.error(e);
-            return ResponseHandler.generateResponse(e.getMessage(), HttpStatus.MULTI_STATUS, null);
+            return ResponseHandler.generateResponse("Request failed", HttpStatus.MULTI_STATUS, null);
         }
     }
 
@@ -75,7 +77,7 @@ public class GameServerController {
             return ResponseHandler.generateResponse("List of track options", HttpStatus.OK, tracks);
         }  catch (Exception e) {
             logger.error(e);
-            return ResponseHandler.generateResponse(e.getMessage(), HttpStatus.MULTI_STATUS, null);
+            return ResponseHandler.generateResponse("Request failed", HttpStatus.MULTI_STATUS, null);
         }
     }
 
@@ -86,7 +88,7 @@ public class GameServerController {
             return ResponseHandler.generateResponse("List of livery options", HttpStatus.OK, liveries);
         }  catch (Exception e) {
             logger.error(e);
-            return ResponseHandler.generateResponse(e.getMessage(), HttpStatus.MULTI_STATUS, null);
+            return ResponseHandler.generateResponse("Request failed", HttpStatus.MULTI_STATUS, null);
         }
     }
 
@@ -97,7 +99,7 @@ public class GameServerController {
             return ResponseHandler.generateResponse("List of vehicle options", HttpStatus.OK, vehicles);
         }  catch (Exception e) {
             logger.error(e);
-            return ResponseHandler.generateResponse(e.getMessage(), HttpStatus.MULTI_STATUS, null);
+            return ResponseHandler.generateResponse("Request failed", HttpStatus.MULTI_STATUS, null);
         }
     }
 
@@ -108,7 +110,7 @@ public class GameServerController {
             return ResponseHandler.generateResponse("List of vehicle class options", HttpStatus.OK, vehicleClasses);
         }  catch (Exception e) {
             logger.error(e);
-            return ResponseHandler.generateResponse(e.getMessage(), HttpStatus.MULTI_STATUS, null);
+            return ResponseHandler.generateResponse("Request failed", HttpStatus.MULTI_STATUS, null);
         }
     }
 }

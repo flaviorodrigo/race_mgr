@@ -30,10 +30,19 @@ public class StaticContentFilter implements Filter {
     }
 
     private void doFilter(HttpServletRequest request, HttpServletResponse response, FilterChain chain) throws IOException, ServletException {
-        String path = request.getServletPath();
+        // servletPath is the full path with the default "/" servlet mapping; add pathInfo so this
+        // also works when the dispatcher servlet has a prefix mapping.
+        String path = request.getServletPath() + (request.getPathInfo() == null ? "" : request.getPathInfo());
 
-        boolean isApi = path.startsWith("/api");
-        boolean isResourceFile = !isApi && fileExtensions.stream().anyMatch(path::contains);
+        // Never let a request escape the static folder
+        if (path.contains("..") || path.contains("\\") || path.indexOf('\0') >= 0) {
+            response.sendError(HttpStatus.NOT_FOUND.value(), HttpStatus.NOT_FOUND.getReasonPhrase());
+            return;
+        }
+
+        boolean isApi = path.equals("/api") || path.startsWith("/api/");
+        String fileName = path.substring(path.lastIndexOf('/') + 1).toLowerCase();
+        boolean isResourceFile = !isApi && fileExtensions.stream().anyMatch(ext -> fileName.endsWith("." + ext));
 
         // If API call then passthru, else treat as static
         if (isApi) {

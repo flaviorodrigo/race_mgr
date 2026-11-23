@@ -33,7 +33,7 @@ public class RaceEventProcessorController {
             return ResponseHandler.generateResponse("Events processed", HttpStatus.OK, null);
         }  catch (Exception e) {
             logger.error(e);
-            return ResponseHandler.generateResponse(e.getMessage(), HttpStatus.MULTI_STATUS, null);
+            return ResponseHandler.generateResponse("Request failed", HttpStatus.MULTI_STATUS, null);
         }
     }
 }

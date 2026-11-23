@@ -41,7 +41,15 @@ The easiest way to upgrade Race Manager is to stop the application and then simp
 ### Accessing the Web UI  
 As long as Race Manager is running, the main web application UI is available at http://localhost:8080/. General race data is available for browsing by anyone that can access the URL. If you are running this on your home network then by default that generally means just your computer. Admin related features like the creation/update of sessions & rotations, management of the underlying AM2DS, etc are secured behind the admin user/password that you created during installation.  You'll have to login to access those features.
   
-**NOTE:** If you do [port forwarding](https://learn.g2.com/port-forwarding) from your router, then you can technically expose your Race Manager instance to the Internet and your racing friends. In that case the URL would be `http://{YOUR-IP}:8080`. Given that ISPs change IPs from time to time, you'll probably want to use a free service like [NO-IP](https://www.noip.com/) to get a permanent hostname that stays updated with your IP as it changes.
+**SECURITY NOTE:** Race Manager listens on `127.0.0.1` (this computer only) by default. Set `RM_BIND_ADDRESS` (e.g. `0.0.0.0`) only if you deliberately want other machines to connect directly. Do **not** port-forward Race Manager's port straight to the Internet: it speaks plain HTTP, so the admin password and login token would travel unencrypted. To let friends browse results, put a TLS reverse proxy in front that forwards only the public paths and blocks `/api/v1/admin*` and `/api/v1/authenticate`, then log in as admin from the machine itself. Example (Caddy):
+```
+race.example.com {
+    @admin path /api/v1/admin* /api/v1/authenticate
+    respond @admin 404
+    reverse_proxy 127.0.0.1:8080
+}
+```
+Never forward the AM2DS HTTP API port (9000); Race Manager only needs it locally, so set `httpApiInterface : "127.0.0.1"` in `server.cfg` and remove the `Access-Control-Allow-Origin: *` header.
 
 ### Troubleshooting Tips
 - If the console window appears and disappears immediate after launch, there is likely a configuration error (i.e.) something incorrect with the values you supplied to the installer and/or entered directly into the required Windows environment variables. For example, Race Manager is unable to connect to Mongo because the wrong password was supplied. It could also be a Java version mismatch (installing from the link provided above would rule this problem out).
@@ -89,7 +97,8 @@ When using the installer .exe the required Windows environment variables will be
 - `RM_MONGO_PORT`: Use the mongo default port, (i.e.) `27017`, unless you've customized  
 - `RM_ADMIN_USER`: All `admin` features/API endpoints require Bearer (JWT) authentication. Set to whatever you want the admin username to be.  
 - `RM_ADMIN_PASSWORD`: All `admin` features/API endpoints require Bearer (JWT) authentication. Set to whatever you want the admin password to be.  
-- `RM_JWT_SECRET`: This is used as part of user authentication. It should be a random 64 character string that is unique to each installation. We recommend using [this tool](http://www.unit-conversion.info/texttools/random-string-generator/) to generate one.  
+- `RM_BIND_ADDRESS` (optional): Address to listen on, default `127.0.0.1`. `RM_PORT` (optional) changes the port, default `8080`.  
+- `RM_JWT_SECRET`: This is used as part of user authentication. It must be a random string of at least 32 characters (64 recommended) that is unique to each installation. Generate it locally (e.g. `openssl rand -hex 32`), not with an online tool. Admin logins last 12 hours by default; set `RM_JWT_VALIDITY_HOURS` to change that. After 5 failed logins from one address, further attempts are refused for 15 minutes. We recommend using [this tool](http://www.unit-conversion.info/texttools/random-string-generator/) to generate one.  
   
 ## Developer Setup  
 If you are looking to add or enhance features, fix bugs, etc then this is the section for you. The core prerequisites remain the same so start by following that section above and then return here.  

@@ -88,7 +88,25 @@ export default class RaceMgrApi {
 			try	{
 				const response = await axios(config);
 				if (response.status === 200) {
-					document.cookie = 'JWT-TOKEN=' + response.data.data.token + ';';
+					const {token} = response.data.data;
+
+					// Expire the cookie together with the token (exp claim is in seconds)
+					let attributes = '; Path=/; SameSite=Strict';
+					try {
+						const [, payload] = token.split('.');
+						const {exp} = JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')));
+						if (typeof exp === 'number') {
+							attributes += `; Expires=${new Date(exp * 1000).toUTCString()}`;
+						}
+					} catch {
+						// Fall back to a session cookie
+					}
+
+					if (window.location.protocol === 'https:') {
+						attributes += '; Secure';
+					}
+
+					document.cookie = `JWT-TOKEN=${token}${attributes}`;
 
 					resolve('OK');
 				} else {

@@ -1,25 +1,31 @@
 package com.coop.racemgr.controllers;
 
-import java.util.Objects;
+import javax.servlet.http.HttpServletRequest;
 
+import com.coop.racemgr.RacemgrApplication;
 import com.coop.racemgr.security.JwtTokenUtil;
+import com.coop.racemgr.security.LoginAttemptService;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.BadCredentialsException;
-import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RestController;
 
 import com.coop.racemgr.model.JwtRequest;
 import com.coop.racemgr.model.JwtResponse;
 
 @RestController
-@CrossOrigin
 public class JwtAuthenticationController {
+    private static final Logger logger = LogManager.getLogger(RacemgrApplication.class);
+
     @Autowired
     private AuthenticationManager authenticationManager;
 
@@ -27,39 +33,40 @@ public class JwtAuthenticationController {
     private JwtTokenUtil jwtTokenUtil;
 
     @Autowired
-    private UserDetailsService jwtInMemoryUserDetailsService;
+    private UserDetailsService jwtUserDetailsService;
+
+    @Autowired
+    private LoginAttemptService loginAttemptService;
 
     @PostMapping("/api/v1/authenticate")
-    public ResponseEntity<Object> createAuthenticationToken(@RequestBody JwtRequest authenticationRequest)
-            throws Exception {
-        try {
-            authenticate(authenticationRequest.getUsername(), authenticationRequest.getPassword());
-        } catch (Exception e) {
-            return ResponseHandler.generateResponse(e.getMessage(), HttpStatus.BAD_REQUEST, null);
+    public ResponseEntity<Object> createAuthenticationToken(@RequestBody JwtRequest authenticationRequest,
+                                                            HttpServletRequest httpRequest) {
+        // NOTE: Deliberately uses the socket address, not X-Forwarded-For (which a client controls).
+        String client = httpRequest.getRemoteAddr();
+
+        if (loginAttemptService.isBlocked(client)) {
+            logger.warn("Login temporarily blocked after repeated failures");
+            return ResponseHandler.generateResponse("Too many failed attempts, try again later",
+                    HttpStatus.TOO_MANY_REQUESTS, null);
         }
 
-        try {
-            final UserDetails userDetails = jwtInMemoryUserDetailsService
-                    .loadUserByUsername(authenticationRequest.getUsername());
-
-            final String token = jwtTokenUtil.generateToken(userDetails);
-            JwtResponse response = new JwtResponse(token);
-            return ResponseHandler.generateResponse("JWT token", HttpStatus.OK, response);
-        } catch (Exception e) {
-            return ResponseHandler.generateResponse(e.getMessage(), HttpStatus.MULTI_STATUS, null);
+        String username = authenticationRequest.getUsername();
+        String password = authenticationRequest.getPassword();
+        if (username == null || password == null) {
+            return ResponseHandler.generateResponse("Username and password are required", HttpStatus.BAD_REQUEST, null);
         }
-    }
-
-    private void authenticate(String username, String password) throws Exception {
-        Objects.requireNonNull(username);
-        Objects.requireNonNull(password);
 
         try {
             authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(username, password));
-        } catch (DisabledException e) {
-            throw new Exception("USER_DISABLED", e);
-        } catch (BadCredentialsException e) {
-            throw new Exception("INVALID_CREDENTIALS", e);
+        } catch (AuthenticationException e) {
+            loginAttemptService.recordFailure(client);
+            logger.warn("Failed login attempt");
+            return ResponseHandler.generateResponse("Invalid credentials", HttpStatus.UNAUTHORIZED, null);
         }
+
+        loginAttemptService.recordSuccess(client);
+        final UserDetails userDetails = jwtUserDetailsService.loadUserByUsername(username);
+        final String token = jwtTokenUtil.generateToken(userDetails);
+        return ResponseHandler.generateResponse("JWT token", HttpStatus.OK, new JwtResponse(token));
     }
 }

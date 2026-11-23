@@ -25,6 +25,7 @@
 		<spring-framework.version>5.3.39</spring-framework.version>
 		<spring-security.version>5.7.14</spring-security.version>
 		<jackson-bom.version>2.22.4</jackson-bom.version>
+		<jjwt.version>0.13.0</jjwt.version>
 		<netty.version>4.1.141.Final</netty.version>
 		<log4j2.version>2.25.5</log4j2.version>
 		<lombok.version>1.18.48</lombok.version>
@@ -100,8 +101,20 @@
 		</dependency>
 		<dependency>
 			<groupId>io.jsonwebtoken</groupId>
-			<artifactId>jjwt</artifactId>
-			<version>0.9.1</version>
+			<artifactId>jjwt-api</artifactId>
+			<version>${jjwt.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>io.jsonwebtoken</groupId>
+			<artifactId>jjwt-impl</artifactId>
+			<version>${jjwt.version}</version>
+			<scope>runtime</scope>
+		</dependency>
+		<dependency>
+			<groupId>io.jsonwebtoken</groupId>
+			<artifactId>jjwt-jackson</artifactId>
+			<version>${jjwt.version}</version>
+			<scope>runtime</scope>
 		</dependency>
 		<dependency>
 			<groupId>org.glassfish.jaxb</groupId>

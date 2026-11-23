@@ -25,7 +25,7 @@ public class StatsController {
             return ResponseHandler.generateResponse("Current stats", HttpStatus.OK, currentStats);
         }  catch (Exception e) {
             logger.error(e);
-            return ResponseHandler.generateResponse(e.getMessage(), HttpStatus.MULTI_STATUS, null);
+            return ResponseHandler.generateResponse("Request failed", HttpStatus.MULTI_STATUS, null);
         }
     }
 }

@@ -1,72 +1,75 @@
 package com.coop.racemgr.security;
 
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.security.Keys;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 
-import java.io.Serializable;
+import javax.crypto.SecretKey;
+import java.nio.charset.StandardCharsets;
 import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.function.Function;
 
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
-
 @Component
-public class JwtTokenUtil implements Serializable {
-    private static final long serialVersionUID = -2550185165626007488L;
+public class JwtTokenUtil {
+    // Minimum secret length (characters). HMAC keys shorter than 256 bits are rejected anyway.
+    private static final int MIN_SECRET_LENGTH = 32;
+    private static final long DEFAULT_VALIDITY_HOURS = 12;
 
-    // Amount of time tokens remain valid
-    public static final long JWT_TOKEN_VALIDITY = 2630000; // Life in seconds
+    private final SecretKey key;
+    private final long validityMillis;
 
-    private String secret = System.getenv("RM_JWT_SECRET");
+    public JwtTokenUtil(@Value("${RM_JWT_SECRET:}") String secret,
+                        @Value("${RM_JWT_VALIDITY_HOURS:}") String configured) {
+        if (secret.length() < MIN_SECRET_LENGTH) {
+            throw new IllegalStateException("RM_JWT_SECRET must be set to a random string of at least "
+                    + MIN_SECRET_LENGTH + " characters (64 recommended).");
+        }
+        // The secret is used as raw UTF-8 bytes. (jjwt 0.9 base64-decoded it, so tokens issued
+        // before the upgrade are invalid and admins must log in again.)
+        this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
 
-    // Retrieve username from jwt token
+        long hours = DEFAULT_VALIDITY_HOURS;
+        if (!configured.isBlank()) {
+            try {
+                hours = Math.max(1, Long.parseLong(configured.trim()));
+            } catch (NumberFormatException e) {
+                throw new IllegalStateException("RM_JWT_VALIDITY_HOURS must be a whole number of hours.");
+            }
+        }
+        this.validityMillis = hours * 60 * 60 * 1000;
+    }
+
+    // Retrieve username from jwt token. Throws io.jsonwebtoken.JwtException (or
+    // IllegalArgumentException) when the token is invalid, tampered with, or expired.
     public String getUsernameFromToken(String token) {
         return getClaimFromToken(token, Claims::getSubject);
     }
 
-    // Retrieve expiration date from jwt token
-    public Date getExpirationDateFromToken(String token) {
-        return getClaimFromToken(token, Claims::getExpiration);
-    }
-
     public <T> T getClaimFromToken(String token, Function<Claims, T> claimsResolver) {
-        final Claims claims = getAllClaimsFromToken(token);
-        return claimsResolver.apply(claims);
-    }
-    // When retrieving any information from token we will need the secret key
-    private Claims getAllClaimsFromToken(String token) {
-        return Jwts.parser().setSigningKey(secret).parseClaimsJws(token).getBody();
+        return claimsResolver.apply(getAllClaimsFromToken(token));
     }
 
-    // Check if the token has expired
-    private Boolean isTokenExpired(String token) {
-        final Date expiration = getExpirationDateFromToken(token);
-        return expiration.before(new Date());
+    // The parser verifies the signature and the expiry date.
+    private Claims getAllClaimsFromToken(String token) {
+        return Jwts.parser().verifyWith(key).build().parseSignedClaims(token).getPayload();
     }
 
     // Generate token for user
     public String generateToken(UserDetails userDetails) {
-        Map<String, Object> claims = new HashMap<>();
-        return doGenerateToken(claims, userDetails.getUsername());
+        long now = System.currentTimeMillis();
+        return Jwts.builder()
+                .subject(userDetails.getUsername())
+                .issuedAt(new Date(now))
+                .expiration(new Date(now + validityMillis))
+                .signWith(key) // algorithm (HS256/384/512) chosen from the key length
+                .compact();
     }
 
-    // While creating the token:
-    // 1) Define  claims of the token, like Issuer, Expiration, Subject, and the ID
-    // 2) Sign the JWT using the HS512 algorithm and secret key.
-    // 3) According to JWS Compact Serialization (https://tools.ietf.org/html/draft-ietf-jose-json-web-signature-41#section-3.1)
-    //   compaction of the JWT to a URL-safe string.
-    private String doGenerateToken(Map<String, Object> claims, String subject) {
-        return Jwts.builder().setClaims(claims).setSubject(subject).setIssuedAt(new Date(System.currentTimeMillis()))
-                .setExpiration(new Date(System.currentTimeMillis() + JWT_TOKEN_VALIDITY * 1000))
-                .signWith(SignatureAlgorithm.HS512, secret).compact();
-    }
-
-    // Validate token
+    // Validate token against the user it claims to belong to
     public Boolean validateToken(String token, UserDetails userDetails) {
-        final String username = getUsernameFromToken(token);
-        return (username.equals(userDetails.getUsername()) && !isTokenExpired(token));
+        return getUsernameFromToken(token).equals(userDetails.getUsername());
     }
 }

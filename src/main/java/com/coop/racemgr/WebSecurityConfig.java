@@ -67,11 +67,16 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
             //.disable()
             .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
             .and()
-            // Public endpoints require no auth
-            //.authorizeRequests().antMatchers("/api/v1/**").permitAll()
-            //.and()
+            .authorizeRequests()
             // All admin paths require authentication
-            .authorizeRequests().antMatchers("/api/v1/admin/**").authenticated()
+            .antMatchers("/api/v1/admin/**").authenticated()
+            // Public read-only endpoints (also GET /api, which hands out the XSRF token)
+            .antMatchers(HttpMethod.GET, "/api", "/api/v1/gameserver/**", "/api/v1/config", "/api/v1/race/**").permitAll()
+            .antMatchers(HttpMethod.POST, "/api/v1/authenticate").permitAll()
+            // Anything else under /api is denied, so a new endpoint is private unless listed above
+            .antMatchers("/api/**").denyAll()
+            // Everything else is the React single page app's static assets
+            .anyRequest().permitAll()
             .and()
             // Make sure we use stateless session; session won't be used to store user's state.
             .exceptionHandling().authenticationEntryPoint(jwtAuthenticationEntryPoint).and().sessionManagement()
