@@ -2,15 +2,15 @@ package com.coop.racemgr.gameserver;
 
 import com.coop.racemgr.utils.RacemgrUtils;
 import org.apache.commons.io.FileUtils;
-import org.json.simple.JSONArray;
-import org.json.simple.JSONObject;
-import org.json.simple.parser.JSONParser;
-import org.json.simple.parser.ParseException;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.Predicate;
@@ -41,11 +41,20 @@ public class GameServerProxy {
     }
 
     private List serverResponseToJson(String jsonString) {
-        Object obj = RacemgrUtils.jsonStrToObj(jsonString);
-        JSONObject jo = (JSONObject) obj;
-        JSONObject joResponse = (JSONObject) jo.get("response");
-        JSONArray jsonArr = (JSONArray) joResponse.get("list");
-        return RacemgrUtils.jsonArrToList(jsonArr);
+        try {
+            return parseListResponse(jsonString);
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException("Unreadable response from the game server", e);
+        }
+    }
+
+    // The game server wraps lists as {"response": {"list": [...]}}
+    static List<Object> parseListResponse(String jsonString) throws JsonProcessingException {
+        JsonNode list = RacemgrUtils.JSON.readTree(jsonString).path("response").path("list");
+        if (!list.isArray()) {
+            throw new IllegalStateException("Unexpected response from the game server");
+        }
+        return RacemgrUtils.JSON.convertValue(list, new TypeReference<ArrayList<Object>>() {});
     }
 
     public String getDataApiUrl(String endpoint) {
@@ -128,16 +137,23 @@ public class GameServerProxy {
         return obj;
     }
 
-    public JSONObject getStats() throws IOException, ParseException {
+    public JsonNode getStats() throws IOException {
         File file = GameServerPaths.statsFile().toFile();
         String dataString = FileUtils.readFileToString(file, "UTF-8");
-        // The file is JSON-ish, but has comments that need removed before parsing
+        return parseStats(dataString);
+    }
+
+    // The file is JSON-ish, but has comments around the JSON that need removed before parsing
+    static JsonNode parseStats(String dataString) throws IOException {
         var jsonStart = dataString.indexOf("{");
         var jsonEnd = dataString.lastIndexOf("}");
-        var jsonString = dataString.substring(jsonStart, jsonEnd + 1);
-        JSONParser parser = new JSONParser();
-        JSONObject jsonObject = (JSONObject) parser.parse(jsonString);
-        JSONObject stats = (JSONObject) jsonObject.get("stats");
+        if (jsonStart < 0 || jsonEnd < jsonStart) {
+            throw new IOException("No JSON found in the game server stats file");
+        }
+        JsonNode stats = RacemgrUtils.JSON.readTree(dataString.substring(jsonStart, jsonEnd + 1)).path("stats");
+        if (stats.isMissingNode()) {
+            throw new IOException("No stats found in the game server stats file");
+        }
         return stats;
     }
 

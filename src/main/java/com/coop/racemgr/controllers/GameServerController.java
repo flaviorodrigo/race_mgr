@@ -7,13 +7,13 @@ import com.coop.racemgr.utils.RacemgrUtils;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.json.simple.JSONObject;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 public class GameServerController {
@@ -54,8 +54,7 @@ public class GameServerController {
 
     @GetMapping("/api/v1/gameserver")
     public ResponseEntity<Object> gameserver() throws InterruptedException, IOException {
-        JSONObject response = new JSONObject();
-        response.put("isRunning", GameServerMgr.isRunning());
+        Map<String, Object> response = Map.of("isRunning", GameServerMgr.isRunning());
         return ResponseHandler.generateResponse("Current external game server status", HttpStatus.OK, response);
     }
 

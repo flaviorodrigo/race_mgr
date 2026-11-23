@@ -1,13 +1,13 @@
 package com.coop.racemgr.utils;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.json.JsonReadFeature;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.json.JsonMapper;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.google.common.collect.Lists;
-import org.json.simple.JSONArray;
-import org.json.simple.JSONObject;
-import org.json.simple.parser.JSONParser;
-import org.json.simple.parser.ParseException;
 import org.springframework.data.domain.PageRequest;
 
 import java.io.BufferedReader;
@@ -18,9 +18,16 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 
 public class RacemgrUtils {
-    public static List jsonArrToList(JSONArray jsonArr) {
-        return Lists.newArrayList(jsonArr);
-    }
+    private static final Logger logger = LogManager.getLogger(RacemgrUtils.class);
+
+    // Shared mapper. Parsing is lenient about syntax (the dedicated server's files are JSON-ish)
+    // but unknown properties still fail, and untyped integers stay Long as they were with json-simple.
+    public static final ObjectMapper JSON = JsonMapper.builder()
+            .enable(JsonReadFeature.ALLOW_JAVA_COMMENTS)
+            .enable(JsonReadFeature.ALLOW_TRAILING_COMMA)
+            .enable(JsonReadFeature.ALLOW_UNESCAPED_CONTROL_CHARS)
+            .enable(DeserializationFeature.USE_LONG_FOR_INTS)
+            .build();
 
     public static List filterList(List incomingLIst, int count, boolean random) {
         List filteredList;
@@ -82,11 +89,10 @@ public class RacemgrUtils {
     }
 
     public static String getValueFromObj(String key, Object obj) {
-        ObjectMapper mapper = new ObjectMapper();
         String val = null;
         try {
-            String objStr = mapper.writeValueAsString(obj);
-            ObjectNode node = new ObjectMapper().readValue(objStr, ObjectNode.class);
+            String objStr = JSON.writeValueAsString(obj);
+            ObjectNode node = JSON.readValue(objStr, ObjectNode.class);
             if (node != null && node.get(key) != null) {
                 val = node.get(key).textValue();
             }
@@ -97,15 +103,14 @@ public class RacemgrUtils {
         return val;
     }
 
-    public static Object jsonStrToObj (String jsonString) {
-        Object obj = null;
+    // Parses JSON into plain Maps/Lists. Returns null when the text isn't valid JSON.
+    public static Object jsonStrToObj(String jsonString) {
         try {
-            obj = new JSONParser().parse(jsonString);
-        } catch (ParseException e) {
-            e.printStackTrace();
+            return JSON.readValue(jsonString, Object.class);
+        } catch (JsonProcessingException e) {
+            logger.warn("Could not parse JSON: " + e.getOriginalMessage());
+            return null;
         }
-
-        return obj;
     }
 
     public static void wait(int ms) {

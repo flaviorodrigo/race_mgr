@@ -58,7 +58,7 @@ public class RaceRotationController {
     // @FIXME: This is a quick way to add support for custom rotations. For now there is no additional validation of given rotation.
     // It assumes the same limited file format as what is created by the generator. Examples included in the Postman collection...
     @PostMapping("/api/v1/admin/race/rotation")
-    public ResponseEntity<Object> rotation(@RequestBody RaceRotationCustomRequest request) throws org.json.simple.parser.ParseException {
+    public ResponseEntity<Object> rotation(@RequestBody RaceRotationCustomRequest request) {
         RaceRotation raceRotation;
         try {
             raceRotation = new RaceRotation(request.name, request.config);
@@ -76,7 +76,7 @@ public class RaceRotationController {
     }
 
     @PostMapping("/api/v1/admin/race/rotation/generate")
-    public ResponseEntity<Object> rotationGeneration(@RequestBody RaceRotationGenerationRequest request) throws org.json.simple.parser.ParseException {
+    public ResponseEntity<Object> rotationGeneration(@RequestBody RaceRotationGenerationRequest request) {
         // Generate rotation config
         RacemgrRotationConfigMaker rotationConfig = new RacemgrRotationConfigMaker(new GameServerProxy(), request.raceCount, request.allowKarts, request.persist);
 

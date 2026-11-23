@@ -4,12 +4,12 @@ import com.google.common.hash.Hashing;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.json.simple.JSONObject;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Map;
 
 @Data
 @NoArgsConstructor
@@ -29,11 +29,11 @@ public class Race {
 
     // We may want to further model the nested objects below but there is some variability in the
     // properties plus we aren't using in the backend, just storing and returning to the UI for now.
-    public JSONObject members;
-    // Would be better as JSONArray or JSONObject but the dedicated server is inconsistent/buggy
+    public Map<String, Object> members;
+    // Would be better as a List or Map but the dedicated server is inconsistent/buggy
     public Object participants;
-    public JSONObject setup;
-    public JSONObject stages;
+    public Map<String, Object> setup;
+    public Map<String, Object> stages;
 
     // We need to create a unique string to act as the race id
     // We do this by combining and hashing the event dates and index.

@@ -2,8 +2,6 @@ package com.coop.racemgr.rotation;
 
 import com.coop.racemgr.gameserver.GameServerProxy;
 import com.coop.racemgr.utils.RacemgrUtils;
-import org.json.simple.parser.ParseException;
-
 import java.util.ArrayList;
 import java.util.List;
 
@@ -14,7 +12,7 @@ public class RacemgrRotationConfigMaker {
     public RacemgrRotationDefaultConfig defaultConfig;
     public List<RacemgrRotationEntry> rotation = new ArrayList<>();
 
-    public RacemgrRotationConfigMaker(GameServerProxy gameServerProxy, int raceCount, boolean allowKarts, boolean persist) throws ParseException {
+    public RacemgrRotationConfigMaker(GameServerProxy gameServerProxy, int raceCount, boolean allowKarts, boolean persist) {
         this.persist_index = persist;
 
         List raceVehicleClasses = gameServerProxy.getVehicleClassesFiltered(1, true, allowKarts);

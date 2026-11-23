@@ -6,15 +6,11 @@ import com.coop.racemgr.model.Race;
 import com.coop.racemgr.repositories.RaceMgrConfigRepository;
 import com.coop.racemgr.repositories.RaceRepository;
 import com.coop.racemgr.utils.RacemgrUtils;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.json.simple.JSONArray;
-import org.json.simple.JSONObject;
-import org.json.simple.parser.ParseException;
+import com.fasterxml.jackson.databind.JsonNode;
 
 import java.io.IOException;
-import java.util.Iterator;
 
 public class RaceEventProcessor {
     private RaceRepository raceRepository;
@@ -39,7 +35,7 @@ public class RaceEventProcessor {
     // NOTE: The game server decides when to prune event history. To avoid losing data
     // between crashes and restarts we reprocess/check all events per cycle. Only unseen
     // events are saved. For performance, it is good to set the game server
-    public void processRaces() throws IOException, ParseException {
+    public void processRaces() throws IOException {
         var currentRmc = raceMgrConfigRepository.findItemById("1");
         if (currentRmc == null || isBlank(currentRmc.getActiveRaceSessionId()) || isBlank(currentRmc.getActiveRaceRotationId())) {
             // Runs every second, so only say it once until a session/rotation gets configured
@@ -49,17 +45,17 @@ public class RaceEventProcessor {
             }
         }  else {
             warnedNotConfigured = false;
-            JSONObject stats = this.gameServerProxy.getStats();
+            JsonNode stats = this.gameServerProxy.getStats();
 
             // As long as we have history, process it
             try {
-                JSONArray raceHistory = (JSONArray) stats.get("history");
+                JsonNode raceHistory = stats.path("history");
+                if (!raceHistory.isArray()) {
+                    throw new IllegalStateException("No race history present");
+                }
 
-                Iterator<JSONObject> iterator = raceHistory.iterator();
-                while (iterator.hasNext()) {
-                    var raceData = iterator.next();
-                    ObjectMapper objectMapper = new ObjectMapper();
-                    Race race = objectMapper.readValue(raceData.toString(), Race.class);
+                for (JsonNode raceData : raceHistory) {
+                    Race race = RacemgrUtils.JSON.treeToValue(raceData, Race.class);
                     race.setRaceId();
                     race.setRaceSessionId(currentRmc.getActiveRaceSessionId());
                     race.setRaceRotationId(currentRmc.getActiveRaceRotationId());

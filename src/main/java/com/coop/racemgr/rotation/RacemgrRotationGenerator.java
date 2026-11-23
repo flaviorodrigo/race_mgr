@@ -2,8 +2,6 @@ package com.coop.racemgr.rotation;
 
 import com.coop.racemgr.utils.RacemgrUtils;
 import com.coop.racemgr.gameserver.GameServerProxy;
-import org.json.simple.parser.ParseException;
-
 import java.util.ArrayList;
 import java.util.List;
 
@@ -14,7 +12,7 @@ public class RacemgrRotationGenerator {
         this.gameServerProxy = gameServerProxy;
     }
 
-    public List<RacemgrRotationEntry> generateRaceRotation(int raceCount, boolean allowKarts) throws ParseException {
+    public List<RacemgrRotationEntry> generateRaceRotation(int raceCount, boolean allowKarts) {
         // We like each event/round of racing to use the same vehicle class
         var vehiclesClasses = gameServerProxy.getVehicleClassesFiltered(1, true, allowKarts);
         // Each entry gets a new track

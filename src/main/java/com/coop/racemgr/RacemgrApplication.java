@@ -6,8 +6,6 @@ import com.coop.racemgr.utils.RacemgrBanner;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import org.json.simple.parser.ParseException;
-
 import org.springframework.boot.Banner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -20,7 +18,7 @@ import java.io.IOException;
 public class RacemgrApplication {
 	private static final Logger logger = LogManager.getLogger(RacemgrApplication.class);
 
-	public static void main(String[] args) throws IOException, ParseException {
+	public static void main(String[] args) throws IOException {
 		SpringApplication app = new SpringApplication(RacemgrApplication.class);
 		app.setBannerMode(Banner.Mode.OFF);
 		app.run(args);
