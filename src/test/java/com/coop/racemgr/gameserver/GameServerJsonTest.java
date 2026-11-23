@@ -82,4 +82,40 @@ class GameServerJsonTest {
                 .isEqualTo("stop");
         assertThat(RacemgrUtils.getValueFromObj("status", RacemgrUtils.jsonStrToObj("{}"))).isNull();
     }
+
+    // Real sms_stats_data.json from a dedicated server (names and Steam IDs sanitized): leading and
+    // trailing // comments, six races in "history", integer epoch times, nested setup/stages.
+    @Test
+    void importsEveryRaceFromARealStatsFile() throws Exception {
+        String file = new String(getClass().getResourceAsStream("/sms_stats_data_sample.json").readAllBytes(),
+                java.nio.charset.StandardCharsets.UTF_8);
+
+        JsonNode history = GameServerProxy.parseStats(file).path("history");
+        assertThat(history.isArray()).isTrue();
+        assertThat(history).hasSize(6);
+
+        java.util.Set<String> raceIds = new java.util.HashSet<>();
+        for (JsonNode raceData : history) {
+            // Strict mapper: any property the Race model doesn't know about would fail here
+            Race race = RacemgrUtils.JSON.treeToValue(raceData, Race.class);
+            race.setRaceId();
+
+            assertThat(race.getIndex()).isNotNull();
+            assertThat(race.getStart_time()).matches("\\d+");
+            assertThat(race.getEnd_time()).matches("\\d+");
+            assertThat(race.getFinished()).isNotNull();
+            assertThat(race.getSetup()).isNotEmpty();
+            assertThat(race.getStages()).isNotNull();
+            assertThat(race.getParticipants()).isNotNull();
+            raceIds.add(race.getRace_id());
+        }
+        assertThat(raceIds).as("race ids are unique").hasSize(6);
+    }
+
+    // A fresh server writes "history" as an empty object, not an array: nothing to import yet
+    @Test
+    void freshServerStatsHaveNoHistoryArray() throws Exception {
+        JsonNode stats = GameServerProxy.parseStats("// header\n{ \"next_history_index\": 1, \"stats\": { \"history\": {}, \"players\": {} } }\n// EOF //");
+        assertThat(stats.path("history").isArray()).isFalse();
+    }
 }
