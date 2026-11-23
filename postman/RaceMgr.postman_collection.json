@@ -762,6 +762,119 @@
 							"protocolProfileBehavior": {
 								"disableBodyPruning": true
 							}
+						},
+						{
+							"name": "Presets: list",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "http://{{HOST_BASE_API_URL}}/admin/gameserver/presets",
+									"protocol": "http",
+									"host": [
+										"{{HOST_BASE_API_URL}}"
+									],
+									"path": [
+										"admin",
+										"gameserver",
+										"presets"
+									]
+								}
+							},
+							"response": [],
+							"protocolProfileBehavior": {
+								"disableBodyPruning": true
+							}
+						},
+						{
+							"name": "Presets: save",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "X-XSRF-TOKEN",
+										"value": "{{XSRF-TOKEN}}",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "http://{{HOST_BASE_API_URL}}/admin/gameserver/presets",
+									"protocol": "http",
+									"host": [
+										"{{HOST_BASE_API_URL}}"
+									],
+									"path": [
+										"admin",
+										"gameserver",
+										"presets"
+									]
+								},
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"name\": \"GT3 sprint\",\r\n    \"settings\": {\r\n        \"TrackId\": -559709709,\r\n        \"RaceLength\": 10,\r\n        \"QualifyLength\": 15\r\n    }\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Presets: apply to next session",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "X-XSRF-TOKEN",
+										"value": "{{XSRF-TOKEN}}",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "http://{{HOST_BASE_API_URL}}/admin/gameserver/presets/PRESET_ID/apply",
+									"protocol": "http",
+									"host": [
+										"{{HOST_BASE_API_URL}}"
+									],
+									"path": [
+										"admin",
+										"gameserver",
+										"presets",
+										"PRESET_ID",
+										"apply"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Presets: delete",
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "X-XSRF-TOKEN",
+										"value": "{{XSRF-TOKEN}}",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "http://{{HOST_BASE_API_URL}}/admin/gameserver/presets/PRESET_ID",
+									"protocol": "http",
+									"host": [
+										"{{HOST_BASE_API_URL}}"
+									],
+									"path": [
+										"admin",
+										"gameserver",
+										"presets",
+										"PRESET_ID"
+									]
+								}
+							},
+							"response": []
 						}
 					]
 				},

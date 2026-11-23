@@ -50,6 +50,8 @@ class AccountTests {
     @MockitoBean
     private AuditEventRepository auditEventRepository;
     @MockitoBean
+    private com.coop.racemgr.repositories.SessionPresetRepository sessionPresetRepository;
+    @MockitoBean
     private AdminCredentialRepository adminCredentialRepository;
 
     private Cookie xsrf() throws Exception {

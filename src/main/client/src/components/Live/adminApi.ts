@@ -31,6 +31,17 @@ export interface INextSessionSettings {
 export const applyNextSession = (settings: INextSessionSettings) => call({url: '/gameserver/session/next', method: 'post', data: settings});
 export const advanceSession = () => call({url: '/gameserver/session/advance', method: 'post'});
 
+export interface ISessionPreset {
+	id: string,
+	name: string,
+	settings: INextSessionSettings,
+}
+
+export const fetchPresets = () => call<Array<ISessionPreset>>({url: '/gameserver/presets', method: 'get'});
+export const savePreset = (name: string, settings: INextSessionSettings) => call({url: '/gameserver/presets', method: 'post', data: {name, settings}});
+export const deletePreset = (id: string) => call({url: `/gameserver/presets/${id}`, method: 'delete'});
+export const applyPreset = (id: string) => call({url: `/gameserver/presets/${id}/apply`, method: 'post'});
+
 export interface IBanEntry {
 	steamId: string,
 	note: string,

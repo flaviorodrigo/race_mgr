@@ -1,9 +1,9 @@
 import React, {useEffect, useState} from 'react';
 
 import {
-	addBan, addToWhitelist, advanceSession, applyNextSession, changePassword, fetchAudit, fetchBanList, fetchGameLog, fetchServerConfig, fetchWhitelist,
+	addBan, addToWhitelist, advanceSession, applyNextSession, applyPreset, deletePreset, fetchPresets, savePreset, changePassword, fetchAudit, fetchBanList, fetchGameLog, fetchServerConfig, fetchWhitelist,
 	removeBan, removeFromWhitelist, saveServerConfig,
-	IApiResult, IAuditEvent, IBanEntry, ILogEvent, INextSessionSettings, IWhitelist, ServerConfigValues,
+	IApiResult, IAuditEvent, IBanEntry, ILogEvent, INextSessionSettings, ISessionPreset, IWhitelist, ServerConfigValues,
 } from '../Live/adminApi';
 import {fetchTrackData} from '../Leaderboard/utilities';
 import RotationBuilder from './RotationBuilder';
@@ -175,6 +175,15 @@ const ServerSettingsPanel = () => {
 
 // ---------------------------------------------------------------- next session
 
+// "Brands Hatch GP · 10 laps · practice 10 min · qualifying 15 min · AI 90"
+const describePreset = (settings: INextSessionSettings, tracks: Array<ITrackData>) => [
+	settings.TrackId === undefined ? null : tracks.find(t => Number(t.id) === settings.TrackId)?.name.replaceAll('_', ' ') ?? `track ${settings.TrackId}`,
+	settings.RaceLength === undefined ? null : `${settings.RaceLength} laps`,
+	settings.PracticeLength === undefined ? null : `practice ${settings.PracticeLength} min`,
+	settings.QualifyLength === undefined ? null : `qualifying ${settings.QualifyLength} min`,
+	settings.OpponentDifficulty === undefined ? null : `AI ${settings.OpponentDifficulty}`,
+].filter(Boolean).join(' · ');
+
 const NextSessionPanel = () => {
 	const [tracks, setTracks] = useState<Array<ITrackData>>([]);
 	const [trackId, setTrackId] = useState('');
@@ -185,9 +194,18 @@ const NextSessionPanel = () => {
 	const [feedback, setFeedback] = useState<IFeedback | null>(null);
 	const [confirmAdvance, setConfirmAdvance] = useState(false);
 	const [busy, setBusy] = useState(false);
+	const [presets, setPresets] = useState<Array<ISessionPreset>>([]);
+	const [presetName, setPresetName] = useState('');
+	const [toDelete, setToDelete] = useState<ISessionPreset | null>(null);
+
+	const loadPresets = async () => {
+		const result = await fetchPresets();
+		setPresets(result.ok ? result.data ?? [] : []);
+	};
 
 	useEffect(() => {
 		fetchTrackData().then(t => setTracks(Array.isArray(t) ? t : []));
+		loadPresets();
 	}, []);
 
 	// Only the fields you filled in are sent; the rest of the session stays as it is
@@ -224,6 +242,35 @@ const NextSessionPanel = () => {
 		setFeedback({text: result.ok ? 'Sent. These apply when the next session starts.' : result.message, severity: result.ok ? 'success' : 'error'});
 	};
 
+	const saveAsPreset = async () => {
+		setBusy(true);
+		const result = await savePreset(presetName.trim(), settings);
+		setBusy(false);
+		setFeedback({text: result.ok ? `Preset "${presetName.trim()}" saved.` : result.message, severity: result.ok ? 'success' : 'error'});
+		if (result.ok) {
+			setPresetName('');
+			loadPresets();
+		}
+	};
+
+	const usePreset = async (preset: ISessionPreset) => {
+		setBusy(true);
+		const result = await applyPreset(preset.id);
+		setBusy(false);
+		setFeedback({text: result.ok ? `"${preset.name}" sent. It applies when the next session starts.` : result.message, severity: result.ok ? 'success' : 'error'});
+	};
+
+	const removePreset = async () => {
+		if (!toDelete) {
+			return;
+		}
+
+		const result = await deletePreset(toDelete.id);
+		setToDelete(null);
+		setFeedback({text: result.message, severity: result.ok ? 'success' : 'error'});
+		loadPresets();
+	};
+
 	const advance = async () => {
 		setConfirmAdvance(false);
 		setBusy(true);
@@ -256,7 +303,37 @@ const NextSessionPanel = () => {
 				<Button variant="contained" disabled={!canApply} onClick={apply}>Apply to next session</Button>
 				<Button color="warning" disabled={busy} onClick={() => setConfirmAdvance(true)}>Advance to next stage</Button>
 			</Stack>
+			<Stack direction={{xs: 'column', sm: 'row'}} spacing={2} sx={{alignItems: {sm: 'flex-end'}}}>
+				<TextField label="Save these settings as a preset" variant="standard" fullWidth value={presetName} onChange={e => setPresetName(e.target.value)}
+					helperText="Saving under an existing name replaces that preset" slotProps={{htmlInput: {maxLength: 40}}} />
+				<Button disabled={!canApply || presetName.trim() === ''} onClick={saveAsPreset}>Save preset</Button>
+			</Stack>
+			{presets.length > 0 && <>
+				<Typography variant="subtitle2">Saved presets</Typography>
+				<Table size="small" aria-label="Presets">
+					<TableBody>
+						{presets.map(p => (
+							<TableRow key={p.id}>
+								<TableCell component="th" scope="row">{p.name}</TableCell>
+								<TableCell>{describePreset(p.settings, tracks)}</TableCell>
+								<TableCell align="right" sx={{whiteSpace: 'nowrap'}}>
+									<Button size="small" disabled={busy} onClick={() => usePreset(p)}>Apply</Button>
+									<Button size="small" color="error" onClick={() => setToDelete(p)}>Delete</Button>
+								</TableCell>
+							</TableRow>
+						))}
+					</TableBody>
+				</Table>
+			</>}
 			<Feedback feedback={feedback} />
+
+			<Dialog open={toDelete !== null} onClose={() => setToDelete(null)}>
+				<DialogTitle>Delete the preset &quot;{toDelete?.name}&quot;?</DialogTitle>
+				<DialogActions>
+					<Button onClick={() => setToDelete(null)}>Cancel</Button>
+					<Button color="error" onClick={removePreset}>Delete</Button>
+				</DialogActions>
+			</Dialog>
 
 			<Dialog open={confirmAdvance} onClose={() => setConfirmAdvance(false)}>
 				<DialogTitle>Advance the session?</DialogTitle>

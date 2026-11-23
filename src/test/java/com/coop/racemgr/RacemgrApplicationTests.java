@@ -47,6 +47,8 @@ class RacemgrApplicationTests {
     @MockitoBean
     private com.coop.racemgr.audit.AuditEventRepository auditEventRepository;
     @MockitoBean
+    private com.coop.racemgr.repositories.SessionPresetRepository sessionPresetRepository;
+    @MockitoBean
     private com.coop.racemgr.repositories.AdminCredentialRepository adminCredentialRepository;
 
     private static final String LOGIN_OK = "{\"username\":\"admin\",\"password\":\"correct-horse-battery\"}";
@@ -479,6 +481,41 @@ class RacemgrApplicationTests {
         mvc.perform(get("/api/v1/admin/gameserver/whitelist")).andExpect(status().isUnauthorized());
         Cookie session = adminSession();
         mvc.perform(adminJson(post("/api/v1/admin/gameserver/whitelist"), session, "{\"steamId\":\"nope\"}")).andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void presetsAreValidatedSavedAndAdminOnly() throws Exception {
+        mvc.perform(get("/api/v1/admin/gameserver/presets")).andExpect(status().isUnauthorized());
+        Cookie xsrf = xsrfCookie();
+        mvc.perform(post("/api/v1/admin/gameserver/presets/" + "a".repeat(24) + "/apply").cookie(xsrf).header("X-XSRF-TOKEN", xsrf.getValue())
+                .contentType(MediaType.APPLICATION_JSON).content("{}")).andExpect(status().isUnauthorized());
+
+        Cookie session = adminSession();
+        var presets = "/api/v1/admin/gameserver/presets";
+        for (String bad : new String[]{"{}", "{\"name\":\"x\"}", "{\"name\":\"\",\"settings\":{\"RaceLength\":5}}", "{\"name\":\"a\\nb\",\"settings\":{\"RaceLength\":5}}",
+                "{\"name\":\"ok\",\"settings\":{\"ServerControlsSetup\":1}}", "{\"name\":\"ok\",\"settings\":{\"RaceLength\":0}}", "{\"name\":\"" + "x".repeat(41) + "\",\"settings\":{\"RaceLength\":5}}"}) {
+            mvc.perform(adminJson(post(presets), session, bad)).andExpect(status().isBadRequest());
+        }
+
+        var saved = new java.util.ArrayList<com.coop.racemgr.model.SessionPreset>();
+        org.mockito.Mockito.when(sessionPresetRepository.save(org.mockito.ArgumentMatchers.any())).thenAnswer(i -> {
+            saved.add(i.getArgument(0));
+            return i.getArgument(0);
+        });
+        mvc.perform(adminJson(post(presets), session, "{\"name\":\" GT3 sprint \",\"settings\":{\"RaceLength\":10,\"TrackId\":-559709709}}")).andExpect(status().isOk());
+        assertThat(saved).hasSize(1);
+        assertThat(saved.get(0).getName()).isEqualTo("GT3 sprint");
+        assertThat(saved.get(0).getSettings()).containsEntry("RaceLength", 10);
+
+        org.mockito.Mockito.when(sessionPresetRepository.count()).thenReturn((long) com.coop.racemgr.model.SessionPreset.MAX_PRESETS);
+        mvc.perform(adminJson(post(presets), session, "{\"name\":\"one more\",\"settings\":{\"RaceLength\":5}}")).andExpect(status().isBadRequest());
+
+        mvc.perform(adminJson(post(presets + "/not-an-id/apply"), session, "{}")).andExpect(status().isNotFound());
+        mvc.perform(adminJson(post(presets + "/" + "b".repeat(24) + "/apply"), session, "{}")).andExpect(status().isNotFound());
+        // A stored preset that no longer passes the checks (edited in the database) is never sent
+        var tampered = new com.coop.racemgr.model.SessionPreset("c".repeat(24), "tampered", java.util.Map.of("ServerControlsSetup", 1));
+        org.mockito.Mockito.when(sessionPresetRepository.findById("c".repeat(24))).thenReturn(java.util.Optional.of(tampered));
+        mvc.perform(adminJson(post(presets + "/" + "c".repeat(24) + "/apply"), session, "{}")).andExpect(status().isConflict());
     }
 
     @Test

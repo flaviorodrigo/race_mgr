@@ -369,6 +369,37 @@ scenario('kicking a player reaches the game server, and the action is in the act
   assert.ok(audit.data.some(e => e.action === 'kick and ban'));
 });
 
+scenario('a preset saves the next-session settings and applies them to the game server in one click', async () => {
+  await go('/manageserver');
+  await openSection('Next session settings');
+  await (await state.page.$('[role="combobox"][aria-labelledby~="next-track"]')).click();
+  await state.page.waitForSelector('[role="listbox"]');
+  await state.page.evaluate(() => [...document.querySelectorAll('[role="option"]')].find(o => o.innerText.includes('Brands Hatch GP'))?.click());
+  await sleep(300);
+  await setInput(await labelled('Race laps'), '10');
+  await setInput(await labelled('Qualifying minutes'), '15');
+  await setInput(await labelled('Save these settings as a preset'), 'Sprint');
+  await clickText('button', 'save preset');
+  await sleep(1500);
+  const saved = await rows('table[aria-label="Presets"]');
+  assert.equal(saved.length, 1);
+  assert.match(saved[0], /^Sprint Brands Hatch GP · 10 laps · qualifying 15 min/);
+
+  await clickText('table[aria-label="Presets"] button', 'apply');
+  await sleep(1200);
+  const call = (await fakeCalls()).filter(c => c.call === 'set_next').pop();
+  assert.ok(call, 'the game server was told');
+  assert.match(call.raw_query, /session_TrackId=1534602052/);
+  assert.match(call.raw_query, /session_RaceLength=10/);
+  assert.match(call.raw_query, /session_QualifyLength=15/);
+
+  await clickText('table[aria-label="Presets"] button', 'delete');
+  await state.page.waitForSelector('[role="dialog"]');
+  await clickText('[role="dialog"] button', 'delete');
+  await sleep(1200);
+  assert.equal(await state.page.$('table[aria-label="Presets"]'), null);
+});
+
 scenario('signing out ends the admin session', async () => {
   await go('/');
   await state.page.click('button[aria-label="Logout"]');
