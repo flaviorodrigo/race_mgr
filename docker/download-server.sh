@@ -14,14 +14,14 @@ mkdir -p ams2-server
 docker run -it --rm \
   -v "$PWD/ams2-server:/server" \
   steamcmd/steamcmd:latest \
-  +@sSteamCmdForcePlatformType windows \
   +force_install_dir /server \
   +login "$STEAM_USERNAME" \
+  +@sSteamCmdForcePlatformType windows \
   +app_update 1338040 validate \
-  +quit
+  +quit || true
 
 if [ ! -f ams2-server/DedicatedServerCmd.exe ]; then
-  echo "The download failed: see the SteamCMD output above." >&2
+  echo "The download failed: see the SteamCMD output above. (A first attempt sometimes fails with 'Missing configuration': run it again.)" >&2
   exit 1
 fi
 

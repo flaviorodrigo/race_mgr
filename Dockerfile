@@ -73,8 +73,14 @@ RUN --mount=type=secret,id=steam_password,required=false \
         guard=""; [ -s /run/secrets/steam_guard_code ] && guard="$(cat /run/secrets/steam_guard_code)"; \
         set -- +login "$user" "$(cat /run/secrets/steam_password)" $guard; \
     fi; \
-    steamcmd +@sSteamCmdForcePlatformType windows +force_install_dir /server "$@" +app_update 1338040 validate +quit; \
-    # SteamCMD exits 0 even when the login or download failed, so check for the program itself
+    # The order that works for the AMS2 server (the platform is chosen after logging in). A fresh SteamCMD
+    # sometimes answers "Missing configuration" on its first attempt, so try a few times; SteamCMD's exit code
+    # isn't reliable, so success is the program being there.
+    for attempt in 1 2 3; do \
+        steamcmd +force_install_dir /server "$@" +@sSteamCmdForcePlatformType windows +app_update 1338040 validate +quit || true; \
+        [ -f /server/DedicatedServerCmd.exe ] && break; \
+        echo "Attempt $attempt did not install the server, trying again" >&2; sleep 5; \
+    done; \
     test -f /server/DedicatedServerCmd.exe || { echo "The download failed (see the SteamCMD output above)" >&2; exit 1; }
 
 # A stage of its own so a build can swap it for a folder: --build-context ams2-files=./some-folder
