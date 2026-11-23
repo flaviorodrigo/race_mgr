@@ -99,6 +99,12 @@ Instead of step 2, the build itself can download the game server: `./docker/buil
 - **Keep that image on your machine.** It contains Reiza's server files, so never push it to a registry. A plain `docker compose up --build` still builds the normal image without them.
 - Status: the build stages and the copy-on-start logic are tested, but the SteamCMD download step itself has not been run against a real Steam account.
 
+#### Building on GitHub
+
+`.github/workflows/docker.yml` builds the image on every push and pull request and checks it (Java and Wine are there, a start without game server files says so, and the `with-server` target copies stand-in server files in on first start and then leaves them alone). Pushing a version tag such as `v1.0.0` also **publishes** the plain image to `ghcr.io/<owner>/race_mgr`, which contains no game server files, so `image: ghcr.io/<owner>/race_mgr:v1.0.0` can replace `build: .` in the compose file.
+
+GitHub does not build the `with-server` image with the real download, on purpose: it would need your Steam password in the repository's secrets, a Steam Guard code can't be supplied to an unattended build, and publishing an image that holds Reiza's server files would redistribute them. Build that one on your own machine.
+
 ## Championships & scoring
 
 A **session** is a championship: its standings are the "Session Leaders" table, and "Points by Round" shows every driver's points in each race (round) plus the total. Rounds are numbered in the order the races were run.
