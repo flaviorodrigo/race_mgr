@@ -1,11 +1,11 @@
 import _ from 'lodash';
 
-import {calculatePoints} from '../../utils/pointsCalculator';
+import {calculatePoints, IScoring} from '../../utils/pointsCalculator';
 import {IRace} from './interfaces';
 
 import RaceMgrApi from '../../api/RaceMgrApi';
 
-export const fetchRaceData = async (currentSessionId?:string, currentRotationId?: string) => {
+export const fetchRaceData = async (currentSessionId?:string, currentRotationId?: string, scoring?: IScoring | null) => {
 	const rmApi = new RaceMgrApi();
 	try {
 		if (!currentSessionId) {
@@ -28,7 +28,7 @@ export const fetchRaceData = async (currentSessionId?:string, currentRotationId?
 		if (raceData === null) {
 			sessionResults = [];
 		} else {
-			sessionResults = mapRaceDataToRaceResultsObject(raceData);
+			sessionResults = mapRaceDataToRaceResultsObject(raceData, scoring);
 		}
 
 		return sessionResults;
@@ -71,7 +71,7 @@ export const fetchVehicleData = async () => {
 	}
 };
 
-const mapRaceDataToRaceResultsObject = (data:Array<any>):Array<IRace> => {
+const mapRaceDataToRaceResultsObject = (data:Array<any>, scoring?: IScoring | null):Array<IRace> => {
 	const raceResults:Array<IRace> = [];
 
 	const finishedRaces = data.filter(d => d.finished === true && d.stages.race1);
@@ -109,7 +109,7 @@ const mapRaceDataToRaceResultsObject = (data:Array<any>):Array<IRace> => {
 				vehicleId: r.attributes.VehicleId,
 				fastestLapTime: r.attributes.FastestLapTime,
 				totalTime: r.attributes.TotalTime,
-				totalPoints: calculatePoints(r.attributes.RacePosition, Object.keys(thisRace.participants).length, r.name === polePositionName, r.name === fastestLapName),
+				totalPoints: calculatePoints(r.attributes.RacePosition, Object.keys(thisRace.participants).length, {tookPole: r.name === polePositionName, fastestLap: r.name === fastestLapName, scoring}),
 				hadFastestLap: r.name === fastestLapName,
 			})),
 			qualifyingResults: thisRace.stages.qualifying1?.results.map((r:any) => ({

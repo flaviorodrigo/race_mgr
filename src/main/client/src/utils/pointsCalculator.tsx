@@ -1,4 +1,24 @@
-export const calculatePoints = (finishPlace:number, numberOfPlayers:number, tookPole?: boolean, fastestLap?:boolean) => {
+export interface IScoring {
+	type: 'default' | 'table',
+	positions: Array<number>, // Points for 1st, 2nd, 3rd...
+	poleBonus: number,
+	fastestLapBonus: number,
+}
+
+// Sessions without a scoring table use the original built-in formula below.
+export interface IPointsOptions {
+	tookPole?: boolean,
+	fastestLap?: boolean,
+	scoring?: IScoring | null,
+}
+
+export const calculatePoints = (finishPlace:number, numberOfPlayers:number, options: IPointsOptions = {}) => {
+	const {tookPole, fastestLap, scoring} = options;
+	if (scoring && scoring.type === 'table') {
+		const base = scoring.positions[finishPlace - 1] ?? 0;
+		return base + (tookPole ? scoring.poleBonus : 0) + (fastestLap ? scoring.fastestLapBonus : 0);
+	}
+
 	const pointsPositions = Math.round(numberOfPlayers / 2); // Assign points for the 1st half of the finish places
 	const pointsPositionsBeat = pointsPositions - finishPlace;
 

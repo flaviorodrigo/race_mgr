@@ -18,6 +18,8 @@ public class RaceSession {
     public Long created;
     public Long updated;
     public Boolean active;
+    // Null means the built-in points formula
+    public ScoringConfig scoring;
 
     public RaceSession(String name, ArrayList<String> raceRotationIds) {
         this.name = name;

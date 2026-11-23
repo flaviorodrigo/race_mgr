@@ -9,6 +9,7 @@ import {convertEpochTimeToRaceResult} from '../../utils/dateTimeUtils';
 
 import {fetchTrackData, fetchVehicleData} from './utilities';
 import {SortHeadCell, useSort} from './sorting';
+import {roundsOf} from './RoundPoints';
 
 import Box from '@mui/material/Box';
 import Collapse from '@mui/material/Collapse';
@@ -39,6 +40,7 @@ interface IColumn {
 }
 
 const columns: Array<IColumn> = [
+	{label: 'Rnd'},
 	{label: 'Track', key: 'trackName', text: true},
 	{label: 'Start Date', key: 'startDate'},
 	{label: 'Start Time'},
@@ -53,7 +55,7 @@ const columns: Array<IColumn> = [
 
 const isHuman = (driverName:string) => driverName.slice(-4) !== '(AI)';
 
-function Row(props: { row: IRace, trackData: Array<ITrackData>, vehicleData: Array<IVehicleData> }) {
+function Row(props: { row: IRace, round: number, trackData: Array<ITrackData>, vehicleData: Array<IVehicleData> }) {
 	const {row} = props;
 	const [open, setOpen] = React.useState(false);
 
@@ -69,6 +71,7 @@ function Row(props: { row: IRace, trackData: Array<ITrackData>, vehicleData: Arr
 						{open ? <KeyboardArrowUpIcon /> : <KeyboardArrowDownIcon />}
 					</IconButton>
 				</TableCell>
+				<TableCell component="th" scope="row">{props.round}</TableCell>
 				<TableCell component="th" scope="row">
 					{ props.trackData?.filter(td => td.id === row.trackName)[0]?.name.replaceAll('_', ' ') }
 				</TableCell>
@@ -104,7 +107,7 @@ function Row(props: { row: IRace, trackData: Array<ITrackData>, vehicleData: Arr
 				}}>{row.winner}</TableCell>
 			</TableRow>
 			<TableRow>
-				<TableCell style={{paddingBottom: 0, paddingTop: 0}} colSpan={12}>
+				<TableCell style={{paddingBottom: 0, paddingTop: 0}} colSpan={13}>
 					<Collapse in={open} timeout="auto" unmountOnExit>
 						<Box sx={{margin: 1}}>
 							<Typography variant="h6" gutterBottom component="div">
@@ -183,6 +186,9 @@ const RaceResults = (props:IProps) => {
 		fetchVehicleData().then(vd => setVehicleData(vd));
 	}, []);
 
+	// Round numbers follow the order the races were run, whichever way the table is sorted
+	const roundNumbers = React.useMemo(() => new Map<IRace, number>(roundsOf(props.filteredRaces).map((race, i) => [race, i + 1])), [props.filteredRaces]);
+
 	const sortedRaces = React.useMemo(() => {
 		const trackName = (r: IRace) => (trackData.find(td => td.id === r.trackName)?.name ?? r.trackName ?? '').toLowerCase();
 		const iteratee = orderBy === 'trackName' ? trackName : orderBy;
@@ -206,7 +212,7 @@ const RaceResults = (props:IProps) => {
 					</TableHead>
 					<TableBody>
 						{sortedRaces.map((row, idx) => (
-							<Row key={idx} row={row} trackData={trackData} vehicleData={vehicleData} />
+							<Row key={idx} row={row} round={roundNumbers.get(row) ?? 0} trackData={trackData} vehicleData={vehicleData} />
 						))}
 					</TableBody>
 				</Table>

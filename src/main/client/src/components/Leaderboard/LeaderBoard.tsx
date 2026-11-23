@@ -19,6 +19,7 @@ import AdvancedFiltersDialog from './AdvancedFiltersDialog';
 import SessionsFilter from './ServerConfig/SessionsFilter';
 import DateFilter from './DateFilter';
 import RaceResults from './RaceResults';
+import RoundPoints from './RoundPoints';
 import RaceSummary from './RaceSummary';
 
 import {IRace} from './interfaces';
@@ -79,7 +80,8 @@ const LeaderBoard:React.FC = () => {
 		}
 
 		setFetchingData(true);
-		fetchRaceData(selectedSessionId, selectedRotationId).then(r => {
+		const scoring = sessions.sessions?.find((s: any) => s.id === selectedSessionId)?.scoring;
+		fetchRaceData(selectedSessionId, selectedRotationId, scoring).then(r => {
 			const raceResults = (r as Array<IRace>)?.filter(r => r.finished === true);
 
 			if (!raceResults || raceResults.length === 0) {
@@ -97,7 +99,7 @@ const LeaderBoard:React.FC = () => {
 			setRaces(raceResults);
 			setFetchingData(false);
 		});
-	}, [selectedRotationId, selectedSessionId]);
+	}, [selectedRotationId, selectedSessionId, sessions.sessions]);
 
 	useEffect(() => {
 		let newResults = races.filter(r => r.startDate >= startDate && r.endDate <= endDate);
@@ -165,6 +167,10 @@ const LeaderBoard:React.FC = () => {
 						<Box>
 							<Typography variant="h6" align="left">Session Leaders</Typography>
 							<RaceSummary filteredRaces={filteredRaces} />
+						</Box>
+						<Box>
+							<Typography variant="h6" align="left">Points by Round</Typography>
+							<RoundPoints filteredRaces={filteredRaces} />
 						</Box>
 						<Box>
 							<Typography variant="h6" align="left">Race Summary</Typography>

@@ -63,6 +63,12 @@ What is exposed: the web UI only on `127.0.0.1:8080` (put a TLS reverse proxy in
 
 The Wine image is amd64 only. Update the game server by re-running step 2 and `docker compose restart racemgr`.
 
+## Championships & scoring
+
+A **session** is a championship: its standings are the "Session Leaders" table, and "Points by Round" shows every driver's points in each race (round) plus the total. Rounds are numbered in the order the races were run.
+
+Each session chooses how points are awarded under *Manage Server → Scoring*: the original built-in formula, a preset (F1 style, F1 2003-2009, Top 10) or your own table of points per finishing position, plus optional pole position and fastest lap bonuses. Changing the scoring re-scores every race in the session, past ones included. The same settings are available through the API (`scoring` on `POST`/`PUT /api/v1/admin/race/session`).
+
 ## Troubleshooting Tips
 - If the console window appears and disappears immediate after launch, there is likely a configuration error (i.e.) something incorrect with the values you supplied to the installer and/or entered directly into the required Windows environment variables. For example, Race Manager is unable to connect to Mongo because the wrong password was supplied. It could also be a Java version mismatch (installing from the link provided above would rule this problem out).
   

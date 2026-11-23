@@ -3,11 +3,14 @@ export interface IServerConfig {
     activeRaceRotationId:string
 }
 
+import {IScoring} from '../../utils/pointsCalculator';
+
 export interface ISession {
 	id: string,
 	name: string,
 	startDate: number, // Epoch
-	finished: boolean
+	finished: boolean,
+	scoring?: IScoring | null
 }
 
 export interface IRotation {

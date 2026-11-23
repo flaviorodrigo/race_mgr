@@ -3,6 +3,7 @@ package com.coop.racemgr.controllers;
 import com.coop.racemgr.RacemgrApplication;
 import com.coop.racemgr.gameserver.GameServerProxy;
 import com.coop.racemgr.model.RaceSession;
+import com.coop.racemgr.model.ScoringConfig;
 import com.coop.racemgr.repositories.RaceSessionRepository;
 import com.coop.racemgr.utils.RacemgrUtils;
 import lombok.Data;
@@ -33,6 +34,13 @@ public class RaceSessionController {
         private ArrayList<String> raceRotationIds = new ArrayList<String>();
         private Long updated;
         private Boolean active;
+        // Optional on create and update. On update, absent means "leave the scoring as it is".
+        private ScoringConfig scoring;
+    }
+
+    // The built-in formula is stored as "no scoring" so old and new sessions look the same
+    private static ScoringConfig normalizedScoring(ScoringConfig scoring) {
+        return scoring == null || ScoringConfig.TYPE_DEFAULT.equals(scoring.getType()) ? null : scoring;
     }
 
     /** ADMIN ENDPOINTS **/
@@ -40,8 +48,14 @@ public class RaceSessionController {
     @PostMapping("/api/v1/admin/race/session")
     public ResponseEntity<Object> raceSession(@RequestBody RaceSessionRequest request) {
         try {
+            var scoringProblem = request.scoring == null ? null : request.scoring.validate();
+            if (scoringProblem != null) {
+                return ResponseHandler.generateResponse(scoringProblem, HttpStatus.BAD_REQUEST, null);
+            }
+
             // If successfully written, save this config in the db history
             var raceSession = new RaceSession(request.name, request.raceRotationIds);
+            raceSession.setScoring(normalizedScoring(request.scoring));
             raceSessionRepository.save(raceSession);
             return ResponseHandler.generateResponse("Successfully created race session!", HttpStatus.OK, raceSession);
         } catch (Exception e) {
@@ -57,9 +71,17 @@ public class RaceSessionController {
             return ResponseHandler.generateResponse("Race session not found!", HttpStatus.NOT_FOUND, null);
         }
 
+        var scoringProblem = request.scoring == null ? null : request.scoring.validate();
+        if (scoringProblem != null) {
+            return ResponseHandler.generateResponse(scoringProblem, HttpStatus.BAD_REQUEST, null);
+        }
+
         try {
             rs.setName(request.name);
             rs.setRaceRotationIds(request.raceRotationIds);
+            if (request.scoring != null) {
+                rs.setScoring(normalizedScoring(request.scoring));
+            }
             rs.setUpdated(System.currentTimeMillis());
             raceSessionRepository.save(rs);
             return ResponseHandler.generateResponse("Successfully updated race session!", HttpStatus.OK, null);

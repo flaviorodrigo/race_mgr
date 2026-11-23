@@ -25,11 +25,13 @@ import Select, {SelectChangeEvent} from '@mui/material/Select';
 import {Stack} from '@mui/material';
 import {getSessions, setSelectedSessionId} from '../../state/sessions';
 import {getRotations, setSelectedRotationId} from '../../state/rotations';
+import ScoringDialog from './ScoringDialog';
 
 const ServerConfig = () => {
 	const {serverStatus, sessions, rotations, serverConfig} = useSelector((state:any) => state);
 
 	const [addSessionDialogIsOpen, setAddSessionDialogIsOpen] = useState(false);
+	const [scoringDialogIsOpen, setScoringDialogIsOpen] = useState(false);
 	const [viewRotationDialogIsOpen, setViewRotationDialogIsOpen] = useState(false);
 	const [addRotationDialogIsOpen, setAddRotationDialogIsOpen] = useState(false);
 
@@ -71,7 +73,7 @@ const ServerConfig = () => {
 					</FormControl>
 				</Grid>
 				<Grid size={{xs: 12, md: 6}}>
-					<FormControl variant="standard" sx={{p: 1, m: 1, minWidth: 320}} size="small">
+					<Stack direction="row" spacing={3} sx={{p: 1, m: 1}}>
 						<Typography align="left">
 							<Link
 								component="button"
@@ -84,7 +86,20 @@ const ServerConfig = () => {
 					Add Session
 							</Link>
 						</Typography>
-					</FormControl>
+						<Typography align="left">
+							<Link
+								component="button"
+								variant="body2"
+								underline="none"
+								disabled={!sessions.selectedSessionId || sessions.selectedSessionId === 'All'}
+								onClick={() => {
+									setScoringDialogIsOpen(true);
+								}}
+							>
+					Scoring
+							</Link>
+						</Typography>
+					</Stack>
 				</Grid>
 			</Grid>
 
@@ -144,6 +159,7 @@ const ServerConfig = () => {
 			</Grid>
 			<Grid size={{md: 12}}>
 				<AddSessionDialog open={addSessionDialogIsOpen} setOpen={setAddSessionDialogIsOpen} />
+				<ScoringDialog open={scoringDialogIsOpen} setOpen={setScoringDialogIsOpen} />
 				<AddRotationDialog open={addRotationDialogIsOpen} setOpen={setAddRotationDialogIsOpen} />
 				<ViewRotationDialog open={viewRotationDialogIsOpen} setOpen={setViewRotationDialogIsOpen} />
 			</Grid>

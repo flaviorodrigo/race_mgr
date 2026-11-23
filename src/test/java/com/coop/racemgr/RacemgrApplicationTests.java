@@ -211,4 +211,70 @@ class RacemgrApplicationTests {
         mvc.perform(post("/api/v1/authenticate").cookie(xsrf).header("X-XSRF-TOKEN", "forged")
                 .contentType(MediaType.APPLICATION_JSON).content(LOGIN_OK)).andExpect(status().isForbidden());
     }
+
+    // ---- Session scoring ----
+
+    private Cookie adminSession() throws Exception {
+        var res = mvc.perform(loginRequest(LOGIN_OK)).andExpect(status().isOk()).andReturn().getResponse();
+        String jwt = res.getHeaders("Set-Cookie").stream().filter(h -> h.startsWith("JWT-TOKEN=")).findFirst().orElseThrow();
+        return new Cookie("JWT-TOKEN", jwt.substring("JWT-TOKEN=".length(), jwt.indexOf(';')));
+    }
+
+    private MockHttpServletRequestBuilder adminJson(MockHttpServletRequestBuilder builder, Cookie session, String body) throws Exception {
+        Cookie xsrf = xsrfCookie();
+        return builder.cookie(session, xsrf).header("X-XSRF-TOKEN", xsrf.getValue())
+                .contentType(MediaType.APPLICATION_JSON).content(body);
+    }
+
+    @Test
+    void sessionsCanBeCreatedWithAScoringTable() throws Exception {
+        Cookie session = adminSession();
+        var captor = org.mockito.ArgumentCaptor.forClass(com.coop.racemgr.model.RaceSession.class);
+
+        mvc.perform(adminJson(post("/api/v1/admin/race/session"), session,
+                "{\"name\":\"Cup\",\"raceRotationIds\":[],\"scoring\":{\"type\":\"table\",\"positions\":[25,18,15],\"poleBonus\":1,\"fastestLapBonus\":2}}"))
+                .andExpect(status().isOk());
+
+        org.mockito.Mockito.verify(raceSessionRepository, org.mockito.Mockito.atLeastOnce()).save(captor.capture());
+        var saved = captor.getValue().getScoring();
+        assertThat(saved.getPositions()).containsExactly(25, 18, 15);
+        assertThat(saved.getPoleBonus()).isEqualTo(1);
+        assertThat(saved.getFastestLapBonus()).isEqualTo(2);
+    }
+
+    @Test
+    void invalidScoringIsRejected() throws Exception {
+        Cookie session = adminSession();
+        for (String bad : new String[]{
+                "{\"type\":\"table\",\"positions\":[]}",
+                "{\"type\":\"table\",\"positions\":[-1]}",
+                "{\"type\":\"table\",\"positions\":[5000]}",
+                "{\"type\":\"table\",\"positions\":[1],\"poleBonus\":-3}",
+                "{\"type\":\"mystery\",\"positions\":[1]}"}) {
+            mvc.perform(adminJson(post("/api/v1/admin/race/session"), session,
+                    "{\"name\":\"Bad\",\"raceRotationIds\":[],\"scoring\":" + bad + "}"))
+                    .andExpect(status().isBadRequest());
+        }
+    }
+
+    @Test
+    void updatingASessionKeepsItsScoringUnlessToldOtherwise() throws Exception {
+        Cookie session = adminSession();
+        var existing = new com.coop.racemgr.model.RaceSession("Cup", new java.util.ArrayList<>());
+        var scoring = new com.coop.racemgr.model.ScoringConfig();
+        scoring.setPositions(java.util.List.of(10, 5));
+        existing.setScoring(scoring);
+        org.mockito.Mockito.when(raceSessionRepository.findItemById("abc")).thenReturn(existing);
+
+        // Rotation-only update, as the UI sends when a rotation is added
+        mvc.perform(adminJson(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put("/api/v1/admin/race/session/abc"),
+                session, "{\"name\":\"Cup\",\"raceRotationIds\":[\"r1\"]}")).andExpect(status().isOk());
+        assertThat(existing.getScoring()).isNotNull();
+        assertThat(existing.getRaceRotationIds()).containsExactly("r1");
+
+        // Explicitly going back to the built-in formula clears it
+        mvc.perform(adminJson(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put("/api/v1/admin/race/session/abc"),
+                session, "{\"name\":\"Cup\",\"raceRotationIds\":[],\"scoring\":{\"type\":\"default\"}}")).andExpect(status().isOk());
+        assertThat(existing.getScoring()).isNull();
+    }
 }

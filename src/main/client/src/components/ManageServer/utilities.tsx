@@ -4,6 +4,7 @@ import {ISession, IServerConfig, IAddRotation, IRotationDetail} from './interfac
 
 import {defaultConfig} from './defaults';
 
+import {IScoring} from '../../utils/pointsCalculator';
 import RaceMgrApi from '../../api/RaceMgrApi';
 
 export const fetchSessions = async () => {
@@ -105,12 +106,14 @@ export const activateRotationId = async (rotationId:string) => {
 	}
 };
 
-export const updateSession = async (sessionName: string, sessionId:string, rotationIds: Array<string>) => {
+// `scoring` is optional: leaving it out keeps the session's current scoring
+export const updateSession = async (sessionName: string, sessionId:string, rotationIds: Array<string>, scoring?: IScoring) => {
 	const rmApi = new RaceMgrApi();
 
 	const data = {
 		name: sessionName,
 		raceRotationIds: rotationIds,
+		...(scoring && {scoring}),
 	};
 
 	try {
@@ -295,6 +298,7 @@ const mapSessionDataToSessionObject = (data:Array<any>):Array<ISession> => {
 		name: d.name,
 		startDate: d.created,
 		finished: true,
+		scoring: d.scoring ?? null,
 	}));
 
 	return mappedResult;
