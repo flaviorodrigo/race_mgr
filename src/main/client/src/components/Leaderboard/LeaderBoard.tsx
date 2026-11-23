@@ -116,7 +116,8 @@ const LeaderBoard:React.FC = () => {
 			rr => rr.raceResults.filter(r => r.isPlayer === true).length >= advancedFilters.humanPlayers[0]
 				&& rr.raceResults.filter(r => r.isPlayer === true).length <= advancedFilters.humanPlayers[1],
 		);
-		newResults = newResults.filter(nr => nr.aiStrength >= advancedFilters.aiStrength[0] && nr.aiStrength <= advancedFilters.aiStrength[1]);
+		// A race that doesn't record the AI strength (the ams2_stats addon doesn't) is never filtered out by it
+		newResults = newResults.filter(nr => nr.aiStrength === undefined || nr.aiStrength === null || (nr.aiStrength >= advancedFilters.aiStrength[0] && nr.aiStrength <= advancedFilters.aiStrength[1]));
 		newResults = newResults.filter(nr => nr.gridSize >= advancedFilters.gridSize[0] && nr.gridSize <= advancedFilters.gridSize[1]);
 
 		setFilteredRaces(newResults);

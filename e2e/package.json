@@ -1,0 +1,12 @@
+{
+  "name": "racemgr-e2e",
+  "private": true,
+  "type": "module",
+  "description": "End-to-end tests: the real jar, a real MongoDB and a headless Chrome against a stand-in game server",
+  "scripts": {
+    "test": "node --test --test-timeout=300000 e2e.test.mjs"
+  },
+  "dependencies": {
+    "puppeteer-core": "^25.18.1"
+  }
+}

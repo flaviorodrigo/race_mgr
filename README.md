@@ -75,6 +75,8 @@ The same dialog sets the championship rules:
 - **Point adjustments**: manual corrections such as `Ayrton S, -5, track limits`, added after drops.
 - **Teams**: `Red Team: Ayrton S, Alain P` per line adds a *Team Standings* table (a team's points are its drivers' totals).
 
+An admin can add **penalties** to a finished race from its page (*Penalties and video*): a number of seconds added to a driver's race time, or a disqualification. The result is re-ordered when the page is shown (finishers by laps then time, then the others as the game server gave them) and points follow, so standings, rounds, driver pages and CSV all agree; the game server's own record is never changed, and removing the penalty puts everything back. The same dialog sets a **video link** (https YouTube or Twitch only), shown to everyone as *Watch the race*.
+
 An admin can **void** a race from its row in the race list. It stays visible, marked *Void*, but no longer counts towards standings, rounds or fastest laps; *Restore race* brings it back. *Export CSV* buttons save the standings and the points-by-round grid. Click a driver in the standings for their own page (results round by round, wins, podiums, poles, best and average finish). The same settings are available through the API (`scoring` on `POST`/`PUT /api/v1/admin/race/session`).
 
 ## Live session
@@ -85,6 +87,14 @@ When the game server is running with its HTTP API enabled, Race Manager shows wh
 - **Admins** get a *Live Session* panel under *Manage Server* with each player's Steam ID, a **Kick** button (with confirmation, optionally with a temporary ban of 10 minutes to 30 days) and a box to send a chat message to the session.
 
 The game server treats kick and chat as admin actions and by default only accepts them from `127.0.0.1`, which is where Race Manager runs.  Bans are the game server's own temporary bans (a number of seconds), so they last until they expire. All of this goes through `/api/v1/gameserver/session` (public), `/api/v1/admin/gameserver/session`, `/api/v1/admin/gameserver/kick` and `/api/v1/admin/gameserver/chat` (admin).
+
+### Live timing
+
+**Live Timing** in the menu is a page for everyone (it refreshes every 3 seconds): the cars of the running session in race order with lap, the three sector times, last and best lap, and the quickest of each marked in green, plus the stage, track and "Lap 4 of 10". It reads the game server's own session status, names only (`/api/v1/gameserver/timing`, public).
+
+## Records
+
+**Records** in the menu totals every finished race on the server across all championships: per driver the races, wins, podiums, poles, fastest laps, best and average finish, retirements and disqualifications, and the quickest lap ever set at each track (race or qualifying). Voided races and AI drivers are left out. Points are not totalled there because each championship scores differently.
 
 ## Game server that runs somewhere else (e.g. its own container on a NAS)
 
@@ -104,6 +114,8 @@ Under *Manage Server*, below the live session, each tool opens on its own:
 - **Rotation builder** builds a rotation by hand: one vehicle class, then the track and weather for each round, in order, with move and remove buttons. Start from a saved rotation or import a rotation file, and export the result in the game server's own file format to share it. Saving only stores it; it goes live when you select it and use *Update Server*. Rotations are checked before they are written (known settings, simple values, at most 200 rounds).
 - **Next session settings** changes the track, race laps, practice and qualifying minutes or AI difficulty for the *next* session without restarting the game server, and can advance the running session to its next stage. Only fields you fill in are sent. A rotation may set the track again when the next session starts.
 - **Ban list** edits the game server's permanent ban file (`blacklist.cfg` in its folder) in the server's own layout: a `[ ... ]` list with one Steam ID per line and optional `// notes`. Header comments and the rest of the file are kept. It refuses a file with any other layout instead of risking damage. The game server reads the file when it loads its configuration, so restart it for a change to be sure to apply.
+- **Whitelist** edits the game server's `whitelist.cfg` the same way. The game server only uses it when `server.cfg` has `whiteList : { "whitelist" : "whitelist.cfg" }`: from then on **only the listed players can join** (and the ban list is ignored), which is how you run a closed league. Race Manager tells you whether the server is using the list and warns when it is, because an empty list in use lets everybody in. Restart the game server for a change to be sure to apply.
+- **Game server log** shows what the game server itself recorded recently (joins, leaves, stage changes, chat, results), newest first, with a filter. Values are always shown as plain text.
 - **Balance of performance** edits per-driver ballast (kg), engine power and drag in the game server's `driver_ballast.json`, `driver_power_scalar.json` and `driver_drag_scalar.json` (or the file names given in `server.cfg`). One table, one row per Steam ID, empty cell = default; names of players who are connected right now are shown next to their Steam IDs. Values are range-checked (ballast 0-500 kg, power and drag 0.5-1.5), unknown keys in your files are kept, and the previous files are kept as `.bak`. Restart the game server to apply.
 - **Activity log** lists recent admin actions (logins, kicks, settings, scoring, rotations, password changes), kept for 180 days.
 - **Account** changes the admin password (12 characters or more). It's stored hashed in the database, overrides `RM_ADMIN_PASSWORD`, and signs every other device out. If you ever lock yourself out, start Race Manager once with `RM_ADMIN_PASSWORD_RESET=true` to go back to `RM_ADMIN_PASSWORD`.
@@ -123,6 +135,12 @@ Reiza's `sms_stats` addon records results only. The community [`ams2_stats`](htt
 3. Each finished `Race1` session becomes a race (with the `Qualifying1` before it when there is one). Each race's page then shows **sector times** per driver (best lap, the three best sectors, the *ideal lap* made of them and what was left on the table, with the quickest sector of each marked) and a **lap-time chart** for the race and for qualifying, where you can click a name to hide it.
 
 Whichever stats source is used, a **disqualified** driver keeps their place in the result but scores no points, and a driver who **retired** before 90% of the winner's distance scores none either. Retirements are shown as DNF and disqualifications as DSQ on the race page.
+
+## Backups
+
+All race history lives in MongoDB. With the Docker setup, `docker/backup-mongo.sh [folder] [how-many-to-keep]` writes a compressed archive (default `./backups`, newest 14 kept) and is safe to run from cron, for example every night at 03:00: `0 3 * * * /path/to/race_mgr/docker/backup-mongo.sh /path/to/backups 30`. For the external-server compose file run `export COMPOSE_FILE=docker/docker-compose.external-server.yml` first. Copy the archives off the machine too.
+
+To go back to a backup: `docker compose stop racemgr`, `docker/restore-mongo.sh backups/racemgr-<date>.archive.gz` (asks you to type `yes`, because it replaces everything now in the database), then `docker compose start racemgr`. Without Docker, use `mongodump --archive --gzip --db racemgr` and `mongorestore --archive --gzip --drop` against your own MongoDB.
 
 ## Troubleshooting Tips
 - If the console window appears and disappears immediate after launch, there is likely a configuration error (i.e.) something incorrect with the values you supplied to the installer and/or entered directly into the required Windows environment variables. For example, Race Manager is unable to connect to Mongo because the wrong password was supplied. It could also be a Java version mismatch (installing from the link provided above would rule this problem out).
@@ -191,6 +209,12 @@ If you are looking to add or enhance features, fix bugs, etc then this is the se
 - Java is used to develop the backend of Race Manager.  
 - [Spring Boot](https://spring.io/projects/spring-boot) is the main framework in use.  
   
+### Tests
+
+- `./mvnw package -P '!windows-dist'` runs the lint, type check and Vitest tests of the web UI, the Java tests, and builds the jar.
+- `e2e/` holds the **end-to-end tests**: they start the real jar with a throwaway MongoDB (Docker), a stand-in for the game server's HTTP API and a headless Chrome, import the races from the committed `ams2_stats` sample and click through the app (sign-in, standings, race pages, sector times, penalties, ban list, whitelist, server settings, kick). Build the jar first, then `cd e2e && npm install && npm test`. Set `CHROME_PATH` if Chrome is not in the usual place, or `E2E_MONGO_URI=mongodb://host:port` to use a MongoDB you already have instead of Docker. A failing scenario leaves a screenshot in `e2e/artifacts/`.
+- `.github/workflows/ci.yml` runs both on every push.
+
 ### Application Builds  
 - Maven is used manage the Java Dependencies and build the whole application.  
 - A Maven plugin is used to integrate [Launch4j](https://launch4j.sourceforge.net/) for wrapping the `jar` as a lightweight Windows native executable.  
@@ -218,6 +242,5 @@ If you are looking to add or enhance features, fix bugs, etc then this is the se
 - Support for custom (vs randomly generated) rotations  
 - Support for rotation exporting/sharing  
 - Track and car images added for enhanced UI  
-- Ability to link race sessions to external videos (YouTube/Twitch)  
 - Support for Linux  
 - A ready-made Docker image

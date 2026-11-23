@@ -5,6 +5,7 @@ import {parsePositions, parseTeams, formatTeams, parseAdjustments, formatAdjustm
 import {computeStandings, droppedRounds} from './standings';
 import {toCsv} from './csv';
 import {sectorRows, lapSeries, formatLap, formatSector} from './sectors';
+import {careerStats, trackRecords} from './careerStats';
 
 describe('calculatePoints', () => {
 	it('gives the winner a 40% bonus over a half-field points scale', () => {
@@ -185,5 +186,34 @@ describe('sector analysis', () => {
 		expect(formatLap(59001)).toBe('0:59.001');
 		expect(formatSector(39967)).toBe('39.967');
 		expect(formatLap(null)).toBe('');
+	});
+});
+
+describe('career statistics', () => {
+	const result = (driverName: string, finishPosition: number, extra: Record<string, unknown> = {}) => ({driverName, finishPosition, fastestLapTime: 100000 + (finishPosition * 100), state: 'Finished', ...extra});
+	const races = [
+		{startDate: 1, trackName: 'A', finished: true, polePosition: 'Ann', fastestLap: 'Bob', raceResults: [result('Ann', 1), result('Bob', 2), result('Cy', 3), result('Bot', 4, {isPlayer: false})],
+			qualifyingResults: [{driverName: 'Ann', bestQualifyingTime: 99000}]},
+		{startDate: 2, trackName: 'A', finished: true, polePosition: 'Bob', fastestLap: 'Bob', raceResults: [result('Bob', 1), result('Ann', 2, {state: 'Retired'}), result('Cy', 3, {state: 'Disqualified', fastestLapTime: 90000})]},
+		{startDate: 3, trackName: 'B', finished: true, voided: true, raceResults: [result('Cy', 1)]},
+		{startDate: 4, trackName: 'B', finished: false, raceResults: [result('Cy', 1)]},
+	];
+
+	it('totals each driver over the counted races only', () => {
+		const rows = Object.fromEntries(careerStats(races).map(r => [r.name, r]));
+		expect(Object.keys(rows).sort()).toEqual(['Ann', 'Bob', 'Cy']);
+		expect(rows.Ann).toMatchObject({races: 2, wins: 1, podiums: 1, poles: 1, dnfs: 1, bestFinish: 1, lastRace: 2});
+		expect(rows.Bob).toMatchObject({races: 2, wins: 1, podiums: 2, poles: 1, fastestLaps: 2, averageFinish: 1.5});
+		expect(rows.Cy).toMatchObject({races: 2, podiums: 1, disqualifications: 1, bestFinish: 3});
+	});
+
+	it('lists the most successful driver first', () => {
+		expect(careerStats(races).map(r => r.name)).toEqual(['Bob', 'Ann', 'Cy']);
+	});
+
+	it('finds the quickest lap at each track, ignoring disqualified drivers and voided races', () => {
+		const records = trackRecords(races);
+		expect(records).toHaveLength(1);
+		expect(records[0]).toMatchObject({trackId: 'A', driver: 'Ann', time: 99000, qualifying: true});
 	});
 });

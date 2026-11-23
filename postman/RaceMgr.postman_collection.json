@@ -291,6 +291,477 @@
 								}
 							},
 							"response": []
+						},
+						{
+							"name": "Live session (with ids)",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "http://{{HOST_BASE_API_URL}}/admin/gameserver/session",
+									"protocol": "http",
+									"host": [
+										"{{HOST_BASE_API_URL}}"
+									],
+									"path": [
+										"admin",
+										"gameserver",
+										"session"
+									]
+								}
+							},
+							"response": [],
+							"protocolProfileBehavior": {
+								"disableBodyPruning": true
+							}
+						},
+						{
+							"name": "Kick / ban a player",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "X-XSRF-TOKEN",
+										"value": "{{XSRF-TOKEN}}",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "http://{{HOST_BASE_API_URL}}/admin/gameserver/kick",
+									"protocol": "http",
+									"host": [
+										"{{HOST_BASE_API_URL}}"
+									],
+									"path": [
+										"admin",
+										"gameserver",
+										"kick"
+									]
+								},
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"refid\": 7,\r\n    \"banSeconds\": 600\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Send chat message",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "X-XSRF-TOKEN",
+										"value": "{{XSRF-TOKEN}}",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "http://{{HOST_BASE_API_URL}}/admin/gameserver/chat",
+									"protocol": "http",
+									"host": [
+										"{{HOST_BASE_API_URL}}"
+									],
+									"path": [
+										"admin",
+										"gameserver",
+										"chat"
+									]
+								},
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"message\": \"Race starts in 5 minutes\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Next session: apply settings",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "X-XSRF-TOKEN",
+										"value": "{{XSRF-TOKEN}}",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "http://{{HOST_BASE_API_URL}}/admin/gameserver/session/next",
+									"protocol": "http",
+									"host": [
+										"{{HOST_BASE_API_URL}}"
+									],
+									"path": [
+										"admin",
+										"gameserver",
+										"session",
+										"next"
+									]
+								},
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"RaceLength\": 10,\r\n    \"TrackId\": -559709709\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Next session: advance",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "X-XSRF-TOKEN",
+										"value": "{{XSRF-TOKEN}}",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "http://{{HOST_BASE_API_URL}}/admin/gameserver/session/advance",
+									"protocol": "http",
+									"host": [
+										"{{HOST_BASE_API_URL}}"
+									],
+									"path": [
+										"admin",
+										"gameserver",
+										"session",
+										"advance"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Ban list: get",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "http://{{HOST_BASE_API_URL}}/admin/gameserver/banlist",
+									"protocol": "http",
+									"host": [
+										"{{HOST_BASE_API_URL}}"
+									],
+									"path": [
+										"admin",
+										"gameserver",
+										"banlist"
+									]
+								}
+							},
+							"response": [],
+							"protocolProfileBehavior": {
+								"disableBodyPruning": true
+							}
+						},
+						{
+							"name": "Ban list: add",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "X-XSRF-TOKEN",
+										"value": "{{XSRF-TOKEN}}",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "http://{{HOST_BASE_API_URL}}/admin/gameserver/banlist",
+									"protocol": "http",
+									"host": [
+										"{{HOST_BASE_API_URL}}"
+									],
+									"path": [
+										"admin",
+										"gameserver",
+										"banlist"
+									]
+								},
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"steamId\": \"76561198000000001\",\r\n    \"note\": \"rammed someone\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Ban list: remove",
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "X-XSRF-TOKEN",
+										"value": "{{XSRF-TOKEN}}",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "http://{{HOST_BASE_API_URL}}/admin/gameserver/banlist/76561198000000001",
+									"protocol": "http",
+									"host": [
+										"{{HOST_BASE_API_URL}}"
+									],
+									"path": [
+										"admin",
+										"gameserver",
+										"banlist",
+										"76561198000000001"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Whitelist: get",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "http://{{HOST_BASE_API_URL}}/admin/gameserver/whitelist",
+									"protocol": "http",
+									"host": [
+										"{{HOST_BASE_API_URL}}"
+									],
+									"path": [
+										"admin",
+										"gameserver",
+										"whitelist"
+									]
+								}
+							},
+							"response": [],
+							"protocolProfileBehavior": {
+								"disableBodyPruning": true
+							}
+						},
+						{
+							"name": "Whitelist: add",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "X-XSRF-TOKEN",
+										"value": "{{XSRF-TOKEN}}",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "http://{{HOST_BASE_API_URL}}/admin/gameserver/whitelist",
+									"protocol": "http",
+									"host": [
+										"{{HOST_BASE_API_URL}}"
+									],
+									"path": [
+										"admin",
+										"gameserver",
+										"whitelist"
+									]
+								},
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"steamId\": \"76561198000000001\",\r\n    \"note\": \"Ayrton\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Whitelist: remove",
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "X-XSRF-TOKEN",
+										"value": "{{XSRF-TOKEN}}",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "http://{{HOST_BASE_API_URL}}/admin/gameserver/whitelist/76561198000000001",
+									"protocol": "http",
+									"host": [
+										"{{HOST_BASE_API_URL}}"
+									],
+									"path": [
+										"admin",
+										"gameserver",
+										"whitelist",
+										"76561198000000001"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "server.cfg: get settings",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "http://{{HOST_BASE_API_URL}}/admin/gameserver/config",
+									"protocol": "http",
+									"host": [
+										"{{HOST_BASE_API_URL}}"
+									],
+									"path": [
+										"admin",
+										"gameserver",
+										"config"
+									]
+								}
+							},
+							"response": [],
+							"protocolProfileBehavior": {
+								"disableBodyPruning": true
+							}
+						},
+						{
+							"name": "server.cfg: change settings",
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "X-XSRF-TOKEN",
+										"value": "{{XSRF-TOKEN}}",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "http://{{HOST_BASE_API_URL}}/admin/gameserver/config",
+									"protocol": "http",
+									"host": [
+										"{{HOST_BASE_API_URL}}"
+									],
+									"path": [
+										"admin",
+										"gameserver",
+										"config"
+									]
+								},
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"name\": \"Friday Night Racing\",\r\n    \"maxPlayerCount\": 16\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Balance of performance: get",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "http://{{HOST_BASE_API_URL}}/admin/gameserver/performance",
+									"protocol": "http",
+									"host": [
+										"{{HOST_BASE_API_URL}}"
+									],
+									"path": [
+										"admin",
+										"gameserver",
+										"performance"
+									]
+								}
+							},
+							"response": [],
+							"protocolProfileBehavior": {
+								"disableBodyPruning": true
+							}
+						},
+						{
+							"name": "Balance of performance: save",
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "X-XSRF-TOKEN",
+										"value": "{{XSRF-TOKEN}}",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "http://{{HOST_BASE_API_URL}}/admin/gameserver/performance",
+									"protocol": "http",
+									"host": [
+										"{{HOST_BASE_API_URL}}"
+									],
+									"path": [
+										"admin",
+										"gameserver",
+										"performance"
+									]
+								},
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"ballast\": {\r\n        \"enabled\": true,\r\n        \"defaultValue\": 0,\r\n        \"drivers\": {\r\n            \"76561198000000001\": 30\r\n        }\r\n    },\r\n    \"power\": {\r\n        \"enabled\": false,\r\n        \"defaultValue\": 1,\r\n        \"drivers\": {}\r\n    },\r\n    \"drag\": {\r\n        \"enabled\": false,\r\n        \"defaultValue\": 1,\r\n        \"drivers\": {}\r\n    }\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Game server log (newest first)",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "http://{{HOST_BASE_API_URL}}/admin/gameserver/log?count=100",
+									"protocol": "http",
+									"host": [
+										"{{HOST_BASE_API_URL}}"
+									],
+									"path": [
+										"admin",
+										"gameserver",
+										"log"
+									],
+									"query": [
+										{
+											"key": "count",
+											"value": "100"
+										}
+									]
+								}
+							},
+							"response": [],
+							"protocolProfileBehavior": {
+								"disableBodyPruning": true
+							}
 						}
 					]
 				},
@@ -619,6 +1090,117 @@
 										"race",
 										"events"
 									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Race: void or restore",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "X-XSRF-TOKEN",
+										"value": "{{XSRF-TOKEN}}",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "http://{{HOST_BASE_API_URL}}/admin/race/events/{{LAST_RACE_ID}}/void",
+									"protocol": "http",
+									"host": [
+										"{{HOST_BASE_API_URL}}"
+									],
+									"path": [
+										"admin",
+										"race",
+										"events",
+										"{{LAST_RACE_ID}}",
+										"void"
+									]
+								},
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"voided\": true\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Race: set penalties",
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "X-XSRF-TOKEN",
+										"value": "{{XSRF-TOKEN}}",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "http://{{HOST_BASE_API_URL}}/admin/race/events/{{LAST_RACE_ID}}/penalties",
+									"protocol": "http",
+									"host": [
+										"{{HOST_BASE_API_URL}}"
+									],
+									"path": [
+										"admin",
+										"race",
+										"events",
+										"{{LAST_RACE_ID}}",
+										"penalties"
+									]
+								},
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"penalties\": [\r\n        {\r\n            \"driver\": \"Ayrton S\",\r\n            \"seconds\": 10,\r\n            \"disqualify\": false,\r\n            \"note\": \"track limits\"\r\n        },\r\n        {\r\n            \"driver\": \"Nigel M\",\r\n            \"disqualify\": true,\r\n            \"note\": \"cut the chicane\"\r\n        }\r\n    ]\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Race: set video link",
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "X-XSRF-TOKEN",
+										"value": "{{XSRF-TOKEN}}",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "http://{{HOST_BASE_API_URL}}/admin/race/events/{{LAST_RACE_ID}}/video",
+									"protocol": "http",
+									"host": [
+										"{{HOST_BASE_API_URL}}"
+									],
+									"path": [
+										"admin",
+										"race",
+										"events",
+										"{{LAST_RACE_ID}}",
+										"video"
+									]
+								},
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"url\": \"https://www.youtube.com/watch?v=abc123\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
 								}
 							},
 							"response": []
@@ -1418,6 +2000,73 @@
 							]
 						}
 					]
+				},
+				{
+					"name": "Account",
+					"item": [
+						{
+							"name": "Change password",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "X-XSRF-TOKEN",
+										"value": "{{XSRF-TOKEN}}",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "http://{{HOST_BASE_API_URL}}/admin/password",
+									"protocol": "http",
+									"host": [
+										"{{HOST_BASE_API_URL}}"
+									],
+									"path": [
+										"admin",
+										"password"
+									]
+								},
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"currentPassword\": \"old\",\r\n    \"newPassword\": \"a new password of 12+ chars\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Activity log",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "http://{{HOST_BASE_API_URL}}/admin/audit?limit=100",
+									"protocol": "http",
+									"host": [
+										"{{HOST_BASE_API_URL}}"
+									],
+									"path": [
+										"admin",
+										"audit"
+									],
+									"query": [
+										{
+											"key": "limit",
+											"value": "100"
+										}
+									]
+								}
+							},
+							"response": [],
+							"protocolProfileBehavior": {
+								"disableBodyPruning": true
+							}
+						}
+					]
 				}
 			],
 			"auth": {
@@ -1659,6 +2308,50 @@
 								}
 							},
 							"response": []
+						},
+						{
+							"name": "Live session (names and ping)",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "http://{{HOST_BASE_API_URL}}/gameserver/session",
+									"protocol": "http",
+									"host": [
+										"{{HOST_BASE_API_URL}}"
+									],
+									"path": [
+										"gameserver",
+										"session"
+									]
+								}
+							},
+							"response": [],
+							"protocolProfileBehavior": {
+								"disableBodyPruning": true
+							}
+						},
+						{
+							"name": "Live timing",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "http://{{HOST_BASE_API_URL}}/gameserver/timing",
+									"protocol": "http",
+									"host": [
+										"{{HOST_BASE_API_URL}}"
+									],
+									"path": [
+										"gameserver",
+										"timing"
+									]
+								}
+							},
+							"response": [],
+							"protocolProfileBehavior": {
+								"disableBodyPruning": true
+							}
 						}
 					]
 				},
@@ -1833,6 +2526,29 @@
 								}
 							},
 							"response": []
+						},
+						{
+							"name": "Race: get one by id",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "http://{{HOST_BASE_API_URL}}/race/events/{{LAST_RACE_ID}}",
+									"protocol": "http",
+									"host": [
+										"{{HOST_BASE_API_URL}}"
+									],
+									"path": [
+										"race",
+										"events",
+										"{{LAST_RACE_ID}}"
+									]
+								}
+							},
+							"response": [],
+							"protocolProfileBehavior": {
+								"disableBodyPruning": true
+							}
 						}
 					]
 				},
