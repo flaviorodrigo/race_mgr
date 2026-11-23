@@ -1,6 +1,6 @@
 import React, {useEffect, useState} from 'react';
 import {useSelector, useDispatch} from 'react-redux';
-const _ = require('lodash');
+import _ from 'lodash';
 
 import {fetchSessions, fetchRotations} from './utilities';
 import {ISession, IRotation} from './interfaces';

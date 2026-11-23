@@ -42,6 +42,10 @@ public class JwtTokenUtil {
         this.validityMillis = hours * 60 * 60 * 1000;
     }
 
+    public java.time.Duration getValidity() {
+        return java.time.Duration.ofMillis(validityMillis);
+    }
+
     // Retrieve username from jwt token. Throws io.jsonwebtoken.JwtException (or
     // IllegalArgumentException) when the token is invalid, tampered with, or expired.
     public String getUsernameFromToken(String token) {

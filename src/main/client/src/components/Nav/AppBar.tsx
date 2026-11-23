@@ -1,11 +1,11 @@
-import React, {useEffect} from 'react';
+import React from 'react';
 import {styled, createTheme, ThemeProvider} from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import MuiDrawer from '@mui/material/Drawer';
 import Box from '@mui/material/Box';
 import MuiAppBar, {AppBarProps as MuiAppBarProps} from '@mui/material/AppBar';
 import Toolbar from '@mui/material/Toolbar';
-import Avatar from '@mui/material/Avatar';
+import RaceMgrApi from '../../api/RaceMgrApi';
 import List from '@mui/material/List';
 import Typography from '@mui/material/Typography';
 import Divider from '@mui/material/Divider';
@@ -14,8 +14,6 @@ import Tooltip from '@mui/material/Tooltip';
 import Container from '@mui/material/Container';
 
 import {makeStyles} from '@material-ui/core/styles';
-
-import {useCookies} from 'react-cookie';
 
 import LeaderBoard from '../Leaderboard/LeaderBoard';
 import ManageServer from '../ManageServer/ManageServer';
@@ -36,6 +34,7 @@ import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import BarChartIcon from '@mui/icons-material/BarChart';
 import PermDataSettingIcon from '@mui/icons-material/PermDataSetting';
 import LoginIcon from '@mui/icons-material/Login';
+import LogoutIcon from '@mui/icons-material/Logout';
 import ServerStopped from '../ErrorStates/ServerStopped';
 import ServerConfigError from '../ErrorStates/ServerConfigError';
 import ServerStatusError from '../ErrorStates/ServerStatusError';
@@ -103,18 +102,13 @@ const mdTheme = createTheme({
 
 const DashboardContent = () => {
 	const [open, setOpen] = React.useState(true);
-	const [isAuthenticated, setIsAuthenticated] = React.useState(false);
-	const [cookies] = useCookies(['JWT-TOKEN']);
+	// Start from the session marker so a reload on an admin page doesn't bounce to the login page first
+	const [isAuthenticated, setIsAuthenticated] = React.useState(() => new RaceMgrApi().hasSession());
 
 	// Set the defaults
 	const toggleDrawer = () => {
 		setOpen(!open);
 	};
-
-	useEffect(() => {
-		const hasToken = cookies['JWT-TOKEN'] !== undefined;
-		setIsAuthenticated(hasToken);
-	}, []);
 
 	const useStyles = makeStyles(theme => ({
 		drawerPaper: {width: 'inherit'},
@@ -128,6 +122,11 @@ const DashboardContent = () => {
 	}));
 
 	const classes = useStyles();
+
+	const handleLogout = async () => {
+		await new RaceMgrApi().doLogout();
+		setIsAuthenticated(false);
+	};
 
 	return (
 		<ThemeProvider theme={mdTheme}>
@@ -179,8 +178,11 @@ const DashboardContent = () => {
 							}
 
 							{isAuthenticated
-							&& <Avatar sx={{bgcolor: 'white', color: 'black'}}>R</Avatar>
-
+							&& <IconButton sx={{color: 'white'}} onClick={handleLogout}>
+								<Tooltip title="Logout">
+									<LogoutIcon/>
+								</Tooltip>
+							</IconButton>
 							}
 						</Toolbar>
 					</AppBar>

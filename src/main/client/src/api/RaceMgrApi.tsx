@@ -41,18 +41,11 @@ export default class RaceMgrApi {
 		return Promise.resolve();
 	}
 
-	// Will automatically add the JWT to any admin api request
-	// doAuth is required somewhere in the flow to get the token set first
-	private setAuthTokenIfNeeded(config: AxiosRequestConfig = {}) {
-		const jwtToken = this.getCookie('JWT-TOKEN');
-		if (config.url && config.url.includes('/admin')) {
-			if (jwtToken !== null) {
-				axios.defaults.headers.common.Authorization = `Bearer ${jwtToken}`;
-			} else {
-				throw new Error('Admin endpoint requested, but no token found. Call doAuth first.');
-			}
-		} else {
-			axios.defaults.headers.common.Authorization = null;
+	// Admin requests authenticate with the HttpOnly session cookie the server sets at login (script can't
+	// read it, so there is no token to attach). RM-SESSION is a readable marker that a session exists.
+	private requireSessionIfAdmin(config: AxiosRequestConfig = {}) {
+		if (config.url && config.url.includes('/admin') && !this.hasSession()) {
+			throw new Error('Admin endpoint requested, but there is no session. Call doAuth first.');
 		}
 	}
 
@@ -88,26 +81,6 @@ export default class RaceMgrApi {
 			try	{
 				const response = await axios(config);
 				if (response.status === 200) {
-					const {token} = response.data.data;
-
-					// Expire the cookie together with the token (exp claim is in seconds)
-					let attributes = '; Path=/; SameSite=Strict';
-					try {
-						const [, payload] = token.split('.');
-						const {exp} = JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')));
-						if (typeof exp === 'number') {
-							attributes += `; Expires=${new Date(exp * 1000).toUTCString()}`;
-						}
-					} catch {
-						// Fall back to a session cookie
-					}
-
-					if (window.location.protocol === 'https:') {
-						attributes += '; Secure';
-					}
-
-					document.cookie = `JWT-TOKEN=${token}${attributes}`;
-
 					resolve('OK');
 				} else {
 					resolve('Error');
@@ -124,9 +97,31 @@ export default class RaceMgrApi {
 	// was previously called).
 	public async makeApiCall(config: AxiosRequestConfig): Promise<any> {
 		return this.setXsrfTokenIfNeeded(config).then(() => {
-			this.setAuthTokenIfNeeded(config);
+			this.requireSessionIfAdmin(config);
 			return axios(config);
+		}).catch(async error => {
+			// An expired or invalid session: drop it and send the user to the login page
+			if (error?.response?.status === 401 && config.url?.includes('/admin')) {
+				await this.doLogout();
+				window.location.assign('/login');
+			}
+
+			throw error;
 		});
+	}
+
+	// Ends the session: the server expires the cookies
+	public async doLogout(): Promise<void> {
+		try {
+			await this.setXsrfTokenIfNeeded({method: 'post'});
+			await axios({method: 'post', url: `${this.BASE_API_URL_WITH_VERSION}/logout`});
+		} catch {
+			// Nothing else to do, the session cookie expires on its own
+		}
+	}
+
+	public hasSession(): boolean {
+		return this.getCookie('RM-SESSION') === '1';
 	}
 
 	private getCookie(name) {

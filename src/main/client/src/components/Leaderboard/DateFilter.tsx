@@ -1,5 +1,5 @@
 import React from 'react';
-const _ = require('lodash');
+import _ from 'lodash';
 
 import {convertEpochDate} from '../../utils/epochUtils';
 

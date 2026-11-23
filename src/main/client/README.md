@@ -1,46 +1,23 @@
-# Getting Started with Create React App
+# Race Manager web UI
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+React 17 + TypeScript + Redux Toolkit/Saga + MUI, built with [Vite](https://vite.dev/).
 
-## Available Scripts
+## Scripts
 
-In the project directory, you can run:
+Run from this directory (Node 22+; the Maven build downloads its own Node).
 
-### `npm start`
+| Command | What it does |
+|---|---|
+| `npm install` | Install dependencies |
+| `npm start` | Dev server at http://localhost:3000. `/api` is proxied to the backend on `http://localhost:8080` (see `vite.config.ts`) |
+| `npm run build` | Typecheck, lint, then build into `build/` (Maven copies that into the jar) |
+| `npm run lint` | ESLint only |
+| `npm test` | Vitest unit tests |
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+## Notes
 
-The page will reload if you make edits.\
-You will also see any lint errors in the console.
-
-### `npm test`
-
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
-
-### `npm run build`
-
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
-
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
-
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
-
-### `npm run eject`
-
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
-
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
-
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
-
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
+- Admin login is an HttpOnly session cookie set by the server, so the UI never sees the token. The readable
+  `RM-SESSION` cookie only tells the UI that a session exists. See `src/api/RaceMgrApi.tsx`.
+- The server sends a strict Content-Security-Policy (`script-src 'self'`, no inline scripts, no external hosts).
+  Keep scripts, fonts and images bundled; don't add CDN links to `index.html`.
+- Icons are imported from `@mui/icons-material/<Name>`; `vite.config.ts` aliases them to the ES module build.

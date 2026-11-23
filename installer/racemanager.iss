@@ -28,15 +28,42 @@ var MongoInputsPage: TInputQueryWizardPage;
 var RaceManagerInputsPage: TInputQueryWizardPage;
 
 // General functions
-function GetRandomString(StringLen:Integer):String;
-var str:String;
+
+var RmSecret: String;
+
+// Returns 64 characters (48 random bytes, Base64) from the operating system's cryptographic random
+// number generator, via PowerShell (present on every supported Windows version).
+// NOTE: Inno Setup's built-in Random() is NOT suitable here: it is a seeded pseudo-random
+// generator, so secrets made with it can be predictable. If a secure value cannot be
+// produced the install stops, rather than falling back to something weaker.
+function GenerateSecureSecret: String;
+var
+  OutFile, Params, PowerShellExe: String;
+  ResultCode: Integer;
+  Raw: AnsiString;
 begin
-    // All possible chars
-    str := 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890';
-    Result := '';
-    repeat
-        Result := Result+str[Random(Length(str))+1];
-    until(Length(Result)=StringLen)
+  OutFile := ExpandConstant('{tmp}\rm_secret.txt');
+  DeleteFile(OutFile);
+  PowerShellExe := ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe');
+  // Runs with {tmp} as the working directory and writes rm_secret.txt there
+  Params := '-NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "' +
+    '$b = New-Object byte[] 48; ' +
+    '$r = [System.Security.Cryptography.RandomNumberGenerator]::Create(); ' +
+    '$r.GetBytes($b); ' +
+    '[System.IO.File]::WriteAllText(''rm_secret.txt'', [System.Convert]::ToBase64String($b))"';
+
+  Result := '';
+  if Exec(PowerShellExe, Params, ExpandConstant('{tmp}'), SW_HIDE, ewWaitUntilTerminated, ResultCode)
+     and (ResultCode = 0) then
+  begin
+    if LoadStringFromFile(OutFile, Raw) then
+      Result := Trim(String(Raw));
+  end;
+  DeleteFile(OutFile);
+
+  if Length(Result) <> 64 then
+    RaiseException('Could not generate a secure application secret (PowerShell was unavailable or failed). ' +
+      'Nothing was installed. Please report this, or set RM_JWT_SECRET yourself and install again.');
 end;
 
 // Screen variable functions
@@ -87,7 +114,10 @@ end;
 
 function GetRmSecret(Param: string): string;
 begin
-  Result := GetRandomString(64);
+  // Generated once per install run, so every place that asks gets the same value
+  if RmSecret = '' then
+    RmSecret := GenerateSecureSecret;
+  Result := RmSecret;
 end;
 
 // Install wizard initialization

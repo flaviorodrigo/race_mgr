@@ -1,10 +1,12 @@
 package com.coop.racemgr.controllers;
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 import com.coop.racemgr.RacemgrApplication;
 import com.coop.racemgr.security.JwtTokenUtil;
 import com.coop.racemgr.security.LoginAttemptService;
+import com.coop.racemgr.security.SessionCookies;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,7 +42,8 @@ public class JwtAuthenticationController {
 
     @PostMapping("/api/v1/authenticate")
     public ResponseEntity<Object> createAuthenticationToken(@RequestBody JwtRequest authenticationRequest,
-                                                            HttpServletRequest httpRequest) {
+                                                            HttpServletRequest httpRequest,
+                                                            HttpServletResponse httpResponse) {
         // NOTE: Deliberately uses the socket address, not X-Forwarded-For (which a client controls).
         String client = httpRequest.getRemoteAddr();
 
@@ -67,6 +70,15 @@ public class JwtAuthenticationController {
         loginAttemptService.recordSuccess(client);
         final UserDetails userDetails = jwtUserDetailsService.loadUserByUsername(username);
         final String token = jwtTokenUtil.generateToken(userDetails);
+        // Browsers get the session as an HttpOnly cookie; API clients can still use the token in the body
+        SessionCookies.add(httpRequest, httpResponse, token, jwtTokenUtil.getValidity());
         return ResponseHandler.generateResponse("JWT token", HttpStatus.OK, new JwtResponse(token));
+    }
+
+    // Ends the browser session. (Tokens are stateless and not revoked server-side; they simply expire.)
+    @PostMapping("/api/v1/logout")
+    public ResponseEntity<Object> logout(HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
+        SessionCookies.clear(httpRequest, httpResponse);
+        return ResponseHandler.generateResponse("Logged out", HttpStatus.OK, null);
     }
 }

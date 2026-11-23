@@ -107,8 +107,9 @@ When using the installer .exe the required Windows environment variables will be
 - `RM_MONGO_PASS`: That password you set when creating the user during the mongo setup  
 - `RM_MONGO_HOST`: Use `localhost` if you are running on the same machine  
 - `RM_MONGO_PORT`: Use the mongo default port, (i.e.) `27017`, unless you've customized  
-- `RM_ADMIN_USER`: All `admin` features/API endpoints require Bearer (JWT) authentication. Set to whatever you want the admin username to be.  
-- `RM_ADMIN_PASSWORD`: All `admin` features/API endpoints require Bearer (JWT) authentication. Set to whatever you want the admin password to be.  
+- `RM_ADMIN_USER`: All `admin` features/API endpoints require authentication (a JWT, sent as an HttpOnly cookie by the web UI or as a `Bearer` token by API clients). Set to whatever you want the admin username to be.  
+- `RM_ADMIN_PASSWORD`: Set to whatever you want the admin password to be.  
+- `RM_COOKIE_SECURE` (optional): Set to `true` when a TLS proxy in front connects to Race Manager over plain HTTP, so the session cookies are marked `Secure`.  
 - `RM_BIND_ADDRESS` (optional): Address to listen on, default `127.0.0.1`. `RM_PORT` (optional) changes the port, default `8080`.  
 - `RM_JWT_SECRET`: This is used as part of user authentication. It must be a random string of at least 32 characters (64 recommended) that is unique to each installation. Generate it locally (e.g. `openssl rand -hex 32`), not with an online tool. Admin logins last 12 hours by default; set `RM_JWT_VALIDITY_HOURS` to change that. After 5 failed logins from one address, further attempts are refused for 15 minutes. We recommend using [this tool](http://www.unit-conversion.info/texttools/random-string-generator/) to generate one.  
   

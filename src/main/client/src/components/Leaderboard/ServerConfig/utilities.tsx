@@ -78,7 +78,7 @@ export const fetchServerConfig = async () => {
 		} else {
 			configResults = {
 				activeRaceSessionId: serverConfig.activeRaceSessionId,
-				activeRaceRotationId: serverConfig.activeRaceRotationId
+				activeRaceRotationId: serverConfig.activeRaceRotationId,
 			};
 		}
 

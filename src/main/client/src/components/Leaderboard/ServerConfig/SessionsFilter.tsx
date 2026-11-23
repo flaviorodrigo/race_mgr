@@ -1,7 +1,7 @@
 import React, {useEffect, useState} from 'react';
 import {useSelector} from 'react-redux';
 
-const _ = require('lodash');
+import _ from 'lodash';
 
 import {IRotation} from './interfaces';
 

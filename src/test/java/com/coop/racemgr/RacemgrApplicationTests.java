@@ -107,6 +107,44 @@ class RacemgrApplicationTests {
     }
 
     @Test
+    void browserSessionUsesAnHttpOnlyCookieAndLogoutClearsIt() throws Exception {
+        var res = mvc.perform(loginRequest(LOGIN_OK)).andExpect(status().isOk()).andReturn().getResponse();
+        var setCookies = res.getHeaders("Set-Cookie");
+        String jwt = setCookies.stream().filter(h -> h.startsWith("JWT-TOKEN=")).findFirst().orElseThrow();
+        String indicator = setCookies.stream().filter(h -> h.startsWith("RM-SESSION=")).findFirst().orElseThrow();
+        assertThat(jwt).contains("HttpOnly").contains("SameSite=Strict").contains("Path=/").contains("Max-Age=");
+        assertThat(indicator).doesNotContain("HttpOnly").contains("SameSite=Strict");
+
+        // The cookie alone authenticates admin requests (no Authorization header)
+        Cookie session = new Cookie("JWT-TOKEN", jwt.substring("JWT-TOKEN=".length(), jwt.indexOf(';')));
+        int code = mvc.perform(get("/api/v1/admin/anything").cookie(session)).andReturn().getResponse().getStatus();
+        assertThat(code).isNotIn(401, 403);
+
+        // ...but a cookie-authenticated state-changing request still needs the CSRF token
+        mvc.perform(post("/api/v1/admin/gameserver").cookie(session).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"status\":\"nope\"}")).andExpect(status().isForbidden());
+
+        // The CSRF token must survive authenticated requests: the SPA fetches GET /api right before every
+        // state-changing call, and that request now carries the session cookie.
+        Cookie xsrfBefore = xsrfCookie();
+        var authedGet = mvc.perform(get("/api").cookie(session, xsrfBefore)).andExpect(status().isOk()).andReturn().getResponse();
+        assertThat(authedGet.getHeaders("Set-Cookie")).noneMatch(h -> h.startsWith("XSRF-TOKEN=;") || h.contains("Max-Age=0"));
+        mvc.perform(post("/api/v1/admin/gameserver").cookie(session, xsrfBefore).header("X-XSRF-TOKEN", xsrfBefore.getValue())
+                .contentType(MediaType.APPLICATION_JSON).content("{\"status\":\"bogus\"}")).andExpect(status().isBadRequest());
+
+        // A tampered cookie is not accepted
+        mvc.perform(get("/api/v1/admin/anything").cookie(new Cookie("JWT-TOKEN", session.getValue() + "x")))
+                .andExpect(status().isUnauthorized());
+
+        // Logout expires both cookies
+        Cookie xsrf = xsrfCookie();
+        var out = mvc.perform(post("/api/v1/logout").cookie(xsrf).header("X-XSRF-TOKEN", xsrf.getValue()))
+                .andExpect(status().isOk()).andReturn().getResponse();
+        assertThat(out.getHeaders("Set-Cookie")).anyMatch(h -> h.startsWith("JWT-TOKEN=;") && h.contains("Max-Age=0"))
+                .anyMatch(h -> h.startsWith("RM-SESSION=;") && h.contains("Max-Age=0"));
+    }
+
+    @Test
     void loginIsRateLimitedAfterRepeatedFailures() throws Exception {
         for (int i = 0; i < 5; i++) {
             assertThat(login(LOGIN_BAD, "10.0.0.9")).isEqualTo(401);
@@ -131,6 +169,26 @@ class RacemgrApplicationTests {
         mvc.perform(get("/api/v1/race/session?page=-5&limit=999999999")).andExpect(status().isOk())
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.data.content").isArray())
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.data.totalElements").value(0));
+    }
+
+    @Test
+    void staticFilesGetTheirContentTypeAndTheSpaServesUnknownRoutes() throws Exception {
+        // These exist once the frontend has been built into the jar (the normal ./mvnw package order)
+        mvc.perform(get("/favicon.ico")).andExpect(status().isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().contentType("image/x-icon"));
+        mvc.perform(get("/some/client/route")).andExpect(status().isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().contentTypeCompatibleWith("text/html"));
+        mvc.perform(get("/assets/does-not-exist.woff2")).andExpect(status().isNotFound());
+        mvc.perform(get("/../etc/passwd")).andExpect(status().is4xxClientError());
+    }
+
+    @Test
+    void responsesCarryASecurityPolicy() throws Exception {
+        var res = mvc.perform(get("/")).andReturn().getResponse();
+        assertThat(res.getHeader("Content-Security-Policy")).contains("default-src 'self'").contains("frame-ancestors 'none'")
+                .contains("object-src 'none'");
+        assertThat(res.getHeader("X-Content-Type-Options")).isEqualTo("nosniff");
+        assertThat(res.getHeader("Referrer-Policy")).isEqualTo("same-origin");
     }
 
     @Test
