@@ -41,6 +41,47 @@ public class GameServerProxy {
         return factory;
     }
 
+    // The status is polled by every open browser, so share one response for a moment
+    private static final long STATUS_CACHE_MILLIS = 2000;
+    private static volatile JsonNode cachedStatus;
+    private static volatile long cachedStatusAt;
+
+    /** The live session: attributes, members (connected players) and participants (cars). */
+    public JsonNode getSessionStatus() {
+        long now = System.currentTimeMillis();
+        JsonNode cached = cachedStatus;
+        if (cached != null && now - cachedStatusAt < STATUS_CACHE_MILLIS) {
+            return cached;
+        }
+
+        String body = REST_CLIENT.get()
+                .uri(gameServerBaseUrl + "/session/status?attributes&members&participants")
+                .retrieve()
+                .body(String.class);
+        JsonNode response;
+        try {
+            response = RacemgrUtils.JSON.readTree(body).path("response");
+        } catch (JacksonException e) {
+            throw new IllegalStateException("Unreadable response from the game server", e);
+        }
+        if (!response.isObject()) {
+            throw new IllegalStateException("Unexpected response from the game server");
+        }
+
+        cachedStatus = response;
+        cachedStatusAt = now;
+        return response;
+    }
+
+    public void kick(int refid) {
+        REST_CLIENT.get().uri(LiveSession.kickUri(gameServerBaseUrl, refid)).retrieve().toBodilessEntity();
+        cachedStatus = null;
+    }
+
+    public void sendChat(String message) {
+        REST_CLIENT.get().uri(LiveSession.chatUri(gameServerBaseUrl, message)).retrieve().toBodilessEntity();
+    }
+
     // @TODO: Support game server basic auth
     // @TODO: Add error handling
     private List getData(String url) {

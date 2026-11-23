@@ -20,6 +20,7 @@ import SessionsFilter from './ServerConfig/SessionsFilter';
 import DateFilter from './DateFilter';
 import RaceResults from './RaceResults';
 import RoundPoints from './RoundPoints';
+import LiveStrip from '../Live/LiveStrip';
 import RaceSummary from './RaceSummary';
 
 import {IRace} from './interfaces';
@@ -157,6 +158,8 @@ const LeaderBoard:React.FC = () => {
 					Advanced Filters
 						</Link>
 					</Typography>
+
+					<LiveStrip />
 
 					<Typography variant="h6" sx={{mt: 2, mb: 2}}>
 						{filteredRaces.length} Races

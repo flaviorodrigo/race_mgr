@@ -277,4 +277,34 @@ class RacemgrApplicationTests {
                 session, "{\"name\":\"Cup\",\"raceRotationIds\":[],\"scoring\":{\"type\":\"default\"}}")).andExpect(status().isOk());
         assertThat(existing.getScoring()).isNull();
     }
+
+    // ---- Live session ----
+
+    @Test
+    void liveSessionAdminEndpointsRequireLogin() throws Exception {
+        mvc.perform(get("/api/v1/admin/gameserver/session")).andExpect(status().isUnauthorized());
+        Cookie xsrf = xsrfCookie();
+        mvc.perform(post("/api/v1/admin/gameserver/kick").cookie(xsrf).header("X-XSRF-TOKEN", xsrf.getValue())
+                .contentType(MediaType.APPLICATION_JSON).content("{\"refid\":3}")).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void kickAndChatValidateTheirInput() throws Exception {
+        Cookie session = adminSession();
+        for (String bad : new String[]{"{}", "{\"refid\":-4}", "{\"refid\":99999999}", "{\"refid\":\"abc\"}"}) {
+            int code = mvc.perform(adminJson(post("/api/v1/admin/gameserver/kick"), session, bad)).andReturn().getResponse().getStatus();
+            assertThat(code).as(bad).isIn(400, 422);
+        }
+        for (String bad : new String[]{"{}", "{\"message\":\"   \"}", "{\"message\":\"" + "x".repeat(201) + "\"}"}) {
+            mvc.perform(adminJson(post("/api/v1/admin/gameserver/chat"), session, bad)).andExpect(status().isBadRequest());
+        }
+    }
+
+    @Test
+    void publicLiveSessionFailsQuietlyWhenTheGameServerIsDown() throws Exception {
+        // No game server is listening in tests: the public endpoint answers with a generic failure, no details
+        var res = mvc.perform(get("/api/v1/gameserver/session")).andReturn().getResponse();
+        assertThat(res.getStatus()).isEqualTo(207);
+        assertThat(res.getContentAsString()).contains("Request failed").doesNotContain("Connection").doesNotContain("127.0.0.1");
+    }
 }

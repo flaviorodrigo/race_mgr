@@ -16,6 +16,7 @@ import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
 
 import ApplyServerConfig from './ApplyServerConfig';
+import LivePanel from '../Live/LivePanel';
 
 import Paper from '@mui/material/Paper';
 
@@ -120,6 +121,8 @@ const ManageServer = (props:IManageServerProps) => {
 					></ApplyServerConfig>
 
 				</Typography>
+
+				<LivePanel />
 
 				<Snackbar
 					anchorOrigin={{vertical: 'bottom', horizontal: 'right'}}

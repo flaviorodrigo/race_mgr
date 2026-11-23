@@ -69,6 +69,15 @@ A **session** is a championship: its standings are the "Session Leaders" table, 
 
 Each session chooses how points are awarded under *Manage Server → Scoring*: the original built-in formula, a preset (F1 style, F1 2003-2009, Top 10) or your own table of points per finishing position, plus optional pole position and fastest lap bonuses. Changing the scoring re-scores every race in the session, past ones included. The same settings are available through the API (`scoring` on `POST`/`PUT /api/v1/admin/race/session`).
 
+## Live session
+
+When the game server is running with its HTTP API enabled, Race Manager shows who is connected:
+
+- **Everyone** sees an "N / max online" strip on the Leader Board with the stage and player names and ping. Steam IDs and internal ids are never sent to the public endpoint.
+- **Admins** get a *Live Session* panel under *Manage Server* with each player's Steam ID, a **Kick** button (with confirmation) and a box to send a chat message to the session.
+
+The game server treats kick and chat as admin actions and by default only accepts them from `127.0.0.1`, which is where Race Manager runs. Banning isn't offered yet; use the game server's own ban list for that. All of this goes through `/api/v1/gameserver/session` (public), `/api/v1/admin/gameserver/session`, `/api/v1/admin/gameserver/kick` and `/api/v1/admin/gameserver/chat` (admin).
+
 ## Troubleshooting Tips
 - If the console window appears and disappears immediate after launch, there is likely a configuration error (i.e.) something incorrect with the values you supplied to the installer and/or entered directly into the required Windows environment variables. For example, Race Manager is unable to connect to Mongo because the wrong password was supplied. It could also be a Java version mismatch (installing from the link provided above would rule this problem out).
   
