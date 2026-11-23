@@ -4,11 +4,12 @@ import com.coop.racemgr.model.RaceRotation;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.repository.Query;
+import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.PagingAndSortingRepository;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public interface RaceRotationRepository extends PagingAndSortingRepository<RaceRotation, Integer> {
+public interface RaceRotationRepository extends CrudRepository<RaceRotation, String>, PagingAndSortingRepository<RaceRotation, String> {
     RaceRotation findItemById(String id);
 
     @Query(value="{active:true}")

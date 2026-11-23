@@ -8,13 +8,13 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
-import javax.servlet.http.Cookie;
+import jakarta.servlet.http.Cookie;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -36,13 +36,13 @@ class RacemgrApplicationTests {
     @Autowired
     private MockMvc mvc;
 
-    @MockBean
+    @MockitoBean
     private RaceRepository raceRepository;
-    @MockBean
+    @MockitoBean
     private RaceMgrConfigRepository raceMgrConfigRepository;
-    @MockBean
+    @MockitoBean
     private RaceRotationRepository raceRotationRepository;
-    @MockBean
+    @MockitoBean
     private RaceSessionRepository raceSessionRepository;
 
     private static final String LOGIN_OK = "{\"username\":\"admin\",\"password\":\"correct-horse-battery\"}";

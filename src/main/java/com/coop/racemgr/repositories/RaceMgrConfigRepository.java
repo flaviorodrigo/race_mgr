@@ -5,7 +5,7 @@ import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public interface RaceMgrConfigRepository extends MongoRepository<RaceMgrConfig, Integer> {
+public interface RaceMgrConfigRepository extends MongoRepository<RaceMgrConfig, String> {
     RaceMgrConfig findItemById(String id);
 }
 

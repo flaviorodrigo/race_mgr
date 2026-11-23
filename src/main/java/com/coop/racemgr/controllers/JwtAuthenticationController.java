@@ -1,6 +1,6 @@
 package com.coop.racemgr.controllers;
 
-import javax.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequest;
 
 import com.coop.racemgr.RacemgrApplication;
 import com.coop.racemgr.security.JwtTokenUtil;

@@ -6,10 +6,13 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.springframework.stereotype.Component;
-import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.http.client.JdkClientHttpRequestFactory;
+import org.springframework.web.client.RestClient;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.http.HttpClient;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -26,16 +29,25 @@ public class GameServerProxy {
     // All the interesting game data generally hangs off the /lists endpoint
     final private String gameServerListBaseUrl = gameServerBaseUrl + "/list";
 
+    // Bounded timeouts: this is called from public endpoints, so a hung game server must not pile up threads
+    private static final RestClient REST_CLIENT = RestClient.builder()
+            .requestFactory(timeouts())
+            .build();
+
+    private static JdkClientHttpRequestFactory timeouts() {
+        var factory = new JdkClientHttpRequestFactory(
+                HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(3)).build());
+        factory.setReadTimeout(Duration.ofSeconds(10));
+        return factory;
+    }
+
     // @TODO: Support game server basic auth
     // @TODO: Add error handling
     private List getData(String url) {
-        //https://stackoverflow.com/a/62863017
-        WebClient webClient = WebClient.create();
-        String response = webClient.get()
+        String response = REST_CLIENT.get()
                 .uri(url)
                 .retrieve()
-                .bodyToMono(String.class)
-                .block();
+                .body(String.class);
 
         return this.serverResponseToJson(String.valueOf(response));
     }
