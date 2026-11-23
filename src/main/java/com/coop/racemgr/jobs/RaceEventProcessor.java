@@ -127,6 +127,12 @@ public class RaceEventProcessor {
 
                 for (JsonNode raceData : raceHistory) {
                     Race race = RacemgrUtils.JSON.treeToValue(raceData, Race.class);
+                    // The stats file only describes the race. What Race Manager itself adds (the database id, voiding,
+                    // penalties, a video link) never comes from it, so a doctored file can't set or overwrite those.
+                    race.setId(null);
+                    race.setVoided(null);
+                    race.setPenalties(null);
+                    race.setVideoUrl(null);
                     race.setRaceId();
                     race.setRaceSessionId(currentRmc.getActiveRaceSessionId());
                     race.setRaceRotationId(currentRmc.getActiveRaceRotationId());

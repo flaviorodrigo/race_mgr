@@ -151,6 +151,7 @@ describe('team and adjustment text', () => {
 });
 
 describe('sector analysis', () => {
+	// eslint-disable-next-line max-params -- one argument per column reads best in the table of laps below
 	const lap = (n: number, time: number | null, s1: number | null, s2: number | null, s3: number | null, valid = true) => ({lap: n, time, s1, s2, s3, valid, position: 1});
 	const driver = {
 		name: 'A', state: 'Finished',

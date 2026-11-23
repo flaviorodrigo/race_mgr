@@ -12,7 +12,7 @@ fi
 
 if [ ! -f "${RM_PATH_TO_DEDICATED_SERVER}/DedicatedServerCmd.exe" ]; then
   echo "ERROR: ${RM_PATH_TO_DEDICATED_SERVER}/DedicatedServerCmd.exe not found." >&2
-  echo "Download the server files first (./docker/download-server.sh <steam-username>) or build the image with them (./docker/build-with-server.sh <steam-username>)." >&2
+  echo "Download the server files first (./docker/download-server.sh) or build the image with them (./docker/build-with-server.sh)." >&2
   exit 1
 fi
 

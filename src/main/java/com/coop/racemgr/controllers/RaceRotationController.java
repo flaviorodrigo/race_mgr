@@ -53,9 +53,6 @@ public class RaceRotationController {
         private Boolean restart = false;
         private Long updated;
         private Boolean active = true;
-
-        // Required for requestbody serialization
-        private GameServerProxy gameServerProxy;
     }
 
     private static final int MAX_PAGE_SIZE = 1000;

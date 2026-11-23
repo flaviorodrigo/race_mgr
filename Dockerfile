@@ -56,21 +56,26 @@ ENTRYPOINT ["/usr/bin/tini", "--", "/app/entrypoint.sh"]
 
 
 # ---- Optional: download the AMS2 dedicated server during the build (target: with-server).
-# Needs a Steam account that owns the game. The password (and, if the account uses Steam Guard, a one-time code)
-# come in as BuildKit secrets, so they are never written to an image layer; nothing from this stage except the
-# server files is copied on. Keep the resulting image local: the server files belong to Reiza.
+# SteamCMD logs in anonymously by default, which is enough for the dedicated server. To use a Steam account
+# instead, set the STEAM_USERNAME build argument and give the password (and a Steam Guard code, if the account has
+# one) as BuildKit secrets: they are never written to an image layer. Only the server files leave this stage.
+# Keep the resulting image local: the server files belong to Reiza.
 FROM steamcmd/steamcmd:latest@sha256:6e273dd38cbf5042bfd1cdaa01564fe991a765d4bd70479fc7f5ddb46d890ab8 AS ams2-download
-ARG STEAM_USERNAME
-RUN --mount=type=secret,id=steam_password \
+ARG STEAM_USERNAME=anonymous
+RUN --mount=type=secret,id=steam_password,required=false \
     --mount=type=secret,id=steam_guard_code,required=false \
     set -eu; \
-    if [ -z "${STEAM_USERNAME:-}" ]; then echo "Set the STEAM_USERNAME build argument" >&2; exit 1; fi; \
-    guard=""; [ -s /run/secrets/steam_guard_code ] && guard="$(cat /run/secrets/steam_guard_code)"; \
-    steamcmd +@sSteamCmdForcePlatformType windows +force_install_dir /server \
-        +login "$STEAM_USERNAME" "$(cat /run/secrets/steam_password)" $guard \
-        +app_update 1338040 validate +quit; \
+    user="${STEAM_USERNAME:-anonymous}"; \
+    if [ "$user" = anonymous ]; then \
+        set -- +login anonymous; \
+    else \
+        [ -s /run/secrets/steam_password ] || { echo "STEAM_USERNAME is set: give its password as the steam_password secret" >&2; exit 1; }; \
+        guard=""; [ -s /run/secrets/steam_guard_code ] && guard="$(cat /run/secrets/steam_guard_code)"; \
+        set -- +login "$user" "$(cat /run/secrets/steam_password)" $guard; \
+    fi; \
+    steamcmd +@sSteamCmdForcePlatformType windows +force_install_dir /server "$@" +app_update 1338040 validate +quit; \
     # SteamCMD exits 0 even when the login or download failed, so check for the program itself
-    test -f /server/DedicatedServerCmd.exe || { echo "The download failed: check the Steam user name, password and Steam Guard code" >&2; exit 1; }
+    test -f /server/DedicatedServerCmd.exe || { echo "The download failed (see the SteamCMD output above)" >&2; exit 1; }
 
 # A stage of its own so a build can swap it for a folder: --build-context ams2-files=./some-folder
 FROM scratch AS ams2-files

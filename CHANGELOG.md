@@ -14,7 +14,7 @@ Notable changes, newest first. This file starts with the security and modernisat
 - Optional **`ams2_stats`** import (`RM_STATS_SOURCE=ams2_stats`): sector times, ideal lap, lap-time chart, DNF/DSQ handling. Disqualified drivers and drivers who retired before 90% of the winner's distance score no points.
 - Championship rules (dropped rounds, point adjustments, teams), voided races, CSV export, driver pages, fastest laps table, shareable race pages.
 - Admin tools: server.cfg form, rotation builder, next-session settings, ban list, balance of performance, activity log, password change. Live session panel with kick, temporary ban and chat. Discord notifications.
-- Docker: optional build target that downloads the game server into the image (`docker/build-with-server.sh`, Steam credentials as BuildKit secrets).
+- Docker: optional build target that downloads the game server into the image (`docker/build-with-server.sh`). SteamCMD logs in anonymously (a Steam account is optional, as BuildKit secrets).
 - Docker: one container with Wine and the game server, or Race Manager against a game server that runs elsewhere (`RM_GAMESERVER_CONTROL=external`). `docker/backup-mongo.sh` and `docker/restore-mongo.sh`.
 - Lightweight Race Manager image for a game server on a NAS (`race_mgr-external`), user and image settings in the NAS compose file, Synology notes.
 - GitHub workflow that builds and checks the Docker image on every push and publishes it (without game server files) on a version tag.
@@ -25,6 +25,8 @@ Notable changes, newest first. This file starts with the security and modernisat
 - Admin login uses an HttpOnly session cookie with CSRF protection, a lockout after repeated failures and a password that can be changed in the UI. Race Manager listens on `127.0.0.1` unless told otherwise; every `/api` route not listed as public is refused.
 
 ### Fixed
+- A `server.cfg` mounted into the container on its own (as on some NAS setups) could not be saved: it is now written in place.
+- Race Manager's own fields of a race (database id, void, penalties, video link) are never taken from the stats file.
 - Races imported from `ams2_stats` were hidden from the leaderboard by the AI-strength filter (the addon doesn't record it).
 - The game server hangs up on HTTP/2 upgrade requests; Race Manager now speaks HTTP/1.1 to it.
 - The ban list uses the game server's real `[ ... ]` file layout.

@@ -1,18 +1,14 @@
 #!/bin/bash
 # Builds the Race Manager image with the AMS2 dedicated server downloaded into it, and starts the stack.
-# Asks for your Steam password (and Steam Guard code, if your account has one) without echoing them; they are
-# given to the build as secrets and are not stored in the image. Needs a Steam account that owns the game.
+# SteamCMD logs in anonymously. If you give a Steam user name, it asks for the password (and Steam Guard code)
+# without echoing them; they reach the build as secrets and are not stored in the image.
 #
-#   ./docker/build-with-server.sh <steam-username> [build | up]     (default: up, which builds then starts)
+#   ./docker/build-with-server.sh [steam-username] [build | up]     (default: anonymous, up = build then start)
 #
 # To update the game server later, run it again with RM_REFRESH_SERVER=true in front.
 set -euo pipefail
 
-STEAM_USERNAME="${1:-}"
-if [ -z "$STEAM_USERNAME" ]; then
-  echo "Usage: $0 <steam-username> [build | up]" >&2
-  exit 1
-fi
+STEAM_USERNAME="${1:-anonymous}"
 action="${2:-up}"
 
 cd "$(dirname "$0")/.."
@@ -21,8 +17,12 @@ if [ ! -f .env ]; then
   exit 1
 fi
 
-read -r -s -p "Steam password for $STEAM_USERNAME: " STEAM_PASSWORD; echo
-read -r -s -p "Steam Guard code (empty if your account has none): " STEAM_GUARD_CODE; echo
+STEAM_PASSWORD=""
+STEAM_GUARD_CODE=""
+if [ "$STEAM_USERNAME" != anonymous ]; then
+  read -r -s -p "Steam password for $STEAM_USERNAME: " STEAM_PASSWORD; echo
+  read -r -s -p "Steam Guard code (empty if your account has none): " STEAM_GUARD_CODE; echo
+fi
 export STEAM_USERNAME STEAM_PASSWORD STEAM_GUARD_CODE
 
 files=(-f docker-compose.yml -f docker/docker-compose.with-server.yml)

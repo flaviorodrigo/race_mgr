@@ -82,7 +82,7 @@ Never forward the AM2DS HTTP API port (9000); Race Manager only needs it locally
 An alternative to the Windows install: one container runs Race Manager, which launches the AMS2 dedicated server under Wine, plus a MongoDB container.
 
 1. `cp .env.example .env` and fill it in (generate secrets with `openssl rand -hex 24`; the JWT secret needs `openssl rand -hex 32`).
-2. `./docker/download-server.sh <steam-username>` downloads the dedicated server into `./ams2-server` with SteamCMD (it prompts for your Steam password) and copies in the sample `server.cfg`. Edit that file's name and password.
+2. `./docker/download-server.sh` downloads the dedicated server into `./ams2-server` with SteamCMD (anonymous login, no Steam account needed) and copies in the sample `server.cfg`. Edit that file's name and password.
 3. `docker compose up -d --build`
 
 What is exposed: the web UI only on `127.0.0.1:8080` (put a TLS reverse proxy in front, as described above); the AMS2 game ports `8766/udp`, `27015/udp`, `27016/udp`. MongoDB sits on an internal network with no published port, and the game server's HTTP API stays inside the Race Manager container. Admin login therefore happens from the Docker host itself (or through an SSH tunnel: `ssh -L 8080:127.0.0.1:8080 host`).
@@ -91,19 +91,19 @@ The Wine image is amd64 only. Update the game server by re-running step 2 and `d
 
 #### Or build the game server into the image
 
-Instead of step 2, the build itself can download the game server: `./docker/build-with-server.sh <steam-username>` (after `cp .env.example .env`). It asks for your Steam password and, if your account uses Steam Guard, the current code (neither is echoed), then builds the `with-server` target of the `Dockerfile` and starts the stack. The Steam account must own the game.
+Instead of step 2, the build itself can download the game server: `./docker/build-with-server.sh` (after `cp .env.example .env`). It builds the `with-server` target of the `Dockerfile`, where SteamCMD downloads the server with an anonymous login, and starts the stack.
 
-- The password and code reach SteamCMD as BuildKit secrets: they are not stored in the image or its layers, and only the server files are carried into the final image. A Steam Guard code is single use and expires within about a minute, so type it when asked; an account without Steam Guard, or a dedicated Steam account for this, avoids the problem for repeated builds.
+- If anonymous downloads ever stop working, pass a Steam user name (`./docker/build-with-server.sh <steam-username>`): it asks for the password and, if the account uses Steam Guard, the current code (neither is echoed). They reach SteamCMD as BuildKit secrets, so they are not stored in the image or its layers; only the server files are carried into the final image.
 - On start the image copies the game server into the mounted `./ams2-server` folder (the folder that holds `server.cfg`, the ban list, the stats data and the rotation Race Manager writes), creating `server.cfg` from the sample. Later starts leave the folder alone, so your settings survive.
 - To update the game server: run the script again, then once `RM_REFRESH_SERVER=true docker compose -f docker-compose.yml -f docker/docker-compose.with-server.yml up -d`. That replaces the game files but keeps `server.cfg`, the ban list and whitelist, the balance-of-performance files, `lua_config/` and the rotation file.
 - **Keep that image on your machine.** It contains Reiza's server files, so never push it to a registry. A plain `docker compose up --build` still builds the normal image without them.
-- Status: the build stages and the copy-on-start logic are tested, but the SteamCMD download step itself has not been run against a real Steam account.
+- Tested: the build stages and the copy-on-start logic on every push; the real anonymous download through the manual *Docker image* workflow run with *real_download* ticked.
 
 #### Building on GitHub
 
 `.github/workflows/docker.yml` builds the image on every push and pull request and checks it (Java and Wine are there, a start without game server files says so, and the `with-server` target copies stand-in server files in on first start and then leaves them alone). Pushing a version tag such as `v1.0.0` also **publishes** the plain image to `ghcr.io/<owner>/race_mgr`, which contains no game server files, so `image: ghcr.io/<owner>/race_mgr:v1.0.0` can replace `build: .` in the compose file.
 
-GitHub does not build the `with-server` image with the real download, on purpose: it would need your Steam password in the repository's secrets, a Steam Guard code can't be supplied to an unattended build, and publishing an image that holds Reiza's server files would redistribute them. Build that one on your own machine.
+The `with-server` image is never published, on purpose: it holds Reiza's server files, so publishing it would redistribute them. A manual run of the workflow (*Run workflow*, tick *real_download*) builds it with the real download to check it still works, and throws it away. Every push also runs the NAS setup for real: the external image as user 1029:100 with a separately mounted `server.cfg` and a real MongoDB, signing in and saving settings.
 
 ## Championships & scoring
 

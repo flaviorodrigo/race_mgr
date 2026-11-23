@@ -26,7 +26,9 @@ COPY --from=build --chown=racemgr:racemgr /racemgr.jar /app/racemgr.jar
 USER racemgr
 WORKDIR /app
 
-ENV RM_GAMESERVER_CONTROL=external \
+# HOME=/tmp so it also runs as another user (compose `user:`, to match the game server folder's owner)
+ENV HOME=/tmp \
+    RM_GAMESERVER_CONTROL=external \
     RM_PATH_TO_DEDICATED_SERVER=/data/ams2-server \
     RM_PORT=8080 \
     RM_BIND_ADDRESS=127.0.0.1

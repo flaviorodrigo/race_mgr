@@ -6,6 +6,11 @@ on:
     tags: ['v*']
   pull_request:
   workflow_dispatch:
+    inputs:
+      real_download:
+        description: Also build the with-server image with the real (anonymous) SteamCMD download. Nothing is published.
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -83,6 +88,8 @@ jobs:
           cache-to: type=gha,mode=max,scope=external
       - name: It has Java and the jar, and runs as a non-root user
         run: docker run --rm --entrypoint sh racemgr-external:ci -c 'java -version && test -f /app/racemgr.jar && test "$(id -u)" != 0'
+      - name: The NAS setup works (another user, a separately mounted server.cfg, a real MongoDB)
+        run: docker/ci/nas-smoke.sh racemgr-external:ci
 
       # Only a version tag (v1.2.3) publishes. The images hold no game server files.
       - name: Sign in to GitHub's container registry
@@ -125,3 +132,28 @@ jobs:
           tags: ${{ steps.meta-external.outputs.tags }}
           labels: ${{ steps.meta-external.outputs.labels }}
           cache-from: type=gha,scope=external
+
+  real-download:
+    name: with-server image with the real game server download (manual, never published)
+    if: github.event_name == 'workflow_dispatch' && inputs.real_download
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
+      - name: Build the with-server target (SteamCMD, anonymous login)
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: linux/amd64
+          target: with-server
+          load: true
+          tags: racemgr:with-server
+      - name: The downloaded server is in the image and is copied in on first start
+        run: |
+          docker run --rm -e RM_PATH_TO_DEDICATED_SERVER=/tmp/ams2 --entrypoint bash racemgr:with-server -c '
+            set -e
+            /app/seed-server.sh
+            ls -la /tmp/ams2 | head -20
+            test -f /tmp/ams2/DedicatedServerCmd.exe
+            test -f /tmp/ams2/server.cfg
+            du -sh /opt/ams2-server'

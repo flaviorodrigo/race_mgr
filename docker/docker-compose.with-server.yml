@@ -1,15 +1,15 @@
 # Adds the game server to the Race Manager image at build time (instead of ./docker/download-server.sh).
-#   ./docker/build-with-server.sh <steam-username>
+#   ./docker/build-with-server.sh                 (SteamCMD logs in anonymously)
 # or by hand:
-#   STEAM_USERNAME=... STEAM_PASSWORD=... [STEAM_GUARD_CODE=...] \
-#     docker compose -f docker-compose.yml -f docker/docker-compose.with-server.yml up -d --build
+#   docker compose -f docker-compose.yml -f docker/docker-compose.with-server.yml up -d --build
+# With a Steam account instead: STEAM_USERNAME=... STEAM_PASSWORD=... [STEAM_GUARD_CODE=...] in front.
 # The images this makes contain Reiza's game server files: keep them local, never push them to a registry.
 services:
   racemgr:
     build:
       target: with-server
       args:
-        STEAM_USERNAME: ${STEAM_USERNAME:?set STEAM_USERNAME}
+        STEAM_USERNAME: ${STEAM_USERNAME:-anonymous}
       secrets: [steam_password, steam_guard_code]
     environment:
       # Set to true for one start after rebuilding, to replace the game files with the newer ones in the image
