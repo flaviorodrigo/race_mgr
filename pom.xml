@@ -230,6 +230,19 @@
                     </annotationProcessorPaths>
                 </configuration>
             </plugin>
+        </plugins>
+	</build>
+
+	<profiles>
+		<!-- Windows distribution artifacts (RaceManager.exe via Launch4j and the installer zip).
+		     Active by default; skip with `-P '!windows-dist'` (the Docker build does). -->
+		<profile>
+			<id>windows-dist</id>
+			<activation>
+				<activeByDefault>true</activeByDefault>
+			</activation>
+			<build>
+				<plugins>
 			<plugin>
 				<groupId>com.akathist.maven.plugins.launch4j</groupId>
 				<artifactId>launch4j-maven-plugin</artifactId>
@@ -288,6 +301,8 @@
 					</execution>
 				</executions>
 			</plugin>
-        </plugins>
-	</build>
+				</plugins>
+			</build>
+		</profile>
+	</profiles>
 </project>

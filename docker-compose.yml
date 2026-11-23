@@ -1,0 +1,63 @@
+# Race Manager + AMS2 dedicated server (Wine) + MongoDB.
+#   cp .env.example .env   # then fill in the values
+#   ./docker/download-server.sh <steam-username>
+#   docker compose up -d --build
+#
+# Exposure: the web UI is published on 127.0.0.1 only (put a TLS reverse proxy in front, see README).
+# MongoDB is on an internal network with no published ports. The game server's HTTP API (9000)
+# stays on the Race Manager container's loopback. Only the AMS2 game ports are public.
+services:
+  racemgr:
+    build: .   # tini (PID 1) is set up in the Dockerfile
+    restart: unless-stopped
+    environment:
+      RM_ADMIN_USER: ${RM_ADMIN_USER:?set in .env}
+      RM_ADMIN_PASSWORD: ${RM_ADMIN_PASSWORD:?set in .env}
+      RM_JWT_SECRET: ${RM_JWT_SECRET:?set in .env}
+      RM_MONGO_HOST: mongo
+      RM_MONGO_PORT: "27017"
+      RM_MONGO_USER: ${RM_MONGO_USER:?set in .env}
+      RM_MONGO_PASS: ${RM_MONGO_PASS:?set in .env}
+    ports:
+      - "127.0.0.1:8080:8080"     # web UI / API: host reverse proxy only
+      - "8766:8766/udp"           # AMS2 game ports
+      - "27015:27015/udp"
+      - "27016:27016/udp"
+    volumes:
+      - ./ams2-server:/home/steam/ams2-server
+      - wineprefix:/home/steam/.wine
+    depends_on:
+      mongo:
+        condition: service_healthy
+    networks: [default, backend]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+
+  mongo:
+    image: mongo:7.0@sha256:41e8195b2791692695e1dc9bd21cd51d0a3af05fff8ace9304a5c1acf94f1ae1
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:?set in .env}
+      RM_MONGO_USER: ${RM_MONGO_USER:?set in .env}
+      RM_MONGO_PASS: ${RM_MONGO_PASS:?set in .env}
+    volumes:
+      - mongo-data:/data/db
+      - ./docker/mongo-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [backend]
+    cap_drop: [ALL]
+    cap_add: [SETUID, SETGID, CHOWN, DAC_OVERRIDE, FOWNER]
+    security_opt: ["no-new-privileges:true"]
+
+networks:
+  backend:
+    internal: true   # no route to or from the outside; only racemgr and mongo are attached
+
+volumes:
+  wineprefix:
+  mongo-data:

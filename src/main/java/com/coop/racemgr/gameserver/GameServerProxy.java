@@ -122,18 +122,14 @@ public class GameServerProxy {
     }
 
     public Object getRotation() throws IOException {
-        String gameServerFsPath = System.getenv("RM_PATH_TO_DEDICATED_SERVER");
-        String gameServerDefaultRotationFilePath = gameServerFsPath + "\\lua\\sms_rotate\\sms_rotate_default_config.json";
-        File file = new File(gameServerDefaultRotationFilePath);
+        File file = GameServerPaths.defaultRotationFile().toFile();
         String jsonString = FileUtils.readFileToString(file, "UTF-8");
         Object obj = RacemgrUtils.jsonStrToObj(jsonString);
         return obj;
     }
 
     public JSONObject getStats() throws IOException, ParseException {
-        String gameServerFsPath = System.getenv("RM_PATH_TO_DEDICATED_SERVER");
-        String gameServerStatsFilePath = gameServerFsPath + "\\lua_config\\sms_stats_data.json";
-        File file = new File(gameServerStatsFilePath);
+        File file = GameServerPaths.statsFile().toFile();
         String dataString = FileUtils.readFileToString(file, "UTF-8");
         // The file is JSON-ish, but has comments that need removed before parsing
         var jsonStart = dataString.indexOf("{");

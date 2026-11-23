@@ -18,7 +18,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.UUID;
-import java.io.File;
 
 // @TODO:
 //  1) Support expanded custom rotations and not just semi-random
@@ -60,24 +59,14 @@ public class RaceRotationController {
     // It assumes the same limited file format as what is created by the generator. Examples included in the Postman collection...
     @PostMapping("/api/v1/admin/race/rotation")
     public ResponseEntity<Object> rotation(@RequestBody RaceRotationCustomRequest request) throws org.json.simple.parser.ParseException {
-        String gameServerFsPath = System.getenv("RM_PATH_TO_DEDICATED_SERVER");
-
         RaceRotation raceRotation;
         try {
             raceRotation = new RaceRotation(request.name, request.config);
             var rotationFileMaker = new RacemgrRotationFileMaker(raceRotation);
             rotationFileMaker.writeGeneratedRotationFile();
 
-            // Once a new file has been written we must remove the active/cached one and reboot
-            // the game server for this to take effect.
-            String gameServerCachedRotationFilePath = gameServerFsPath + "\\lua_config\\sms_rotate_config.json";
-            File file = new File(gameServerCachedRotationFilePath);
-            if (file.delete()) {
-                System.out.println("Game Server cached rotation deleted successfully");
-            } else {
-                System.out.println("Game Server cached rotation");
-            }
-
+            // writeGeneratedRotationFile() also removes the game server's cached rotation; the
+            // server must be restarted for the new rotation to take effect.
             raceRotationRepository.save(raceRotation);
             return ResponseHandler.generateResponse("Successfully saved custom rotation", HttpStatus.OK, raceRotation);
         } catch (Exception e) {

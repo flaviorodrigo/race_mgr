@@ -51,7 +51,19 @@ race.example.com {
 ```
 Never forward the AM2DS HTTP API port (9000); Race Manager only needs it locally, so set `httpApiInterface : "127.0.0.1"` in `server.cfg` and remove the `Access-Control-Allow-Origin: *` header.
 
-### Troubleshooting Tips
+### Running in Docker (Linux + Wine)
+
+An alternative to the Windows install: one container runs Race Manager, which launches the AMS2 dedicated server under Wine, plus a MongoDB container.
+
+1. `cp .env.example .env` and fill it in (generate secrets with `openssl rand -hex 24`; the JWT secret needs `openssl rand -hex 32`).
+2. `./docker/download-server.sh <steam-username>` downloads the dedicated server into `./ams2-server` with SteamCMD (it prompts for your Steam password) and copies in the sample `server.cfg`. Edit that file's name and password.
+3. `docker compose up -d --build`
+
+What is exposed: the web UI only on `127.0.0.1:8080` (put a TLS reverse proxy in front, as described above); the AMS2 game ports `8766/udp`, `27015/udp`, `27016/udp`. MongoDB sits on an internal network with no published port, and the game server's HTTP API stays inside the Race Manager container. Admin login therefore happens from the Docker host itself (or through an SSH tunnel: `ssh -L 8080:127.0.0.1:8080 host`).
+
+The Wine image is amd64 only. Update the game server by re-running step 2 and `docker compose restart racemgr`.
+
+## Troubleshooting Tips
 - If the console window appears and disappears immediate after launch, there is likely a configuration error (i.e.) something incorrect with the values you supplied to the installer and/or entered directly into the required Windows environment variables. For example, Race Manager is unable to connect to Mongo because the wrong password was supplied. It could also be a Java version mismatch (installing from the link provided above would rule this problem out).
   
 ## Additional Setup Information  

@@ -1,0 +1,10 @@
+.git
+.idea
+target
+ams2-server
+.env
+src/main/client/node_modules
+src/main/client/build
+screenshots
+installer
+postman

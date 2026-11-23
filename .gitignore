@@ -38,3 +38,7 @@ src/main/java/main/resources/static
 
 ### INSTALLER ###
 installer/dist/*
+
+### Docker ###
+.env
+ams2-server/
