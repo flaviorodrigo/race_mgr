@@ -4,6 +4,7 @@ import {sanitizeString} from './stringUtils';
 import {parsePositions, parseTeams, formatTeams, parseAdjustments, formatAdjustments} from './scoringPresets';
 import {computeStandings, droppedRounds} from './standings';
 import {toCsv} from './csv';
+import {sectorRows, lapSeries, formatLap, formatSector} from './sectors';
 
 describe('calculatePoints', () => {
 	it('gives the winner a 40% bonus over a half-field points scale', () => {
@@ -144,5 +145,45 @@ describe('team and adjustment text', () => {
 		for (const bad of ['no commas', 'A, abc', 'A, 99999', ', 5', 'A, 1.5']) {
 			expect(parseAdjustments(bad)).toBeNull();
 		}
+	});
+});
+
+describe('sector analysis', () => {
+	const lap = (n: number, time: number | null, s1: number | null, s2: number | null, s3: number | null, valid = true) => ({lap: n, time, s1, s2, s3, valid, position: 1});
+	const driver = {
+		name: 'A', state: 'Finished',
+		laps: [lap(0, 104000, 40000, 32500, 31500), lap(1, 103000, 39800, 32600, 30600), lap(2, 90000, 30000, 30000, 30000, false), lap(3, 103500, 40200, 32400, 30900)],
+	};
+
+	it('uses valid laps only and builds the theoretical best', () => {
+		const [row] = sectorRows([driver]);
+		expect(row.bestLap).toBe(103000);
+		expect([row.s1, row.s2, row.s3]).toEqual([39800, 32400, 30600]);
+		expect(row.theoretical).toBe(102800);
+		expect(row.gap).toBe(200);
+		expect(row.validLaps).toBe(3);
+	});
+
+	it('orders drivers by best lap and copes with no data', () => {
+		const slow = {name: 'B', state: null, laps: [lap(1, 110000, 41000, 34000, 35000)]};
+		expect(sectorRows([slow, driver]).map(r => r.name)).toEqual(['A', 'B']);
+		expect(sectorRows([{name: 'C', laps: []}])[0]).toMatchObject({bestLap: null, theoretical: null, gap: null});
+		expect(sectorRows(undefined)).toEqual([]);
+	});
+
+	it('leaves slow outliers off the lap chart', () => {
+		const spin = {name: 'S', laps: [lap(1, 104000, 1, 1, 1), lap(2, 160000, 1, 1, 1), lap(3, 103000, 1, 1, 1)]};
+		const {series, max, min} = lapSeries([driver, spin]);
+		expect(series.find(s => s.name === 'S')?.points.map(p => p.lap)).toEqual([1, 3]);
+		expect(min).toBe(103000);
+		expect(max).toBeLessThan(120000);
+		expect(lapSeries([]).series).toEqual([]);
+	});
+
+	it('formats times', () => {
+		expect(formatLap(103948)).toBe('1:43.948');
+		expect(formatLap(59001)).toBe('0:59.001');
+		expect(formatSector(39967)).toBe('39.967');
+		expect(formatLap(null)).toBe('');
 	});
 });

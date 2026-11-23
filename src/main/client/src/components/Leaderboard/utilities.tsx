@@ -81,11 +81,13 @@ export const mapRaceDataToRaceResultsObject = (data:Array<any>, scoring?: IScori
 		const fastestLapTimes = thisRace.stages.race1?.results.map(result => ({
 			driverName: result.name,
 			fastestLapTime: result.attributes.FastestLapTime,
+			disqualified: result.attributes.State === 'Disqualified',
 		}));
 
-		const polePositionName = _.head(thisRace.stages.qualifying1?.results).name;
-		const winnerName = _.head(thisRace.stages.race1?.results).name;
-		const fastestLapName = _.head(_.orderBy(fastestLapTimes?.filter(fl => fl.fastestLapTime > 0), ['fastestLapTime'], ['asc']))?.driverName;
+		const winnerLaps = Math.max(0, ...(thisRace.stages.race1?.results ?? []).map((x:any) => x.attributes.Lap ?? 0));
+		const polePositionName = _.head(thisRace.stages.qualifying1?.results)?.name;
+		const winnerName = _.head(thisRace.stages.race1?.results)?.name;
+		const fastestLapName = _.head(_.orderBy(fastestLapTimes?.filter(fl => fl.fastestLapTime > 0 && !fl.disqualified), ['fastestLapTime'], ['asc']))?.driverName;
 
 		const participantList:Array<string> = [];
 		for (const p in thisRace.participants) {
@@ -112,7 +114,12 @@ export const mapRaceDataToRaceResultsObject = (data:Array<any>, scoring?: IScori
 				vehicleId: r.attributes.VehicleId,
 				fastestLapTime: r.attributes.FastestLapTime,
 				totalTime: r.attributes.TotalTime,
-				totalPoints: calculatePoints(r.attributes.RacePosition, Object.keys(thisRace.participants).length, {tookPole: r.name === polePositionName, fastestLap: r.name === fastestLapName, scoring}),
+				state: r.attributes.State,
+				// A disqualified driver, or one who retired before 90% of the winner's distance, keeps their place in the
+				// result but scores nothing
+				totalPoints: r.attributes.State === 'Disqualified' || (r.attributes.State === 'Retired' && r.attributes.Lap < winnerLaps * 0.9)
+					? 0
+					: calculatePoints(r.attributes.RacePosition, Object.keys(thisRace.participants).length, {tookPole: r.name === polePositionName, fastestLap: r.name === fastestLapName, scoring}),
 				hadFastestLap: r.name === fastestLapName,
 			})),
 			qualifyingResults: thisRace.stages.qualifying1?.results.map((r:any) => ({
@@ -120,6 +127,8 @@ export const mapRaceDataToRaceResultsObject = (data:Array<any>, scoring?: IScori
 				bestQualifyingTime: r.attributes.FastestLapTime,
 				tookPole: r.name === polePositionName,
 			})),
+			drivers: thisRace.stages.race1?.drivers ?? [],
+			qualifyingDrivers: thisRace.stages.qualifying1?.drivers ?? [],
 			polePosition: polePositionName,
 			fastestLap: fastestLapName,
 			winner: winnerName,

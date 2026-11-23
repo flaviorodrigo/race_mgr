@@ -114,6 +114,16 @@ Everyone can open a single race at `/race/<id>` (the link button next to each ro
 
 Set `RM_DISCORD_WEBHOOK_URL` to a Discord channel webhook (`https://discord.com/api/webhooks/...`) and Race Manager posts the podium and fastest lap when a race finishes, and a notice when the game server goes offline or comes back. Only races that finished in the last 30 minutes are announced, so importing old history never floods the channel. Messages can't ping anyone whatever a driver is called. Leave it unset to turn this off.
 
+## Sector times and lap-by-lap pace (optional `ams2_stats` addon)
+
+Reiza's `sms_stats` addon records results only. The community [`ams2_stats`](https://github.com/devology-uk/ams2-dedicated-server-toolbox) addon (from the AMS2 Dedicated Server Toolbox, MIT licence) also records every lap with its sector times, lap validity and DNF/disqualified states. Race Manager can read its output instead of `sms_stats`:
+
+1. Copy the addon's `ams2_stats` folder into the game server's `lua` folder and add `"ams2_stats"` to `luaApiAddons` in `server.cfg` (you can drop `sms_stats`: use one stats source, not both, or races would count twice).
+2. Start Race Manager with `RM_STATS_SOURCE=ams2_stats`. The addon writes local times without a time zone, so also set `RM_STATS_TIMEZONE` (for example `Europe/London`) to the zone the game server's clock is in; the default is the zone Race Manager runs in.
+3. Each finished `Race1` session becomes a race (with the `Qualifying1` before it when there is one). Each race's page then shows **sector times** per driver (best lap, the three best sectors, the *ideal lap* made of them and what was left on the table, with the quickest sector of each marked) and a **lap-time chart** for the race and for qualifying, where you can click a name to hide it.
+
+Whichever stats source is used, a **disqualified** driver keeps their place in the result but scores no points, and a driver who **retired** before 90% of the winner's distance scores none either. Retirements are shown as DNF and disqualifications as DSQ on the race page.
+
 ## Troubleshooting Tips
 - If the console window appears and disappears immediate after launch, there is likely a configuration error (i.e.) something incorrect with the values you supplied to the installer and/or entered directly into the required Windows environment variables. For example, Race Manager is unable to connect to Mongo because the wrong password was supplied. It could also be a Java version mismatch (installing from the link provided above would rule this problem out).
   
@@ -162,6 +172,7 @@ When using the installer .exe the required Windows environment variables will be
 - `RM_ADMIN_PASSWORD`: Set to whatever you want the admin password to be.  
 - `RM_GAMESERVER_CONTROL` (optional): `external` when something else runs the game server (see above).  
 - `RM_GAMESERVER_USER` / `RM_GAMESERVER_PASSWORD` (optional): HTTP basic auth for the game server's API.  
+- `RM_STATS_SOURCE` (optional): `ams2_stats` to read the `ams2_stats` addon's file instead of `sms_stats` (see Sector times). `RM_STATS_TIMEZONE` (optional): the time zone of the game server's clock, e.g. `Europe/London`.  
 - `RM_DISCORD_WEBHOOK_URL` (optional): a Discord webhook for race and server notifications (see Discord notifications).  
 - `RM_ADMIN_PASSWORD_RESET` (optional): `true` for one start to discard a password changed in the UI.  
 - `RM_COOKIE_SECURE` (optional): Set to `true` when a TLS proxy in front connects to Race Manager over plain HTTP, so the session cookies are marked `Secure`.  

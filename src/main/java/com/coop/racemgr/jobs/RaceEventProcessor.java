@@ -6,6 +6,7 @@ import com.coop.racemgr.model.Race;
 import com.coop.racemgr.repositories.RaceMgrConfigRepository;
 import com.coop.racemgr.repositories.RaceRepository;
 import com.coop.racemgr.notify.DiscordNotifier;
+import com.coop.racemgr.stats.Ams2StatsSource;
 import com.coop.racemgr.notify.RaceAnnouncement;
 import com.coop.racemgr.utils.RacemgrUtils;
 import org.apache.logging.log4j.LogManager;
@@ -20,6 +21,7 @@ public class RaceEventProcessor {
     private GameServerProxy gameServerProxy;
     private DiscordNotifier notifier;
     private static volatile boolean warnedNotConfigured = false;
+    private static volatile long lastAms2Warning = 0;
 
     private static final Logger logger = LogManager.getLogger(RacemgrApplication.class);
 
@@ -33,6 +35,30 @@ public class RaceEventProcessor {
         this.gameServerProxy = new GameServerProxy();
         this.raceRepository = raceRepository;
         this.raceMgrConfigRepository = raceMgrConfigRepository;
+    }
+
+    // RM_STATS_SOURCE=ams2_stats: read the ams2_stats addon's file instead of sms_stats
+    private void importAms2Stats(com.coop.racemgr.model.RaceMgrConfig config) {
+        try {
+            var races = Ams2StatsSource.readRaces();
+            for (Race race : races) {
+                race.setRaceSessionId(config.getActiveRaceSessionId());
+                race.setRaceRotationId(config.getActiveRaceRotationId());
+                if (raceRepository.findItemByRaceId(race.getRace_id()) == null) {
+                    raceRepository.save(race);
+                    announce(race);
+                }
+            }
+        } catch (java.nio.file.NoSuchFileException e) {
+            logger.debug("Race event processing (ams2_stats): no stats file yet: " + e.getMessage());
+        } catch (Exception e) {
+            // Runs every second: say so once a minute instead of flooding the log
+            long now = System.currentTimeMillis();
+            if (now - lastAms2Warning > 60_000) {
+                lastAms2Warning = now;
+                logger.warn("Could not import from the ams2_stats file: " + e);
+            }
+        }
     }
 
     private void announce(Race race) {
@@ -85,6 +111,11 @@ public class RaceEventProcessor {
             }
         }  else {
             warnedNotConfigured = false;
+            if (Ams2StatsSource.isSelected()) {
+                importAms2Stats(currentRmc);
+                return;
+            }
+
             JsonNode stats = this.gameServerProxy.getStats();
 
             // As long as we have history, process it

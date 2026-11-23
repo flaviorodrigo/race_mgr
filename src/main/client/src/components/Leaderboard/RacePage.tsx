@@ -8,9 +8,11 @@ import {fetchTrackData, fetchVehicleData, mapRaceDataToRaceResultsObject} from '
 import {convertEpochDate, convertEpochTime} from '../../utils/epochUtils';
 import {convertEpochTimeToRaceResult} from '../../utils/dateTimeUtils';
 import CopyLinkButton from './CopyLinkButton';
+import LapAnalysis from './LapAnalysis';
 
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
+import Chip from '@mui/material/Chip';
 import Link from '@mui/material/Link';
 import Paper from '@mui/material/Paper';
 import Table from '@mui/material/Table';
@@ -109,7 +111,11 @@ const RacePage = () => {
 						{results.map(r => (
 							<TableRow key={r.driverName}>
 								<TableCell>{r.finishPosition}</TableCell>
-								<TableCell component="th" scope="row" sx={{fontWeight: r.hadFastestLap ? 'bold' : undefined}}>{r.driverName}</TableCell>
+								<TableCell component="th" scope="row" sx={{fontWeight: r.hadFastestLap ? 'bold' : undefined}}>
+									{r.driverName}
+									{r.state === 'Disqualified' && <Chip size="small" label="DSQ" color="error" sx={{ml: 1}} />}
+									{r.state === 'Retired' && <Chip size="small" label="DNF" sx={{ml: 1}} />}
+								</TableCell>
 								<TableCell>{vehicleName(r.vehicleId)}</TableCell>
 								<TableCell align="right" sx={{fontWeight: r.hadFastestLap ? 'bold' : undefined}}>
 									{r.hadFastestLap ? '* ' : ''}{r.fastestLapTime > 0 ? convertEpochTimeToRaceResult(r.fastestLapTime) : ''}
@@ -146,6 +152,9 @@ const RacePage = () => {
 					</Table>
 				</TableContainer>
 			</>}
+
+			{race.drivers && race.drivers.length > 0 && <LapAnalysis drivers={race.drivers} title="Race pace" />}
+			{race.qualifyingDrivers && race.qualifyingDrivers.length > 0 && <LapAnalysis drivers={race.qualifyingDrivers} title="Qualifying pace" />}
 
 			<Link component={RouterLink} to="/">Back to the leaderboard</Link>
 		</Paper>
