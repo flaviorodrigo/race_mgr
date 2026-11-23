@@ -5,6 +5,7 @@ import com.coop.racemgr.gameserver.GameServerMgr;
 import com.coop.racemgr.audit.AuditLog;
 import com.coop.racemgr.gameserver.BlackList;
 import com.coop.racemgr.gameserver.GameServerProxy;
+import com.coop.racemgr.gameserver.PerformanceFiles;
 import com.coop.racemgr.gameserver.ServerConfigFile;
 import com.coop.racemgr.gameserver.SessionSettings;
 import com.coop.racemgr.gameserver.LiveSession;
@@ -147,7 +148,7 @@ public class GameServerController {
 
     @DeleteMapping("/api/v1/admin/gameserver/banlist/{steamId}")
     public ResponseEntity<Object> banListRemove(@PathVariable String steamId, Authentication authentication) {
-        if (!BlackList.isSteamId(steamId)) {
+        if (!BlackList.isListedId(steamId)) {
             return ResponseHandler.generateResponse("A Steam ID is 17 digits", HttpStatus.BAD_REQUEST, null);
         }
 
@@ -193,6 +194,67 @@ public class GameServerController {
         } catch (java.io.IOException e) {
             logger.warn("Writing server.cfg failed: " + e);
             return ResponseHandler.generateResponse("Could not change server.cfg", HttpStatus.MULTI_STATUS, null);
+        }
+    }
+
+    @Data
+    public static class PerformanceTable {
+        private Boolean enabled;
+        private Double defaultValue;
+        private java.util.Map<String, Double> drivers;
+    }
+
+    @Data
+    public static class PerformanceRequest {
+        private PerformanceTable ballast;
+        private PerformanceTable power;
+        private PerformanceTable drag;
+    }
+
+    // Balance of performance: per-driver ballast, power and drag, from the game server's three small JSON files
+    @GetMapping("/api/v1/admin/gameserver/performance")
+    public ResponseEntity<Object> performance() {
+        try {
+            var tables = PerformanceFiles.forServer().read();
+            Map<String, Object> body = new java.util.LinkedHashMap<>();
+            tables.forEach((kind, t) -> body.put(kind.name().toLowerCase(), Map.of(
+                    "enabled", t.enabled(), "defaultValue", t.defaultValue(), "drivers", t.drivers(), "file", t.file())));
+            return ResponseHandler.generateResponse("Balance of performance", HttpStatus.OK, body);
+        } catch (Exception e) {
+            logger.warn("Reading the performance files failed: " + e);
+            return ResponseHandler.generateResponse(e instanceof java.io.IOException ? e.getMessage() : "Request failed", HttpStatus.MULTI_STATUS, null);
+        }
+    }
+
+    // The game server reads these files when it loads its configuration: restart it to apply changes
+    @PutMapping("/api/v1/admin/gameserver/performance")
+    public ResponseEntity<Object> updatePerformance(@RequestBody PerformanceRequest request, Authentication authentication) {
+        Map<PerformanceFiles.Kind, PerformanceFiles.Table> tables = new java.util.LinkedHashMap<>();
+        add(tables, PerformanceFiles.Kind.BALLAST, request.getBallast());
+        add(tables, PerformanceFiles.Kind.POWER, request.getPower());
+        add(tables, PerformanceFiles.Kind.DRAG, request.getDrag());
+
+        String problem = PerformanceFiles.validate(tables);
+        if (problem != null) {
+            return ResponseHandler.generateResponse(problem, HttpStatus.BAD_REQUEST, null);
+        }
+
+        try {
+            PerformanceFiles.forServer().write(tables);
+            auditLog.record(authentication.getName(), "balance of performance changed",
+                    tables.keySet().stream().map(k -> k.name().toLowerCase()).collect(java.util.stream.Collectors.joining(", ")));
+            return ResponseHandler.generateResponse("Saved. Restart the game server for the changes to apply.", HttpStatus.OK, null);
+        } catch (Exception e) {
+            logger.warn("Writing the performance files failed: " + e);
+            return ResponseHandler.generateResponse(e instanceof java.io.IOException ? e.getMessage() : "Request failed", HttpStatus.MULTI_STATUS, null);
+        }
+    }
+
+    private static void add(Map<PerformanceFiles.Kind, PerformanceFiles.Table> tables, PerformanceFiles.Kind kind, PerformanceTable table) {
+        if (table != null) {
+            tables.put(kind, new PerformanceFiles.Table(Boolean.TRUE.equals(table.getEnabled()),
+                    table.getDefaultValue() == null ? Double.NaN : table.getDefaultValue(),
+                    table.getDrivers() == null ? null : new java.util.LinkedHashMap<>(table.getDrivers()), ""));
         }
     }
 

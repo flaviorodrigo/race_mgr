@@ -353,7 +353,7 @@ class RacemgrApplicationTests {
     void banListEndpointsRejectBadSteamIds() throws Exception {
         Cookie session = adminSession();
         mvc.perform(adminJson(post("/api/v1/admin/gameserver/banlist"), session, "{\"steamId\":\"nope\"}")).andExpect(status().isBadRequest());
-        mvc.perform(adminJson(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete("/api/v1/admin/gameserver/banlist/12345"), session, "{}"))
+        mvc.perform(adminJson(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete("/api/v1/admin/gameserver/banlist/1234"), session, "{}"))
                 .andExpect(status().isBadRequest());
     }
 
@@ -438,6 +438,19 @@ class RacemgrApplicationTests {
         Cookie session = adminSession();
         for (String bad : new String[]{"{}", "{\"httpApiUsers\":\"x\"}", "{\"maxPlayerCount\":500}", "{\"name\":\"a\\nb\"}", "{\"secure\":\"yes\"}"}) {
             mvc.perform(adminJson(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put("/api/v1/admin/gameserver/config"), session, bad))
+                    .andExpect(status().isBadRequest());
+        }
+    }
+
+    @Test
+    void performanceEndpointsNeedLoginAndValidateTables() throws Exception {
+        mvc.perform(get("/api/v1/admin/gameserver/performance")).andExpect(status().isUnauthorized());
+        Cookie session = adminSession();
+        for (String bad : new String[]{"{}", "{\"ballast\":{\"enabled\":true,\"defaultValue\":0}}",
+                "{\"ballast\":{\"enabled\":true,\"defaultValue\":9999,\"drivers\":{}}}",
+                "{\"power\":{\"enabled\":true,\"defaultValue\":1,\"drivers\":{\"12\":1}}}",
+                "{\"drag\":{\"enabled\":true,\"defaultValue\":1,\"drivers\":{\"76561198000000001\":3}}}"}) {
+            mvc.perform(adminJson(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put("/api/v1/admin/gameserver/performance"), session, bad))
                     .andExpect(status().isBadRequest());
         }
     }

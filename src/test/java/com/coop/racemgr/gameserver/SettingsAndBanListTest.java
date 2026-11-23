@@ -35,32 +35,67 @@ class SettingsAndBanListTest {
         assertThat(SessionSettings.advanceUri("http://127.0.0.1:9000/api").toString()).isEqualTo("http://127.0.0.1:9000/api/session/advance");
     }
 
+    // The server's own sample (config_sample/blacklist.cfg), byte for byte
+    private static final String SAMPLE = """
+            // This is a sample blacklist used by sample server config server_with_lists.cfg
+            // Here it's just a simple array of Steam IDs.
+            // Note that 1234567890 is not a valid Steam ID of any user, so this won't blacklist anyone.
+
+            [
+            1234567890
+            ]
+            """;
+
     @Test
-    void addsAndRemovesSteamIdsKeepingEverythingElse(@TempDir Path dir) throws Exception {
+    void readsAndEditsTheServersOwnSampleFormat(@TempDir Path dir) throws Exception {
         Path file = dir.resolve("blacklist.cfg");
-        Files.writeString(file, "// banned drivers\n76561198000000001 // cutting corners\n\n# old note\n");
+        Files.writeString(file, SAMPLE);
         var list = new BlackList(file);
+
+        assertThat(list.list()).extracting(BlackList.Entry::steamId).containsExactly("1234567890");
 
         list.add("76561198000000002", "rammed\nsomeone");
         list.add("76561198000000002", "again");
-        assertThat(list.list()).extracting(BlackList.Entry::steamId).containsExactly("76561198000000001", "76561198000000002");
+        assertThat(list.list()).extracting(BlackList.Entry::steamId).containsExactly("1234567890", "76561198000000002");
         assertThat(list.list().get(1).note()).isEqualTo("rammed someone");
+        // The new entry sits inside the brackets, after the existing one, and the header comments are intact
+        assertThat(Files.readString(file)).isEqualTo(SAMPLE.replace("1234567890\n]", "1234567890\n76561198000000002 // rammed someone\n]"));
 
-        assertThat(list.remove("76561198000000001")).isTrue();
+        assertThat(list.remove("1234567890")).isTrue();
         assertThat(list.remove("76561198000000009")).isFalse();
-        assertThat(Files.readAllLines(file)).contains("// banned drivers", "# old note").noneMatch(l -> l.startsWith("76561198000000001"));
+        assertThat(Files.readString(file)).isEqualTo(SAMPLE.replace("1234567890\n]", "76561198000000002 // rammed someone\n]"));
     }
 
     @Test
-    void refusesToTouchAFormatItDoesNotUnderstand(@TempDir Path dir) throws Exception {
+    void keepsCommaAndQuoteStylesConsistent(@TempDir Path dir) throws Exception {
         Path file = dir.resolve("blacklist.cfg");
-        String original = "[ \"76561198000000001\", \"76561198000000002\" ]\n";
-        Files.writeString(file, original);
+        Files.writeString(file, "[\n\"76561198000000001\", // first\n\"76561198000000002\"\n]\n");
         var list = new BlackList(file);
 
-        assertThatThrownBy(list::list).isInstanceOf(BlackList.UnsupportedFormatException.class);
-        assertThatThrownBy(() -> list.add("76561198000000003", "")).isInstanceOf(BlackList.UnsupportedFormatException.class);
-        assertThat(Files.readString(file)).isEqualTo(original);
+        list.add("76561198000000003", "");
+        assertThat(Files.readAllLines(file)).containsExactly("[", "\"76561198000000001\", // first", "\"76561198000000002\",", "\"76561198000000003\"", "]");
+        list.remove("76561198000000003");
+        assertThat(Files.readAllLines(file)).containsExactly("[", "\"76561198000000001\", // first", "\"76561198000000002\"", "]");
+    }
+
+    @Test
+    void refusesToTouchALayoutItDoesNotUnderstand(@TempDir Path dir) throws Exception {
+        Path file = dir.resolve("blacklist.cfg");
+        for (String original : new String[]{"[ 76561198000000001, 76561198000000002 ]\n", "{ \"ids\": [1] }\n", "76561198000000001\n"}) {
+            Files.writeString(file, original);
+            var list = new BlackList(file);
+            assertThatThrownBy(list::list).isInstanceOf(BlackList.UnsupportedFormatException.class);
+            assertThatThrownBy(() -> list.add("76561198000000003", "")).isInstanceOf(BlackList.UnsupportedFormatException.class);
+            assertThat(Files.readString(file)).isEqualTo(original);
+        }
+    }
+
+    @Test
+    void listedIdsIncludeTheServersShortPlaceholder() {
+        assertThat(BlackList.isListedId("1234567890")).isTrue();
+        assertThat(BlackList.isListedId("76561198000000001")).isTrue();
+        assertThat(BlackList.isListedId("1234")).isFalse();
+        assertThat(BlackList.isListedId("../../x")).isFalse();
     }
 
     @Test
@@ -78,6 +113,6 @@ class SettingsAndBanListTest {
         var list = new BlackList(dir.resolve("blacklist.cfg"));
         assertThat(list.list()).isEmpty();
         list.add("76561198000000001", "");
-        assertThat(Files.readAllLines(dir.resolve("blacklist.cfg"))).containsExactly("76561198000000001");
+        assertThat(Files.readAllLines(dir.resolve("blacklist.cfg"))).containsExactly("[", "76561198000000001", "]");
     }
 }

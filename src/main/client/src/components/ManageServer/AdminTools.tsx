@@ -6,6 +6,7 @@ import {
 } from '../Live/adminApi';
 import {fetchTrackData} from '../Leaderboard/utilities';
 import RotationBuilder from './RotationBuilder';
+import PerformancePanel from './PerformancePanel';
 import {ITrackData} from '../../interfaces/asm2Interfaces';
 
 import Accordion from '@mui/material/Accordion';
@@ -454,6 +455,7 @@ const AccountPanel = () => {
 // ---------------------------------------------------------------- the group
 
 const sections = [
+	{id: 'bop', title: 'Balance of performance', body: <PerformancePanel />},
 	{id: 'rotation', title: 'Rotation builder', body: <RotationBuilder />},
 	{id: 'config', title: 'Server settings (server.cfg)', body: <ServerSettingsPanel />},
 	{id: 'next', title: 'Next session settings', body: <NextSessionPanel />},

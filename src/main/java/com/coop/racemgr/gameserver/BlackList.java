@@ -11,15 +11,27 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * The game server's permanent ban list (the file named by `blackList` in server.cfg), one Steam ID per line with an
- * optional "// note". Lines this class doesn't understand are never rewritten: if the file holds anything else the
- * list is shown as unsupported instead of risking damage to it.
+ * The game server's permanent ban list (the file named by `blackList` in server.cfg). The server's own sample is a
+ * bracketed list with one Steam ID per line and "//" comments:
+ *
+ * <pre>
+ * // note
+ * [
+ * 76561198000000001 // optional note
+ * ]
+ * </pre>
+ *
+ * Commas between entries and quoted IDs are tolerated (the format allows them) and kept as they are. Anything else in
+ * the file is never rewritten: a file with a shape this class doesn't understand is reported as unsupported.
  */
 public class BlackList {
     public static final String FILE_NAME = "blacklist.cfg";
 
-    private static final Pattern ENTRY = Pattern.compile("^(\\d{17})\\s*(?:(?://|#)\\s*(.*))?$");
+    // 5+ digits so the server's own placeholder sample entry can be seen and removed; adding needs a real 17 digit id
+    private static final Pattern ENTRY = Pattern.compile("^(\"?)(\\d{5,20})\"?\\s*(,?)\\s*(?://\\s*(.*))?$");
     private static final Pattern STEAM_ID = Pattern.compile("^\\d{17}$");
+    private static final Pattern OPEN = Pattern.compile("^\\[\\s*(?://.*)?$");
+    private static final Pattern CLOSE = Pattern.compile("^\\]\\s*(?://.*)?$");
 
     public record Entry(String steamId, String note) {}
 
@@ -39,6 +51,11 @@ public class BlackList {
         return new BlackList(GameServerPaths.root().resolve(FILE_NAME));
     }
 
+    /** Any id that can appear in the list (the server's sample has a short placeholder), so it can be removed too. */
+    public static boolean isListedId(String value) {
+        return value != null && value.matches("^\\d{5,20}$");
+    }
+
     public static boolean isSteamId(String value) {
         return value != null && STEAM_ID.matcher(value).matches();
     }
@@ -46,9 +63,9 @@ public class BlackList {
     public List<Entry> list() throws IOException, UnsupportedFormatException {
         List<Entry> entries = new ArrayList<>();
         for (String line : lines()) {
-            Entry entry = parse(line);
-            if (entry != null) {
-                entries.add(entry);
+            Matcher m = ENTRY.matcher(line.trim());
+            if (m.matches()) {
+                entries.add(new Entry(m.group(2), m.group(4) == null ? "" : m.group(4).trim()));
             }
         }
         return entries;
@@ -61,46 +78,99 @@ public class BlackList {
         if (list().stream().anyMatch(e -> e.steamId().equals(steamId))) {
             return;
         }
+
         List<String> lines = lines();
         String cleanNote = note == null ? "" : note.replaceAll("\\p{Cntrl}", " ").trim();
-        lines.add(steamId + (cleanNote.isEmpty() ? "" : " // " + cleanNote));
-        write(lines);
+        boolean quoted = lines.stream().map(l -> ENTRY.matcher(l.trim())).filter(Matcher::matches).anyMatch(m -> !m.group(1).isEmpty());
+        String entry = (quoted ? "\"" + steamId + "\"" : steamId) + (cleanNote.isEmpty() ? "" : " // " + cleanNote);
+
+        int close = lastIndexOf(lines, CLOSE);
+        if (lines.stream().noneMatch(l -> OPEN.matcher(l.trim()).matches())) {
+            // A new or empty file: start the list
+            lines.removeIf(l -> l.trim().isEmpty());
+            lines.add("[");
+            lines.add(entry);
+            lines.add("]");
+        } else if (close < 0) {
+            throw new UnsupportedFormatException("The ban list has no closing bracket. Edit " + FILE_NAME + " by hand.");
+        } else {
+            lines.add(close, entry);
+        }
+        write(normalizeCommas(lines));
     }
 
     public synchronized boolean remove(String steamId) throws IOException, UnsupportedFormatException {
         List<String> kept = new ArrayList<>();
         boolean removed = false;
         for (String line : lines()) {
-            Entry entry = parse(line);
-            if (entry != null && entry.steamId().equals(steamId)) {
+            Matcher m = ENTRY.matcher(line.trim());
+            if (m.matches() && m.group(2).equals(steamId)) {
                 removed = true;
             } else {
                 kept.add(line);
             }
         }
         if (removed) {
-            write(kept);
+            write(normalizeCommas(kept));
         }
         return removed;
     }
 
-    private static Entry parse(String line) {
-        String trimmed = line.trim();
-        Matcher m = ENTRY.matcher(trimmed);
-        return m.matches() ? new Entry(m.group(1), m.group(2) == null ? "" : m.group(2).trim()) : null;
+    private static int lastIndexOf(List<String> lines, Pattern p) {
+        for (int i = lines.size() - 1; i >= 0; i--) {
+            if (p.matcher(lines.get(i).trim()).matches()) {
+                return i;
+            }
+        }
+        return -1;
     }
 
+    // If the file separates entries with commas, keep that true after an add or remove: every entry but the last has one
+    private static List<String> normalizeCommas(List<String> lines) {
+        List<Integer> entryLines = new ArrayList<>();
+        boolean commaStyle = false;
+        for (int i = 0; i < lines.size(); i++) {
+            Matcher m = ENTRY.matcher(lines.get(i).trim());
+            if (m.matches()) {
+                entryLines.add(i);
+                commaStyle |= !m.group(3).isEmpty();
+            }
+        }
+        if (!commaStyle) {
+            return lines;
+        }
+        List<String> result = new ArrayList<>(lines);
+        for (int n = 0; n < entryLines.size(); n++) {
+            int i = entryLines.get(n);
+            Matcher m = ENTRY.matcher(lines.get(i).trim());
+            m.matches();
+            String id = m.group(1) + m.group(2) + m.group(1);
+            String comma = n < entryLines.size() - 1 ? "," : "";
+            String note = m.group(4) == null ? "" : " // " + m.group(4).trim();
+            result.set(i, id + comma + note);
+        }
+        return result;
+    }
+
+    // All lines, after checking every one is something this class understands
     private List<String> lines() throws IOException, UnsupportedFormatException {
         if (!Files.exists(file)) {
             return new ArrayList<>();
         }
         List<String> lines = new ArrayList<>(Files.readAllLines(file, StandardCharsets.UTF_8));
         for (String line : lines) {
-            String trimmed = line.trim();
-            boolean blankOrComment = trimmed.isEmpty() || trimmed.startsWith("//") || trimmed.startsWith("#");
-            if (!blankOrComment && parse(line) == null) {
-                throw new UnsupportedFormatException("The ban list file has a format Race Manager doesn't edit. Edit " + FILE_NAME + " by hand.");
+            String t = line.trim();
+            boolean understood = t.isEmpty() || t.startsWith("//") || OPEN.matcher(t).matches() || CLOSE.matcher(t).matches()
+                    || ENTRY.matcher(t).matches();
+            if (!understood) {
+                throw new UnsupportedFormatException("The ban list file has a layout Race Manager doesn't edit (one Steam ID per line between [ and ]). Edit "
+                        + FILE_NAME + " by hand.");
             }
+        }
+        boolean hasEntries = lines.stream().anyMatch(l -> ENTRY.matcher(l.trim()).matches());
+        boolean hasBrackets = lines.stream().anyMatch(l -> OPEN.matcher(l.trim()).matches());
+        if (hasEntries && !hasBrackets) {
+            throw new UnsupportedFormatException("The ban list file has no [ ] list. Edit " + FILE_NAME + " by hand.");
         }
         return lines;
     }

@@ -79,6 +79,15 @@ public class ServerConfigFile {
         return values;
     }
 
+    /** A top-level text setting that isn't one of the editable ones (e.g. the names of other files), or null. */
+    public static String readString(Path file, String key) throws IOException {
+        if (!Files.exists(file)) {
+            return null;
+        }
+        Matcher m = locate(Files.readString(file, StandardCharsets.UTF_8), new Setting(key, null, Kind.TEXT, 0, 0));
+        return m != null && m.group(1).startsWith("\"") ? String.valueOf(decode(m.group(1))) : null;
+    }
+
     /** @return a problem description, or null when every value is acceptable for its setting */
     public static String validate(Map<String, Object> changes) {
         if (changes == null || changes.isEmpty()) {

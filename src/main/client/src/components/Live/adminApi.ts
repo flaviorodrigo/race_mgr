@@ -101,3 +101,19 @@ export const fetchRotationConfig = async (id: string): Promise<any> => {
 
 // Saves a custom rotation without applying it: activate it afterwards with Update Server
 export const saveCustomRotation = (name: string, config: unknown) => call({url: '/race/rotation', method: 'post', data: {name, config, apply: false}});
+
+export interface IPerformanceTable {
+	enabled: boolean,
+	defaultValue: number,
+	drivers: Record<string, number>,
+	file?: string,
+}
+
+export interface IPerformance {
+	ballast: IPerformanceTable,
+	power: IPerformanceTable,
+	drag: IPerformanceTable,
+}
+
+export const fetchPerformance = () => call<IPerformance>({url: '/gameserver/performance', method: 'get'});
+export const savePerformance = (tables: IPerformance) => call({url: '/gameserver/performance', method: 'put', data: tables});
