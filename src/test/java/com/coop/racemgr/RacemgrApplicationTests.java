@@ -12,9 +12,11 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
+
+import javax.servlet.http.Cookie;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -46,13 +48,31 @@ class RacemgrApplicationTests {
     private static final String LOGIN_OK = "{\"username\":\"admin\",\"password\":\"correct-horse-battery\"}";
     private static final String LOGIN_BAD = "{\"username\":\"admin\",\"password\":\"wrong\"}";
 
+    // Real browser flow: GET /api sets the XSRF-TOKEN cookie, which is echoed back in a header.
+    // (Not csrf(): that swaps the shared CsrfFilter's token repository for every later test.)
+    private Cookie xsrfCookie() throws Exception {
+        var res = mvc.perform(get("/api")).andExpect(status().isOk()).andReturn().getResponse();
+        Cookie xsrf = res.getCookie("XSRF-TOKEN");
+        if (xsrf == null) {
+            // Newer Spring Security versions send the cookie as a Set-Cookie header
+            String header = res.getHeaders("Set-Cookie").stream().filter(h -> h.startsWith("XSRF-TOKEN=")).findFirst().orElse(null);
+            assertThat(header).as("XSRF-TOKEN cookie").isNotNull();
+            xsrf = new Cookie("XSRF-TOKEN", header.substring("XSRF-TOKEN=".length(), header.indexOf(';')));
+        }
+        return xsrf;
+    }
+
+    private MockHttpServletRequestBuilder loginRequest(String body) throws Exception {
+        Cookie xsrf = xsrfCookie();
+        return post("/api/v1/authenticate").cookie(xsrf).header("X-XSRF-TOKEN", xsrf.getValue())
+                .contentType(MediaType.APPLICATION_JSON).content(body);
+    }
+
     private int login(String body, String remoteAddr) throws Exception {
-        return mvc.perform(post("/api/v1/authenticate").with(csrf()).with(r -> {
+        return mvc.perform(loginRequest(body).with(r -> {
                     r.setRemoteAddr(remoteAddr);
                     return r;
-                })
-                .contentType(MediaType.APPLICATION_JSON).content(body))
-                .andReturn().getResponse().getStatus();
+                })).andReturn().getResponse().getStatus();
     }
 
     @Test
@@ -76,8 +96,7 @@ class RacemgrApplicationTests {
 
     @Test
     void validTokenReachesAdminPaths() throws Exception {
-        MvcResult res = mvc.perform(post("/api/v1/authenticate").with(csrf())
-                .contentType(MediaType.APPLICATION_JSON).content(LOGIN_OK)).andExpect(status().isOk()).andReturn();
+        MvcResult res = mvc.perform(loginRequest(LOGIN_OK)).andExpect(status().isOk()).andReturn();
         String token = new com.fasterxml.jackson.databind.ObjectMapper()
                 .readTree(res.getResponse().getContentAsString()).path("data").path("token").asText();
         assertThat(token).isNotBlank();
@@ -107,5 +126,20 @@ class RacemgrApplicationTests {
     void crossOriginRequestsGetNoCorsHeaders() throws Exception {
         MvcResult res = mvc.perform(get("/api/v1/config").header("Origin", "https://evil.example")).andReturn();
         assertThat(res.getResponse().getHeader("Access-Control-Allow-Origin")).isNull();
+    }
+
+    // The browser flow the SPA uses: GET /api sets the XSRF-TOKEN cookie, the token is echoed in a header
+    @Test
+    void csrfCookieFlowWorksForTheSpa() throws Exception {
+        Cookie xsrf = xsrfCookie();
+
+        mvc.perform(post("/api/v1/authenticate").cookie(xsrf).header("X-XSRF-TOKEN", xsrf.getValue())
+                .contentType(MediaType.APPLICATION_JSON).content(LOGIN_OK)).andExpect(status().isOk());
+
+        // No header, or a wrong one, is rejected
+        mvc.perform(post("/api/v1/authenticate").cookie(xsrf)
+                .contentType(MediaType.APPLICATION_JSON).content(LOGIN_OK)).andExpect(status().isForbidden());
+        mvc.perform(post("/api/v1/authenticate").cookie(xsrf).header("X-XSRF-TOKEN", "forged")
+                .contentType(MediaType.APPLICATION_JSON).content(LOGIN_OK)).andExpect(status().isForbidden());
     }
 }
