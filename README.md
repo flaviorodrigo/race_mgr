@@ -67,7 +67,15 @@ The Wine image is amd64 only. Update the game server by re-running step 2 and `d
 
 A **session** is a championship: its standings are the "Session Leaders" table, and "Points by Round" shows every driver's points in each race (round) plus the total. Rounds are numbered in the order the races were run.
 
-Each session chooses how points are awarded under *Manage Server → Scoring*: the original built-in formula, a preset (F1 style, F1 2003-2009, Top 10) or your own table of points per finishing position, plus optional pole position and fastest lap bonuses. Changing the scoring re-scores every race in the session, past ones included. The same settings are available through the API (`scoring` on `POST`/`PUT /api/v1/admin/race/session`).
+Each session chooses how points are awarded under *Manage Server → Scoring*: the original built-in formula, a preset (F1 style, F1 2003-2009, Top 10) or your own table of points per finishing position, plus optional pole position and fastest lap bonuses. Changing the scoring re-scores every race in the session, past ones included.
+
+The same dialog sets the championship rules:
+
+- **Dropped rounds**: each driver's lowest N scores don't count (a round they missed counts as 0 and is dropped first). Dropped scores show struck through in *Points by Round*.
+- **Point adjustments**: manual corrections such as `Ayrton S, -5, track limits`, added after drops.
+- **Teams**: `Red Team: Ayrton S, Alain P` per line adds a *Team Standings* table (a team's points are its drivers' totals).
+
+An admin can **void** a race from its row in the race list. It stays visible, marked *Void*, but no longer counts towards standings, rounds or fastest laps; *Restore race* brings it back. *Export CSV* buttons save the standings and the points-by-round grid. Click a driver in the standings for their own page (results round by round, wins, podiums, poles, best and average finish). The same settings are available through the API (`scoring` on `POST`/`PUT /api/v1/admin/race/session`).
 
 ## Live session
 
@@ -92,6 +100,8 @@ Race Manager doesn't have to launch the game server. Set `RM_GAMESERVER_CONTROL=
 
 Under *Manage Server*, below the live session, each tool opens on its own:
 
+- **Server settings (server.cfg)** edits the server name, password, player and grid limits, session lengths, AI difficulty and a few switches. Only the value after each setting is replaced: comments and everything else in the file stay exactly as they were, and the previous version is kept as `server.cfg.bak`. The game server reads the file at start-up, so restart it to apply. The password is never shown, only whether one is set.
+- **Rotation builder** builds a rotation by hand: one vehicle class, then the track and weather for each round, in order, with move and remove buttons. Start from a saved rotation or import a rotation file, and export the result in the game server's own file format to share it. Saving only stores it; it goes live when you select it and use *Update Server*. Rotations are checked before they are written (known settings, simple values, at most 200 rounds).
 - **Next session settings** changes the track, race laps, practice and qualifying minutes or AI difficulty for the *next* session without restarting the game server, and can advance the running session to its next stage. Only fields you fill in are sent. A rotation may set the track again when the next session starts.
 - **Ban list** edits the game server's permanent ban file (`blacklist.cfg` in its folder), one Steam ID per line. It only edits files in that format and refuses anything else, so it can't damage the file. The game server reads the file when it loads its configuration, so restart it for a change to be sure to apply.
 - **Activity log** lists recent admin actions (logins, kicks, settings, scoring, rotations, password changes), kept for 180 days.

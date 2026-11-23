@@ -1,5 +1,6 @@
 export interface IRace {
 	raceId?: string,
+	voided?: boolean,
 	sessionId?: string,
 	trackName: string,
 	startDate: number,

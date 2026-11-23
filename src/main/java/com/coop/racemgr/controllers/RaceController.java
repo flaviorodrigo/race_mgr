@@ -12,7 +12,12 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import com.coop.racemgr.audit.AuditLog;
+import lombok.Data;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -25,10 +30,42 @@ public class RaceController {
     @Autowired
     private RaceMgrConfigRepository raceMgrConfigRepository;
 
+    @Autowired
+    private AuditLog auditLog;
+
     // The leaderboard UI loads every race for a session/rotation in one request
     private static final int MAX_PAGE_SIZE = 10000;
 
     private static final Logger logger = LogManager.getLogger(RacemgrApplication.class);
+
+    @Data
+    public static class VoidRequest {
+        private Boolean voided;
+    }
+
+    /** ADMIN ENDPOINTS **/
+
+    @PostMapping("/api/v1/admin/race/events/{raceId}/void")
+    public ResponseEntity<Object> voidRace(@PathVariable String raceId, @RequestBody VoidRequest request, Authentication authentication) {
+        if (!raceId.matches("^[0-9a-f]{64}$") || request.getVoided() == null) {
+            return ResponseHandler.generateResponse("A race id and voided true/false are required", HttpStatus.BAD_REQUEST, null);
+        }
+
+        try {
+            Race race = raceRepository.findItemByRaceId(raceId);
+            if (race == null) {
+                return ResponseHandler.generateResponse("Race not found", HttpStatus.NOT_FOUND, null);
+            }
+
+            race.setVoided(request.getVoided() ? Boolean.TRUE : null);
+            raceRepository.save(race);
+            auditLog.record(authentication.getName(), request.getVoided() ? "race voided" : "race restored", "race " + raceId.substring(0, 8));
+            return ResponseHandler.generateResponse(request.getVoided() ? "Race voided" : "Race restored", HttpStatus.OK, null);
+        } catch (Exception e) {
+            logger.error(e);
+            return ResponseHandler.generateResponse("Request failed", HttpStatus.MULTI_STATUS, null);
+        }
+    }
 
     /** PUBLIC ENDPOINTS **/
 

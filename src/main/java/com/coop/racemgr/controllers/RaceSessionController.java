@@ -45,7 +45,7 @@ public class RaceSessionController {
 
     // The built-in formula is stored as "no scoring" so old and new sessions look the same
     private static ScoringConfig normalizedScoring(ScoringConfig scoring) {
-        return scoring == null || ScoringConfig.TYPE_DEFAULT.equals(scoring.getType()) ? null : scoring;
+        return scoring == null || scoring.isPlainDefault() ? null : scoring;
     }
 
     /** ADMIN ENDPOINTS **/

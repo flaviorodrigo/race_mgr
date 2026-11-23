@@ -8,6 +8,7 @@ import com.coop.racemgr.model.RaceRotation;
 import com.coop.racemgr.repositories.RaceRotationRepository;
 import com.coop.racemgr.rotation.RacemgrRotationConfigMaker;
 import com.coop.racemgr.rotation.RacemgrRotationFileMaker;
+import com.coop.racemgr.rotation.RotationValidator;
 
 import com.coop.racemgr.utils.RacemgrUtils;
 import lombok.Data;
@@ -38,6 +39,9 @@ public class RaceRotationController {
         private Object config;
         private Long updated;
         private Boolean active = true;
+        // Write the rotation to the game server's rotation file right away (the original API behaviour).
+        // The UI's builder sets this to false and leaves activating it to the usual Update Server step.
+        private Boolean apply = true;
     }
 
     @Data
@@ -63,16 +67,27 @@ public class RaceRotationController {
     // @FIXME: This is a quick way to add support for custom rotations. For now there is no additional validation of given rotation.
     // It assumes the same limited file format as what is created by the generator. Examples included in the Postman collection...
     @PostMapping("/api/v1/admin/race/rotation")
-    public ResponseEntity<Object> rotation(@RequestBody RaceRotationCustomRequest request) {
+    public ResponseEntity<Object> rotation(@RequestBody RaceRotationCustomRequest request, Authentication authentication) {
+        if (request.name == null || request.name.isBlank() || request.name.length() > 64) {
+            return ResponseHandler.generateResponse("A rotation name of up to 64 characters is required", HttpStatus.BAD_REQUEST, null);
+        }
+        String problem = RotationValidator.validate(request.config);
+        if (problem != null) {
+            return ResponseHandler.generateResponse(problem, HttpStatus.BAD_REQUEST, null);
+        }
+
         RaceRotation raceRotation;
         try {
             raceRotation = new RaceRotation(request.name, request.config);
-            var rotationFileMaker = new RacemgrRotationFileMaker(raceRotation);
-            rotationFileMaker.writeGeneratedRotationFile();
+            if (!Boolean.FALSE.equals(request.apply)) {
+                var rotationFileMaker = new RacemgrRotationFileMaker(raceRotation);
+                rotationFileMaker.writeGeneratedRotationFile();
+            }
 
             // writeGeneratedRotationFile() also removes the game server's cached rotation; the
             // server must be restarted for the new rotation to take effect.
             raceRotationRepository.save(raceRotation);
+            auditLog.record(authentication.getName(), "custom rotation saved", request.name);
             return ResponseHandler.generateResponse("Successfully saved custom rotation", HttpStatus.OK, raceRotation);
         } catch (Exception e) {
             logger.error(e);

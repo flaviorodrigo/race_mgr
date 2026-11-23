@@ -5,6 +5,7 @@ import com.coop.racemgr.gameserver.GameServerMgr;
 import com.coop.racemgr.audit.AuditLog;
 import com.coop.racemgr.gameserver.BlackList;
 import com.coop.racemgr.gameserver.GameServerProxy;
+import com.coop.racemgr.gameserver.ServerConfigFile;
 import com.coop.racemgr.gameserver.SessionSettings;
 import com.coop.racemgr.gameserver.LiveSession;
 import com.coop.racemgr.utils.RacemgrUtils;
@@ -162,6 +163,36 @@ public class GameServerController {
         } catch (Exception e) {
             logger.warn("Updating the ban list failed: " + e);
             return ResponseHandler.generateResponse("Request failed", HttpStatus.MULTI_STATUS, null);
+        }
+    }
+
+    @GetMapping("/api/v1/admin/gameserver/config")
+    public ResponseEntity<Object> serverConfig() {
+        try {
+            return ResponseHandler.generateResponse("Server settings", HttpStatus.OK, ServerConfigFile.forServer().read());
+        } catch (Exception e) {
+            logger.warn("Reading server.cfg failed: " + e);
+            return ResponseHandler.generateResponse("Could not read server.cfg", HttpStatus.MULTI_STATUS, null);
+        }
+    }
+
+    // Changes a few well-known values in server.cfg (nothing else in the file is touched). The game server
+    // reads the file when it starts, so a restart applies the changes.
+    @PutMapping("/api/v1/admin/gameserver/config")
+    public ResponseEntity<Object> updateServerConfig(@RequestBody Map<String, Object> changes, Authentication authentication) {
+        String problem = ServerConfigFile.validate(changes);
+        if (problem != null) {
+            return ResponseHandler.generateResponse(problem, HttpStatus.BAD_REQUEST, null);
+        }
+
+        try {
+            ServerConfigFile.forServer().write(changes);
+            // The password itself never goes into the log
+            auditLog.record(authentication.getName(), "server.cfg changed", String.join(", ", changes.keySet()));
+            return ResponseHandler.generateResponse("Saved. Restart the game server for the changes to apply.", HttpStatus.OK, null);
+        } catch (java.io.IOException e) {
+            logger.warn("Writing server.cfg failed: " + e);
+            return ResponseHandler.generateResponse("Could not change server.cfg", HttpStatus.MULTI_STATUS, null);
         }
     }
 

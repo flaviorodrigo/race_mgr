@@ -1,10 +1,11 @@
 import React, {useEffect, useState} from 'react';
 
 import {
-	addBan, advanceSession, applyNextSession, changePassword, fetchAudit, fetchBanList, removeBan,
-	IAuditEvent, IBanEntry, INextSessionSettings,
+	addBan, advanceSession, applyNextSession, changePassword, fetchAudit, fetchBanList, fetchServerConfig, removeBan, saveServerConfig,
+	IAuditEvent, IBanEntry, INextSessionSettings, ServerConfigValues,
 } from '../Live/adminApi';
 import {fetchTrackData} from '../Leaderboard/utilities';
+import RotationBuilder from './RotationBuilder';
 import {ITrackData} from '../../interfaces/asm2Interfaces';
 
 import Accordion from '@mui/material/Accordion';
@@ -20,6 +21,8 @@ import DialogTitle from '@mui/material/DialogTitle';
 import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
 import MenuItem from '@mui/material/MenuItem';
+import Checkbox from '@mui/material/Checkbox';
+import FormControlLabel from '@mui/material/FormControlLabel';
 import Select from '@mui/material/Select';
 import Stack from '@mui/material/Stack';
 import Table from '@mui/material/Table';
@@ -41,6 +44,132 @@ const Feedback = ({feedback}: {feedback: IFeedback | null}) => (feedback
 	: null);
 
 const toWhole = (value: string) => (/^-?\d{1,10}$/.test(value.trim()) ? Number(value) : NaN);
+
+// ---------------------------------------------------------------- server.cfg
+
+const SETTING_FIELDS: Array<{id: string, label: string, kind: 'text' | 'number' | 'bool', min?: number, max?: number}> = [
+	{id: 'name', label: 'Server name', kind: 'text'},
+	{id: 'maxPlayerCount', label: 'Players allowed to connect', kind: 'number', min: 1, max: 64},
+	{id: 'sessionAttributes.MaxPlayers', label: 'Human drivers', kind: 'number', min: 1, max: 64},
+	{id: 'sessionAttributes.GridSize', label: 'Grid size (with AI)', kind: 'number', min: 1, max: 64},
+	{id: 'sessionAttributes.PracticeLength', label: 'Practice minutes', kind: 'number', min: 0, max: 600},
+	{id: 'sessionAttributes.QualifyLength', label: 'Qualifying minutes', kind: 'number', min: 0, max: 600},
+	{id: 'sessionAttributes.RaceLength', label: 'Race laps', kind: 'number', min: 1, max: 999},
+	{id: 'sessionAttributes.OpponentDifficulty', label: 'AI difficulty (0-100)', kind: 'number', min: 0, max: 100},
+	{id: 'secure', label: 'Check Steam authentication', kind: 'bool'},
+	{id: 'allowEmptyJoin', label: 'Allow joining an empty server', kind: 'bool'},
+];
+
+const ServerSettingsPanel = () => {
+	const [loaded, setLoaded] = useState<ServerConfigValues | null>(null);
+	const [form, setForm] = useState<Record<string, string | boolean>>({});
+	const [newPassword, setNewPassword] = useState('');
+	const [clearPassword, setClearPassword] = useState(false);
+	const [problem, setProblem] = useState('');
+	const [feedback, setFeedback] = useState<IFeedback | null>(null);
+	const [busy, setBusy] = useState(false);
+
+	const load = async () => {
+		const result = await fetchServerConfig();
+		if (!result.ok || !result.data) {
+			setProblem(result.message || 'Could not read server.cfg');
+			return;
+		}
+
+		const values = result.data;
+		setLoaded(values);
+		setProblem('');
+		setForm(Object.fromEntries(SETTING_FIELDS.filter(f => values[f.id] !== undefined).map(f => [f.id, f.kind === 'bool' ? Boolean(values[f.id]) : String(values[f.id])])));
+	};
+
+	useEffect(() => {
+		load();
+	}, []);
+
+	// Only what you changed is sent
+	const changes: ServerConfigValues = {};
+	const errors: Array<string> = [];
+	SETTING_FIELDS.forEach(f => {
+		const current = form[f.id];
+		if (loaded === null || current === undefined || String(current) === String(loaded[f.id])) {
+			return;
+		}
+
+		if (f.kind === 'number') {
+			const n = /^\d{1,3}$/.test(String(current).trim()) ? Number(current) : NaN;
+			if (isNaN(n) || n < (f.min ?? 0) || n > (f.max ?? 999)) {
+				errors.push(`${f.label} must be ${f.min} to ${f.max}`);
+			} else {
+				changes[f.id] = n;
+			}
+		} else if (f.kind === 'text') {
+			if (String(current).length > 64) {
+				errors.push(`${f.label} is limited to 64 characters`);
+			} else {
+				changes[f.id] = String(current);
+			}
+		} else {
+			changes[f.id] = Boolean(current);
+		}
+	});
+	if (clearPassword) {
+		changes.password = '';
+	} else if (newPassword !== '') {
+		if (newPassword.length > 64) {
+			errors.push('The password is limited to 64 characters');
+		} else {
+			changes.password = newPassword;
+		}
+	}
+
+	const canSave = errors.length === 0 && Object.keys(changes).length > 0 && !busy;
+
+	const save = async () => {
+		setBusy(true);
+		const result = await saveServerConfig(changes);
+		setBusy(false);
+		setFeedback({text: result.message, severity: result.ok ? 'success' : 'error'});
+		if (result.ok) {
+			setNewPassword('');
+			setClearPassword(false);
+			load();
+		}
+	};
+
+	if (problem) {
+		return <Alert severity="warning">{problem}</Alert>;
+	}
+
+	return (
+		<Stack spacing={2} sx={{textAlign: 'left'}}>
+			<Typography variant="body2">
+				Edits a few values in the game server&apos;s <code>server.cfg</code>; the rest of the file, including comments, is left exactly as it is
+				(the previous version is kept as <code>server.cfg.bak</code>). The game server reads this file when it starts, so <strong>restart it</strong> to apply changes.
+			</Typography>
+			<Stack direction="row" useFlexGap sx={{flexWrap: 'wrap', gap: 2}}>
+				{SETTING_FIELDS.filter(f => form[f.id] !== undefined).map(f => (f.kind === 'bool'
+					? <FormControlLabel key={f.id} label={f.label}
+						control={<Checkbox checked={Boolean(form[f.id])} onChange={e => setForm({...form, [f.id]: e.target.checked})} />} />
+					: <TextField key={f.id} label={f.label} variant="standard" value={String(form[f.id])}
+						sx={{minWidth: f.kind === 'text' ? 280 : 170}}
+						onChange={e => setForm({...form, [f.id]: e.target.value})}
+						slotProps={{htmlInput: {maxLength: f.kind === 'text' ? 64 : 3}}} />
+				))}
+			</Stack>
+			<Stack direction={{xs: 'column', sm: 'row'}} spacing={2} sx={{alignItems: {sm: 'flex-end'}}}>
+				<TextField label="Server password" variant="standard" type="password" autoComplete="new-password" sx={{minWidth: 280}}
+					value={newPassword} disabled={clearPassword} onChange={e => setNewPassword(e.target.value)}
+					helperText={loaded?.passwordSet ? 'A password is set. Type a new one to replace it.' : 'No password is set.'}
+					slotProps={{htmlInput: {maxLength: 64}}} />
+				{Boolean(loaded?.passwordSet) && <FormControlLabel label="Remove the password"
+					control={<Checkbox checked={clearPassword} onChange={e => setClearPassword(e.target.checked)} />} />}
+			</Stack>
+			{errors.length > 0 && <Alert severity="warning">{errors.join('. ')}</Alert>}
+			<Button variant="contained" sx={{alignSelf: 'flex-start'}} disabled={!canSave} onClick={save}>Save to server.cfg</Button>
+			<Feedback feedback={feedback} />
+		</Stack>
+	);
+};
 
 // ---------------------------------------------------------------- next session
 
@@ -325,6 +454,8 @@ const AccountPanel = () => {
 // ---------------------------------------------------------------- the group
 
 const sections = [
+	{id: 'rotation', title: 'Rotation builder', body: <RotationBuilder />},
+	{id: 'config', title: 'Server settings (server.cfg)', body: <ServerSettingsPanel />},
 	{id: 'next', title: 'Next session settings', body: <NextSessionPanel />},
 	{id: 'bans', title: 'Ban list', body: <BanListPanel />},
 	{id: 'audit', title: 'Activity log', body: <AuditPanel />},

@@ -379,4 +379,66 @@ class RacemgrApplicationTests {
         mvc.perform(get("/api/v1/admin/audit").cookie(session)).andExpect(status().isOk())
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.data[0].action").value("kick"));
     }
+
+    // ---- Championship extras ----
+
+    @Test
+    void scoringCanDropRoundsAdjustPointsAndGroupTeams() throws Exception {
+        Cookie session = adminSession();
+        var captor = org.mockito.ArgumentCaptor.forClass(com.coop.racemgr.model.RaceSession.class);
+        mvc.perform(adminJson(post("/api/v1/admin/race/session"), session,
+                "{\"name\":\"Cup2\",\"raceRotationIds\":[],\"scoring\":{\"type\":\"default\",\"dropRounds\":1,"
+                        + "\"adjustments\":[{\"driver\":\"Ayrton S\",\"points\":-5,\"note\":\"track limits\"}],"
+                        + "\"teams\":[{\"name\":\"Red\",\"drivers\":[\"Ayrton S\",\"Alain P\"]}]}}")).andExpect(status().isOk());
+        org.mockito.Mockito.verify(raceSessionRepository, org.mockito.Mockito.atLeastOnce()).save(captor.capture());
+        // The built-in formula plus extras is kept (a plain "default" would be stored as no scoring)
+        var saved = captor.getValue().getScoring();
+        assertThat(saved).isNotNull();
+        assertThat(saved.getDropRounds()).isEqualTo(1);
+        assertThat(saved.getAdjustments()).hasSize(1);
+        assertThat(saved.getTeams().get(0).getDrivers()).containsExactly("Ayrton S", "Alain P");
+    }
+
+    @Test
+    void invalidChampionshipExtrasAreRejected() throws Exception {
+        Cookie session = adminSession();
+        String dup = "\"teams\":[{\"name\":\"A\",\"drivers\":[\"X\"]},{\"name\":\"B\",\"drivers\":[\"X\"]}]";
+        for (String extra : new String[]{"\"dropRounds\":51", "\"dropRounds\":-1",
+                "\"adjustments\":[{\"driver\":\"\",\"points\":1}]", "\"adjustments\":[{\"driver\":\"A\",\"points\":99999}]",
+                "\"teams\":[{\"name\":\"\",\"drivers\":[]}]", dup}) {
+            mvc.perform(adminJson(post("/api/v1/admin/race/session"), session,
+                    "{\"name\":\"Bad\",\"raceRotationIds\":[],\"scoring\":{\"type\":\"default\"," + extra + "}}"))
+                    .andExpect(status().isBadRequest());
+        }
+    }
+
+    @Test
+    void anAdminCanVoidAndRestoreARace() throws Exception {
+        String hash = "c".repeat(64);
+        mvc.perform(post("/api/v1/admin/race/events/" + hash + "/void").cookie(xsrfCookie()).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"voided\":true}")).andExpect(status().is4xxClientError());
+
+        Cookie session = adminSession();
+        mvc.perform(adminJson(post("/api/v1/admin/race/events/not-a-hash/void"), session, "{\"voided\":true}")).andExpect(status().isBadRequest());
+        mvc.perform(adminJson(post("/api/v1/admin/race/events/" + hash + "/void"), session, "{}")).andExpect(status().isBadRequest());
+        mvc.perform(adminJson(post("/api/v1/admin/race/events/" + hash + "/void"), session, "{\"voided\":true}")).andExpect(status().isNotFound());
+
+        var race = new com.coop.racemgr.model.Race();
+        race.setRace_id(hash);
+        org.mockito.Mockito.when(raceRepository.findItemByRaceId(hash)).thenReturn(race);
+        mvc.perform(adminJson(post("/api/v1/admin/race/events/" + hash + "/void"), session, "{\"voided\":true}")).andExpect(status().isOk());
+        assertThat(race.getVoided()).isTrue();
+        mvc.perform(adminJson(post("/api/v1/admin/race/events/" + hash + "/void"), session, "{\"voided\":false}")).andExpect(status().isOk());
+        assertThat(race.getVoided()).isNull();
+    }
+
+    @Test
+    void serverConfigEndpointsNeedLoginAndValidateInput() throws Exception {
+        mvc.perform(get("/api/v1/admin/gameserver/config")).andExpect(status().isUnauthorized());
+        Cookie session = adminSession();
+        for (String bad : new String[]{"{}", "{\"httpApiUsers\":\"x\"}", "{\"maxPlayerCount\":500}", "{\"name\":\"a\\nb\"}", "{\"secure\":\"yes\"}"}) {
+            mvc.perform(adminJson(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put("/api/v1/admin/gameserver/config"), session, bad))
+                    .andExpect(status().isBadRequest());
+        }
+    }
 }

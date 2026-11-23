@@ -5,7 +5,7 @@ import {styled} from '@mui/material/styles';
 import {getSessions} from '../../state/sessions';
 import {fetchSessionDetail, updateSession} from './utilities';
 import {IScoring} from '../../utils/pointsCalculator';
-import {SCORING_PRESETS, parsePositions} from '../../utils/scoringPresets';
+import {SCORING_PRESETS, parsePositions, parseTeams, formatTeams, parseAdjustments, formatAdjustments} from '../../utils/scoringPresets';
 
 import Button from '@mui/material/Button';
 import Dialog from '@mui/material/Dialog';
@@ -48,6 +48,9 @@ const ScoringDialog = (props: IProps) => {
 	const [positionsText, setPositionsText] = useState('');
 	const [poleBonus, setPoleBonus] = useState('0');
 	const [fastestLapBonus, setFastestLapBonus] = useState('0');
+	const [dropRounds, setDropRounds] = useState('0');
+	const [teamsText, setTeamsText] = useState('');
+	const [adjustmentsText, setAdjustmentsText] = useState('');
 	const [saving, setSaving] = useState(false);
 	const [errorMessage, setErrorMessage] = useState('');
 
@@ -59,6 +62,9 @@ const ScoringDialog = (props: IProps) => {
 
 		setErrorMessage('');
 		const current: IScoring | null | undefined = session?.scoring;
+		setDropRounds(String(current?.dropRounds ?? 0));
+		setTeamsText(formatTeams(current?.teams));
+		setAdjustmentsText(formatAdjustments(current?.adjustments));
 		if (!current || current.type === 'default') {
 			setPresetId('default');
 			setPositionsText('');
@@ -80,7 +86,11 @@ const ScoringDialog = (props: IProps) => {
 	const positions = parsePositions(positionsText);
 	const pole = toInt(poleBonus);
 	const fastest = toInt(fastestLapBonus);
-	const valid = isDefault || (positions !== null && !isNaN(pole) && !isNaN(fastest));
+	const drops = toInt(dropRounds);
+	const teams = parseTeams(teamsText);
+	const adjustments = parseAdjustments(adjustmentsText);
+	const rulesValid = !isNaN(drops) && drops >= 0 && drops <= 50 && teams !== null && adjustments !== null;
+	const valid = rulesValid && (isDefault || (positions !== null && !isNaN(pole) && !isNaN(fastest)));
 
 	const handlePresetChange = (event: SelectChangeEvent) => {
 		const id = event.target.value;
@@ -100,9 +110,10 @@ const ScoringDialog = (props: IProps) => {
 
 		setSaving(true);
 		setErrorMessage('');
+		const rules = {dropRounds: drops, teams: teams ?? [], adjustments: adjustments ?? []};
 		const scoring: IScoring = isDefault
-			? {type: 'default', positions: [], poleBonus: 0, fastestLapBonus: 0}
-			: {type: 'table', positions: positions as Array<number>, poleBonus: pole, fastestLapBonus: fastest};
+			? {type: 'default', positions: [], poleBonus: 0, fastestLapBonus: 0, ...rules}
+			: {type: 'table', positions: positions as Array<number>, poleBonus: pole, fastestLapBonus: fastest, ...rules};
 
 		try {
 			// Send the session's current name and rotations along with the scoring so nothing else changes
@@ -171,6 +182,37 @@ const ScoringDialog = (props: IProps) => {
 								slotProps={{htmlInput: {inputMode: 'numeric', maxLength: 4}}} />
 						</Stack>
 					</>}
+
+					<Typography variant="subtitle2" align="left">Championship rules</Typography>
+					<TextField
+						label="Dropped rounds"
+						helperText="The lowest N scores of each driver don't count. A round a driver missed counts as 0 and is dropped first."
+						variant="standard"
+						value={dropRounds}
+						error={isNaN(drops) || drops < 0 || drops > 50}
+						onChange={e => setDropRounds(e.target.value)}
+						slotProps={{htmlInput: {inputMode: 'numeric', maxLength: 2}}}
+					/>
+					<TextField
+						label="Teams (optional)"
+						helperText="One per line: Team name: driver, driver. A team's points are its drivers' totals added up."
+						variant="standard"
+						multiline
+						minRows={2}
+						error={teams === null}
+						value={teamsText}
+						onChange={e => setTeamsText(e.target.value)}
+					/>
+					<TextField
+						label="Point adjustments (optional)"
+						helperText="One per line: driver, points, note. Use a minus for a penalty, e.g. Ayrton S, -5, track limits."
+						variant="standard"
+						multiline
+						minRows={2}
+						error={adjustments === null}
+						value={adjustmentsText}
+						onChange={e => setAdjustmentsText(e.target.value)}
+					/>
 
 					<ErrorTypography>{errorMessage}</ErrorTypography>
 				</Stack>

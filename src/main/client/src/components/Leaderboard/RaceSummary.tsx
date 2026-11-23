@@ -3,6 +3,9 @@ import _ from 'lodash';
 
 import {IRace} from './interfaces';
 import {SortHeadCell, useSort} from './sorting';
+import {IScoring} from '../../utils/pointsCalculator';
+import {computeStandings} from '../../utils/standings';
+import {downloadCsv} from '../../utils/csv';
 
 import {styled} from '@mui/material/styles';
 
@@ -14,11 +17,15 @@ import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Box from '@mui/material/Box';
 import Paper from '@mui/material/Paper';
+import Button from '@mui/material/Button';
 import Link from '@mui/material/Link';
+import {Link as RouterLink} from 'react-router-dom';
 import Typography from '@mui/material/Typography';
 
 interface IProps {
     filteredRaces: Array<IRace>;
+    scoring?: IScoring | null;
+    sessionId?: string;
 }
 
 interface IPlayerSummary {
@@ -143,15 +150,31 @@ const RaceSummary = (props:IProps) => {
 
 	// Rank always means "position by points", whatever column the table is sorted by
 	const rows = useMemo(() => {
-		const ranked = _.orderBy(generateRaceSummary(props.filteredRaces), ['totalPoints'], ['desc'])
+		// Totals follow the championship rules (dropped rounds, adjustments)
+		const totals = new Map(computeStandings(props.filteredRaces, props.scoring).rows.map(r => [r.name, r.total]));
+		const ranked = _.orderBy(generateRaceSummary(props.filteredRaces).map(r => ({...r, totalPoints: totals.get(r.name) ?? r.totalPoints})), ['totalPoints'], ['desc'])
 			.map((r, i) => ({...r, rank: i + 1}));
 		const key = orderBy === 'name' ? (r: IPlayerSummary) => r.name.toLowerCase() : orderBy;
 		return _.orderBy(ranked, [key, 'totalPoints', (r: IPlayerSummary) => r.name.toLowerCase()], [order, 'desc', 'asc']);
-	}, [props.filteredRaces, orderBy, order]);
+	}, [props.filteredRaces, props.scoring, orderBy, order]);
 
 	useEffect(() => {
 		setMaxSummary(DEFAULT_SUMMARY_COUNT);
 	}, [props.filteredRaces]);
+
+	const exportCsv = () => downloadCsv('standings.csv', [
+		['Rank', 'Driver', 'Races', 'Wins', 'Seconds', 'Thirds', 'Podiums', 'Poles', 'Fastest laps', 'Points'],
+		...rows.map(r => [r.rank,
+			r.name,
+			r.totalRaces,
+			r.firstPlaceFinishes,
+			r.secondPlaceFinishes,
+			r.thirdPlaceFinishes,
+			r.numberOfPodiums,
+			r.numberOfPolePositions,
+			r.numberOfFastestLaps,
+			r.totalPoints]),
+	]);
 
 	return (<Box sx={{marginTop: '10px'}}>
 		<TableContainer component={Paper} sx={{maxHeight: '70vh'}}>
@@ -184,7 +207,9 @@ const RaceSummary = (props:IProps) => {
 									fontWeight: 'bold',
 								}),
 							}}>
-								{row.name.substring(0, 30)}
+								{props.sessionId && !row.name.endsWith('(AI)')
+									? <Link component={RouterLink} to={`/driver/${encodeURIComponent(row.name)}?session=${props.sessionId}`} underline="hover" color="inherit">{row.name.substring(0, 30)}</Link>
+									: row.name.substring(0, 30)}
 							</StyledTableCell>
 							<StyledTableCell align="right">{row.firstPlaceFinishes}</StyledTableCell>
 							<StyledTableCell align="right">{row.secondPlaceFinishes}</StyledTableCell>
@@ -200,6 +225,7 @@ const RaceSummary = (props:IProps) => {
 			</Table>
 		</TableContainer>
 		<Typography align="left">
+			<Button size="small" onClick={exportCsv} sx={{mr: 2}}>Export CSV</Button>
 			<Link
 				component="button"
 				variant="body2"

@@ -21,6 +21,7 @@ import DateFilter from './DateFilter';
 import RaceResults from './RaceResults';
 import RoundPoints from './RoundPoints';
 import FastestLaps from './FastestLaps';
+import TeamStandings from './TeamStandings';
 import LiveStrip from '../Live/LiveStrip';
 import RaceSummary from './RaceSummary';
 
@@ -59,6 +60,12 @@ const LeaderBoard:React.FC = () => {
 
 	const [races, setRaces] = useState<IRace[]>([]);
 	const [filteredRaces, setFilteredRaces] = useState<IRace[]>([]);
+	const [refresh, setRefresh] = useState(0);
+
+	const scoring = sessions.sessions?.find((s: any) => s.id === selectedSessionId)?.scoring ?? null;
+	// Voided races stay in the list but don't count
+	const scoredRaces = filteredRaces.filter(r => !r.voided);
+	const voidedCount = filteredRaces.length - scoredRaces.length;
 
 	useEffect(() => {
 		dispatch(getServerStatus());
@@ -101,7 +108,7 @@ const LeaderBoard:React.FC = () => {
 			setRaces(raceResults);
 			setFetchingData(false);
 		});
-	}, [selectedRotationId, selectedSessionId, sessions.sessions]);
+	}, [selectedRotationId, selectedSessionId, sessions.sessions, refresh]);
 
 	useEffect(() => {
 		let newResults = races.filter(r => r.startDate >= startDate && r.endDate <= endDate);
@@ -163,26 +170,32 @@ const LeaderBoard:React.FC = () => {
 					<LiveStrip />
 
 					<Typography variant="h6" sx={{mt: 2, mb: 2}}>
-						{filteredRaces.length} Races
+						{scoredRaces.length} Races{voidedCount > 0 ? ` (${voidedCount} voided)` : ''}
 					</Typography>
 
 					{filteredRaces.length > 0
 					&& <Stack spacing={4} sx={{mb: 3}}>
 						<Box>
 							<Typography variant="h6" align="left">Session Leaders</Typography>
-							<RaceSummary filteredRaces={filteredRaces} />
+							<RaceSummary filteredRaces={scoredRaces} scoring={scoring} sessionId={selectedSessionId} />
 						</Box>
+						{scoring?.teams && scoring.teams.length > 0
+						&& <Box>
+							<Typography variant="h6" align="left">Team Standings</Typography>
+							<TeamStandings filteredRaces={scoredRaces} scoring={scoring} />
+						</Box>
+						}
 						<Box>
 							<Typography variant="h6" align="left">Points by Round</Typography>
-							<RoundPoints filteredRaces={filteredRaces} />
+							<RoundPoints filteredRaces={scoredRaces} scoring={scoring} />
 						</Box>
 						<Box>
 							<Typography variant="h6" align="left">Fastest Laps</Typography>
-							<FastestLaps filteredRaces={filteredRaces} />
+							<FastestLaps filteredRaces={scoredRaces} />
 						</Box>
 						<Box>
 							<Typography variant="h6" align="left">Race Summary</Typography>
-							<RaceResults filteredRaces={filteredRaces}/>
+							<RaceResults filteredRaces={filteredRaces} onChanged={() => setRefresh(r => r + 1)} />
 						</Box>
 					</Stack>
 					}

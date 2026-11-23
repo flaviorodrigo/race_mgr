@@ -11,8 +11,11 @@ import {fetchTrackData, fetchVehicleData} from './utilities';
 import {SortHeadCell, useSort} from './sorting';
 import {roundsOf} from './RoundPoints';
 import CopyLinkButton from './CopyLinkButton';
+import RaceMgrApi from '../../api/RaceMgrApi';
 
 import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
+import Chip from '@mui/material/Chip';
 import Collapse from '@mui/material/Collapse';
 import IconButton from '@mui/material/IconButton';
 import Table from '@mui/material/Table';
@@ -29,6 +32,7 @@ import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 
 interface IProps {
     filteredRaces: Array<IRace>;
+    onChanged?: () => void;
 }
 
 type SortKey = 'trackName' | 'startDate' | 'gridSize' | 'laps' | 'aiStrength' | 'polePosition' | 'fastestLap' | 'winner';
@@ -56,13 +60,30 @@ const columns: Array<IColumn> = [
 
 const isHuman = (driverName:string) => driverName.slice(-4) !== '(AI)';
 
-function Row(props: { row: IRace, round: number, trackData: Array<ITrackData>, vehicleData: Array<IVehicleData> }) {
+function Row(props: { row: IRace, round: number, trackData: Array<ITrackData>, vehicleData: Array<IVehicleData>, onChanged?: () => void }) {
 	const {row} = props;
 	const [open, setOpen] = React.useState(false);
+	const [busy, setBusy] = React.useState(false);
+	const isAdmin = new RaceMgrApi().hasSession();
+
+	const setVoided = async (voided: boolean) => {
+		if (!row.raceId) {
+			return;
+		}
+
+		setBusy(true);
+		try {
+			const rmApi = new RaceMgrApi();
+			await rmApi.makeApiCall({url: `${rmApi.getBaseAdminApiUrl()}/race/events/${row.raceId}/void`, method: 'post', data: {voided}});
+			props.onChanged?.();
+		} finally {
+			setBusy(false);
+		}
+	};
 
 	return (
 		<React.Fragment>
-			<TableRow sx={{'& > *': {borderBottom: 'unset'}}}>
+			<TableRow sx={{'& > *': {borderBottom: 'unset'}, ...(row.voided && {opacity: 0.55})}}>
 				<TableCell>
 					<IconButton
 						aria-label="expand row"
@@ -73,7 +94,7 @@ function Row(props: { row: IRace, round: number, trackData: Array<ITrackData>, v
 					</IconButton>
 				</TableCell>
 				<TableCell component="th" scope="row">
-					{props.round}
+					{row.voided ? <Chip size="small" label="Void" /> : props.round}
 					{row.raceId && <CopyLinkButton raceId={row.raceId} />}
 				</TableCell>
 				<TableCell component="th" scope="row">
@@ -116,6 +137,10 @@ function Row(props: { row: IRace, round: number, trackData: Array<ITrackData>, v
 						<Box sx={{margin: 1}}>
 							<Typography variant="h6" gutterBottom component="div">
 								Race Results
+								{row.voided && <Chip size="small" label="Voided: not counted" sx={{ml: 1}} />}
+								{isAdmin && <Button size="small" sx={{ml: 2}} disabled={busy} onClick={() => setVoided(!row.voided)}>
+									{row.voided ? 'Restore race' : 'Void race'}
+								</Button>}
 							</Typography>
 							<Table size="small" aria-label="purchases">
 								<TableHead>
@@ -191,7 +216,7 @@ const RaceResults = (props:IProps) => {
 	}, []);
 
 	// Round numbers follow the order the races were run, whichever way the table is sorted
-	const roundNumbers = React.useMemo(() => new Map<IRace, number>(roundsOf(props.filteredRaces).map((race, i) => [race, i + 1])), [props.filteredRaces]);
+	const roundNumbers = React.useMemo(() => new Map<IRace, number>(roundsOf(props.filteredRaces.filter(r => !r.voided)).map((race, i) => [race, i + 1])), [props.filteredRaces]);
 
 	const sortedRaces = React.useMemo(() => {
 		const trackName = (r: IRace) => (trackData.find(td => td.id === r.trackName)?.name ?? r.trackName ?? '').toLowerCase();
@@ -216,7 +241,7 @@ const RaceResults = (props:IProps) => {
 					</TableHead>
 					<TableBody>
 						{sortedRaces.map((row, idx) => (
-							<Row key={idx} row={row} round={roundNumbers.get(row) ?? 0} trackData={trackData} vehicleData={vehicleData} />
+							<Row key={idx} row={row} onChanged={props.onChanged} round={roundNumbers.get(row) ?? 0} trackData={trackData} vehicleData={vehicleData} />
 						))}
 					</TableBody>
 				</Table>

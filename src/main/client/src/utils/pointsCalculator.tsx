@@ -3,6 +3,9 @@ export interface IScoring {
 	positions: Array<number>, // Points for 1st, 2nd, 3rd...
 	poleBonus: number,
 	fastestLapBonus: number,
+	dropRounds?: number,
+	adjustments?: Array<{driver: string, points: number, note?: string}>,
+	teams?: Array<{name: string, drivers: Array<string>}>,
 }
 
 // Sessions without a scoring table use the original built-in formula below.

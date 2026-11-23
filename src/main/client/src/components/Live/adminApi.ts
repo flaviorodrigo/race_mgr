@@ -8,7 +8,7 @@ export interface IApiResult<T = unknown> {
 	data?: T,
 }
 
-const call = async <T>(config: {url: string, method: 'get' | 'post' | 'delete', data?: unknown}): Promise<IApiResult<T>> => {
+const call = async <T>(config: {url: string, method: 'get' | 'post' | 'put' | 'delete', data?: unknown}): Promise<IApiResult<T>> => {
 	const rmApi = new RaceMgrApi();
 	try {
 		const response = await rmApi.makeApiCall({...config, url: `${rmApi.getBaseAdminApiUrl()}${config.url}`});
@@ -51,3 +51,53 @@ export const fetchAudit = () => call<Array<IAuditEvent>>({url: '/audit?limit=100
 
 export const changePassword = (currentPassword: string, newPassword: string) =>
 	call({url: '/password', method: 'post', data: {currentPassword, newPassword}});
+
+export type ServerConfigValues = Record<string, string | number | boolean>;
+
+export const fetchServerConfig = () => call<ServerConfigValues>({url: '/gameserver/config', method: 'get'});
+export const saveServerConfig = (changes: ServerConfigValues) => call({url: '/gameserver/config', method: 'put', data: changes});
+
+export interface IGameListItem {
+	id: string | number,
+	name: string,
+}
+
+// The game server's own lists (tracks, vehicle classes, weather...) through Race Manager
+export const fetchGameList = async (kind: 'tracks' | 'vehicle_classes' | 'weather'): Promise<Array<IGameListItem>> => {
+	const rmApi = new RaceMgrApi();
+	try {
+		const response = await rmApi.makeApiCall({url: `${rmApi.getBaseApiUrl()}/gameserver/${kind}`, method: 'get'});
+		const list = response.data?.data;
+		return Array.isArray(list) ? list : [];
+	} catch {
+		return [];
+	}
+};
+
+export interface ISavedRotation {
+	id: string,
+	name: string,
+}
+
+export const fetchSavedRotations = async (): Promise<Array<ISavedRotation>> => {
+	const rmApi = new RaceMgrApi();
+	try {
+		const response = await rmApi.makeApiCall({url: `${rmApi.getBaseApiUrl()}/race/rotation?page=0&limit=1000`, method: 'get'});
+		return response.data?.data?.content ?? [];
+	} catch {
+		return [];
+	}
+};
+
+export const fetchRotationConfig = async (id: string): Promise<any> => {
+	const rmApi = new RaceMgrApi();
+	try {
+		const response = await rmApi.makeApiCall({url: `${rmApi.getBaseApiUrl()}/race/rotation/${id}`, method: 'get'});
+		return response.data?.data?.config ?? null;
+	} catch {
+		return null;
+	}
+};
+
+// Saves a custom rotation without applying it: activate it afterwards with Update Server
+export const saveCustomRotation = (name: string, config: unknown) => call({url: '/race/rotation', method: 'post', data: {name, config, apply: false}});

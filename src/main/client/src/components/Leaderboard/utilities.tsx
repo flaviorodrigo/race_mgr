@@ -95,6 +95,7 @@ export const mapRaceDataToRaceResultsObject = (data:Array<any>, scoring?: IScori
 
 		const raceResult:IRace = {
 			raceId: thisRace.race_id,
+			voided: thisRace.voided === true,
 			sessionId: thisRace.race_session_id,
 			trackName: thisRace.setup.TrackId,
 			startDate: thisRace.start_time,
