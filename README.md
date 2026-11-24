@@ -119,6 +119,8 @@ The same dialog sets the championship rules:
 
 An admin can add **penalties** to a finished race from its page (*Penalties and video*): a number of seconds added to a driver's race time, or a disqualification. The result is re-ordered when the page is shown (finishers by laps then time, then the others as the game server gave them) and points follow, so standings, rounds, driver pages and CSV all agree; the game server's own record is never changed, and removing the penalty puts everything back. The same dialog sets a **video link** (https YouTube or Twitch only), shown to everyone as *Watch the race*.
 
+Which championship and rotation new races belong to is set under *Manage Server*: select both and press **Set active**, which changes nothing on the game server. **Update Server** does the same and also writes the rotation into the game server's rotation file (replacing the one it runs from its next restart, see Custom rotations). Until one is set, the leaderboard says *Not set up yet*.
+
 An admin can **void** a race from its row in the race list. It stays visible, marked *Void*, but no longer counts towards standings, rounds or fastest laps; *Restore race* brings it back. *Export CSV* buttons save the standings and the points-by-round grid. Click a driver in the standings for their own page (results round by round, wins, podiums, poles, best and average finish). The same settings are available through the API (`scoring` on `POST`/`PUT /api/v1/admin/race/session`).
 
 ## Live session

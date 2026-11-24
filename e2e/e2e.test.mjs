@@ -224,6 +224,11 @@ const scenario = (name, run) => test(name, async () => {
 });
 
 scenario('visitors can look but not administer', async () => {
+  // Before an admin has chosen a championship, the leaderboard explains what to do
+  await go('/');
+  assert.match(await text('body'), /Not set up yet/);
+  assert.doesNotMatch(await text('body'), /Error Loading Config/);
+
   await go('/live');
   assert.equal((await rows('table[aria-label="Live timing"]')).length, 4);
   assert.match((await rows('table[aria-label="Live timing"]'))[0], /^1 Ayrton S 4 /);
@@ -280,6 +285,16 @@ scenario('the leaderboard shows the standings', async () => {
   const leaders = await rows('table[aria-label="Race Summary"]');
   assert.ok(leaders.length >= 5, `leaders: ${JSON.stringify(leaders)}`);
   assert.match(leaders[0], /Driver/);
+});
+
+scenario('Set active records the championship and rotation without touching the game server\'s rotation file', async () => {
+  await go('/manageserver');
+  assert.ok(await clickText('button', 'set active'));
+  await sleep(1200);
+  assert.match(await text('body'), /Set as active/);
+  assert.equal(fs.existsSync(path.join(state.serverDir, 'lua', 'sms_rotate', 'sms_rotate_default_config.json')), false, 'no rotation file written');
+  const config = await state.page.evaluate(async () => (await (await fetch('/api/v1/config')).json()).data);
+  assert.ok(config.activeRaceSessionId && config.activeRaceRotationId);
 });
 
 scenario('a race page shows the result, sector times and lap chart', async () => {

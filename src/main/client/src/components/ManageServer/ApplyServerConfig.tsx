@@ -2,9 +2,12 @@ import React, {useEffect} from 'react';
 import {useSelector, useDispatch} from 'react-redux';
 
 import {updateServerStatus} from '../../state/serverStatus';
-import {updateServerConfig} from '../../state/serverConfig';
+import {getServerConfig, updateServerConfig} from '../../state/serverConfig';
+import {updateServerConfig as saveActiveConfig} from './utilities';
 
 import Button from '@mui/material/Button';
+import Stack from '@mui/material/Stack';
+import Typography from '@mui/material/Typography';
 import ButtonGroup from '@mui/material/ButtonGroup';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import ClickAwayListener from '@mui/material/ClickAwayListener';
@@ -51,6 +54,19 @@ const ApplyServerConfig = (props:IProps) => {
 				activeRaceRotationId: rotations.selectedRotationId ?? '',
 			}),
 		);
+	};
+
+	// Only records which championship and rotation races belong to; the game server's rotation file is left alone
+	const handleSetActive = async () => {
+		const response: any = await saveActiveConfig({
+			activeRaceSessionId: sessions.selectedSessionId ?? '',
+			activeRaceRotationId: rotations.selectedRotationId ?? '',
+		});
+		const ok = response?.data?.status === 200;
+		props.showNotification(ok ? 'Set as active. New races are recorded under this championship and rotation.' : 'Could not set them as active', ok ? 'success' : 'error');
+		if (ok) {
+			dispatch(getServerConfig());
+		}
 	};
 
 	const handleStopServer = () => {
@@ -110,19 +126,27 @@ const ApplyServerConfig = (props:IProps) => {
 
 	return (
 		<React.Fragment>
-			<ButtonGroup disabled={!formIsValid} variant="contained" ref={anchorRef} aria-label="split button">
-				<Button onClick={handleClick}>{options[selectedIndex]}</Button>
-				{available.length > 1 && <Button
-					size="small"
-					aria-controls={open ? 'split-button-menu' : undefined}
-					aria-expanded={open ? 'true' : undefined}
-					aria-label="select merge strategy"
-					aria-haspopup="menu"
-					onClick={handleToggle}
-				>
-					<ArrowDropDownIcon />
-				</Button>}
-			</ButtonGroup>
+			<Stack direction={{xs: 'column', sm: 'row'}} spacing={2} sx={{alignItems: {sm: 'center'}}}>
+				<Button variant="outlined" disabled={!formIsValid} onClick={handleSetActive}>Set active</Button>
+				<ButtonGroup disabled={!formIsValid} variant="contained" ref={anchorRef} aria-label="split button">
+					<Button onClick={handleClick}>{options[selectedIndex]}</Button>
+					{available.length > 1 && <Button
+						size="small"
+						aria-controls={open ? 'split-button-menu' : undefined}
+						aria-expanded={open ? 'true' : undefined}
+						aria-label="select merge strategy"
+						aria-haspopup="menu"
+						onClick={handleToggle}
+					>
+						<ArrowDropDownIcon />
+					</Button>}
+				</ButtonGroup>
+			</Stack>
+			<Typography variant="body2" color="text.secondary" sx={{mt: 1, maxWidth: 760}}>
+				<strong>Set active</strong> records new races under the selected championship and rotation, and changes nothing on the game
+				server. <strong>Update Server</strong> does the same and also writes the rotation into the game server&apos;s rotation file,
+				replacing the rotation it runs (from its next restart).
+			</Typography>
 
 			<Popper
 				sx={{

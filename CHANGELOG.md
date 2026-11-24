@@ -27,6 +27,7 @@ Notable changes, newest first. This file starts with the security and modernisat
 - Admin login uses an HttpOnly session cookie with CSRF protection, a lockout after repeated failures and a password that can be changed in the UI. Race Manager listens on `127.0.0.1` unless told otherwise; every `/api` route not listed as public is refused.
 
 ### Fixed
+- First setup: the leaderboard said "Error Loading Config"; it now says *Not set up yet* and what to do. **Set active** chooses the championship and rotation without rewriting the game server's rotation file.
 - Importing the rotation addon's live file (`lua_config/sms_rotate_config.json`) said "not valid JSON": the Rotation builder now reads the server's relaxed format, and accepts a vehicle class per round.
 - The NAS compose file also tried to build the image from source (Container Manager's *Build* failed with "unable to evaluate symlinks in Dockerfile path"): it now only pulls `RACEMGR_IMAGE`; building is an optional extra file.
 - A rotation from a real server (grid, AI, damage and pit-stop settings, numeric weather and flag values) was refused; rotations now accept every writable session setting, and importing then saving one in the Rotation builder keeps it exactly.
