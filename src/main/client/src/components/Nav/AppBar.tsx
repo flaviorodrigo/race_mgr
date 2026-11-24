@@ -12,6 +12,11 @@ import List from '@mui/material/List';
 import Typography from '@mui/material/Typography';
 import theme from '../../theme';
 import ColorModeToggle from './ColorModeToggle';
+import SkinToggle from './SkinToggle';
+import {SkinProvider, useSkin} from '../../skin/skin';
+import racingTheme from '../../skin/racingTheme';
+import RacingBackdrop from '../../skin/RacingBackdrop';
+import ImageCredits from '../../skin/ImageCredits';
 import Divider from '@mui/material/Divider';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
@@ -153,6 +158,7 @@ const NavItems = ({isAuthenticated, onNavigate}: INavItemsProps) => (
 
 const DashboardContent = () => {
 	const muiTheme = useTheme();
+	const {racing} = useSkin();
 	// Phones and small tablets get an overlay drawer instead of a permanent one
 	const isCompact = useMediaQuery(muiTheme.breakpoints.down('md'));
 
@@ -180,6 +186,7 @@ const DashboardContent = () => {
 		<Router>
 			<Box sx={{display: 'flex'}}>
 				<CssBaseline enableColorScheme />
+				{racing && <RacingBackdrop />}
 				<AppBar position="absolute" open={open && !isCompact} color="primary" enableColorOnDark>
 					<Toolbar sx={{pr: {xs: 1, sm: '24px'}}}>
 						<IconButton
@@ -201,7 +208,9 @@ const DashboardContent = () => {
 							<Box component="img" src="/race_mgr_logo.png" alt="" sx={{height: 36, display: {xs: 'none', sm: 'block'}}} />
 						</Stack>
 
-						<ColorModeToggle />
+						<SkinToggle />
+						{/* The racing look is always dark */}
+						{!racing && <ColorModeToggle />}
 
 						{!isAuthenticated
 						&& <Tooltip title="Login">
@@ -251,7 +260,7 @@ const DashboardContent = () => {
 				<Box
 					component="main"
 					sx={{
-						bgcolor: 'background.default',
+						bgcolor: racing ? 'transparent' : 'background.default',
 						flexGrow: 1,
 						minWidth: 0, // Lets wide tables scroll inside instead of stretching the page
 						height: '100vh',
@@ -265,6 +274,7 @@ const DashboardContent = () => {
 							<Route path="/manageServer" element={<ManageServer isAuthenticated={isAuthenticated} />} />
 							<Route path="/live" element={<LiveTiming />} />
 							<Route path="/records" element={<Records />} />
+							<Route path="/about-images" element={<ImageCredits />} />
 							<Route path="/driver/:name" element={<DriverPage />} />
 							<Route path="/race/:raceId" element={<RacePage />} />
 							<Route path="/login" element={<Login isAuthenticated={isAuthenticated} setIsAuthenticated={setIsAuthenticated} />} />
@@ -280,10 +290,19 @@ const DashboardContent = () => {
 	);
 };
 
-export default function Dashboard() {
+const Themed = () => {
+	const {racing} = useSkin();
 	return (
-		<ThemeProvider theme={theme}>
+		<ThemeProvider theme={racing ? racingTheme : theme}>
 			<DashboardContent />
 		</ThemeProvider>
+	);
+};
+
+export default function Dashboard() {
+	return (
+		<SkinProvider>
+			<Themed />
+		</SkinProvider>
 	);
 }

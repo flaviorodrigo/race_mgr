@@ -5,6 +5,8 @@ import {usePolling} from '../../utils/usePolling';
 import {formatLap, formatSector} from '../../utils/sectors';
 import {fetchTrackData} from '../Leaderboard/utilities';
 import {prettyStage} from './liveApi';
+import PositionBadge from '../common/PositionBadge';
+import {TIMING_PURPLE} from '../../skin/colors';
 import {ITrackData} from '../../interfaces/asm2Interfaces';
 
 import Alert from '@mui/material/Alert';
@@ -116,18 +118,18 @@ const LiveTiming = () => {
 						<TableBody>
 							{board.cars.map(c => (
 								<TableRow key={c.name}>
-									<TableCell>{c.position ?? ''}</TableCell>
+									<TableCell><PositionBadge position={c.position} /></TableCell>
 									<TableCell component="th" scope="row">{c.name}{!c.player && <Chip size="small" label="AI" variant="outlined" sx={{ml: 1}} />}</TableCell>
 									<TableCell align="right">{c.lap ?? ''}</TableCell>
 									{(['s1', 's2', 's3'] as const).map((key, i) => (
 										<TableCell key={key} align="right"
-											sx={{fontWeight: quickest(c[key], key) || c.sector === i + 1 ? 'bold' : undefined, color: quickest(c[key], key) ? 'success.main' : undefined,
+											sx={{fontWeight: quickest(c[key], key) || c.sector === i + 1 ? 'bold' : undefined, color: quickest(c[key], key) ? TIMING_PURPLE : undefined,
 												fontStyle: c.sector === i + 1 ? 'italic' : undefined}}>
 											{formatSector(c[key] ?? null)}
 										</TableCell>
 									))}
 									<TableCell align="right">{formatLap(c.lastLap ?? null)}</TableCell>
-									<TableCell align="right" sx={{fontWeight: quickest(c.bestLap, 'bestLap') ? 'bold' : undefined, color: quickest(c.bestLap, 'bestLap') ? 'success.main' : undefined}}>
+									<TableCell align="right" sx={{fontWeight: quickest(c.bestLap, 'bestLap') ? 'bold' : undefined, color: quickest(c.bestLap, 'bestLap') ? TIMING_PURPLE : undefined}}>
 										{formatLap(c.bestLap ?? null)}
 									</TableCell>
 									<TableCell>{c.state && c.state !== 'Racing' ? STATE_LABELS[c.state] ?? c.state : ''}</TableCell>
@@ -138,7 +140,7 @@ const LiveTiming = () => {
 				</TableContainer>
 			}
 			<Typography variant="caption" color="text.secondary" sx={{display: 'block', mt: 1}}>
-				Green is the quickest in the session. The sector a car is in now is in italics and still counting.
+				Purple is the quickest in the session. The sector a car is in now is in italics and still counting.
 			</Typography>
 		</Paper>
 	);

@@ -6,6 +6,8 @@ import {SortHeadCell, useSort} from './sorting';
 import {IScoring} from '../../utils/pointsCalculator';
 import {computeStandings} from '../../utils/standings';
 import {downloadCsv} from '../../utils/csv';
+import PositionBadge from '../common/PositionBadge';
+import Podium from './Podium';
 
 import {styled} from '@mui/material/styles';
 
@@ -157,6 +159,8 @@ const RaceSummary = (props:IProps) => {
 		const key = orderBy === 'name' ? (r: IPlayerSummary) => r.name.toLowerCase() : orderBy;
 		return _.orderBy(ranked, [key, 'totalPoints', (r: IPlayerSummary) => r.name.toLowerCase()], [order, 'desc', 'asc']);
 	}, [props.filteredRaces, props.scoring, orderBy, order]);
+	const podium = _.orderBy(rows, ['rank'], ['asc']).slice(0, 3).filter(r => r.totalPoints > 0)
+		.map(r => ({name: r.name, points: r.totalPoints, wins: r.firstPlaceFinishes}));
 
 	useEffect(() => {
 		setMaxSummary(DEFAULT_SUMMARY_COUNT);
@@ -177,6 +181,7 @@ const RaceSummary = (props:IProps) => {
 	]);
 
 	return (<Box sx={{marginTop: '10px'}}>
+		<Podium entries={podium} sessionId={props.sessionId} />
 		<TableContainer component={Paper} sx={{maxHeight: '70vh'}}>
 			<Table stickyHeader sx={{minWidth: 650}} aria-label="Race Summary" size="small">
 				<TableHead>
@@ -196,7 +201,7 @@ const RaceSummary = (props:IProps) => {
 							sx={{'&:last-child td, &:last-child th': {border: 0}}}
 						>
 							<StyledTableCell component="th" scope="row">
-								{row.rank}
+								<PositionBadge position={row.rank} />
 							</StyledTableCell>
 							<StyledTableCell component="th" scope="row">
 								{row.totalRaces}

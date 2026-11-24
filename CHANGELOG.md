@@ -5,6 +5,7 @@ Notable changes, newest first. This file starts with the security and modernisat
 ## Unreleased
 
 ### Added
+- **Racing look** (on by default, toggle in the top bar): carbon and chequered-flag theme, motorsport type, position badges, a championship podium, TV timing colours, and freely licensed photos of Fittipaldi, Piquet, Senna and Schumacher in the background with an *About the images* credits page.
 - Manage Server in tabs: Race day, Championships, Server, People.
 - **Next session settings and presets** use the full settings editor (any setting, sent as the numbers the game server takes); **Race next** sends a rotation round to the next session, and rounds can be saved as presets (one or all).
 - **Full rotation builder**: every session setting the game server describes (grouped, with the right control and the server's description), for the default setup and per round; cars per round.

@@ -242,7 +242,7 @@ const scenario = (name, run) => test(name, async () => {
 scenario('visitors can look but not administer', async () => {
   // Before an admin has chosen a championship, the leaderboard explains what to do
   await go('/');
-  assert.match(await text('body'), /Not set up yet/);
+  assert.match(await text("body"), /not set up yet/i);
   assert.doesNotMatch(await text('body'), /Error Loading Config/);
 
   await go('/live');

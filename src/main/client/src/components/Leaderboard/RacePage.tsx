@@ -9,6 +9,7 @@ import {convertEpochDate, convertEpochTime} from '../../utils/epochUtils';
 import {convertEpochTimeToRaceResult} from '../../utils/dateTimeUtils';
 import CopyLinkButton from './CopyLinkButton';
 import LapAnalysis from './LapAnalysis';
+import PositionBadge from '../common/PositionBadge';
 import RaceNotesDialog from './RaceNotesDialog';
 
 import Alert from '@mui/material/Alert';
@@ -118,7 +119,7 @@ const RacePage = () => {
 					<TableBody>
 						{results.map(r => (
 							<TableRow key={r.driverName}>
-								<TableCell>{r.finishPosition}</TableCell>
+								<TableCell><PositionBadge position={r.finishPosition} /></TableCell>
 								<TableCell component="th" scope="row" sx={{fontWeight: r.hadFastestLap ? 'bold' : undefined}}>
 									{r.driverName}
 									{r.state === 'Disqualified' && <Chip size="small" label="DSQ" color="error" sx={{ml: 1}} />}

@@ -105,6 +105,12 @@ Instead of step 2, the build itself can download the game server: `./docker/buil
 
 The `with-server` image is never published, on purpose: it holds Reiza's server files, so publishing it would redistribute them. A manual run of the workflow (*Run workflow*, tick *real_download*) builds it with the real download to check it still works, and throws it away. Every push also runs the NAS setup for real: the external image as user 1029:100 with a separately mounted `server.cfg` and a real MongoDB, signing in and saving settings.
 
+## Racing look
+
+Race Manager starts in a **racing look**: dark carbon panels, a chequered flag along the top bar, motorsport type, gold, silver and bronze position badges, a championship podium, timing colours like on TV (purple for the quickest), and photos of Emerson Fittipaldi, Nelson Piquet, Ayrton Senna and Michael Schumacher in their cars slowly changing in the background. The button next to the sign-in icon switches to the classic light/dark look; each browser remembers its own choice.
+
+The photos are freely licensed pictures from Wikimedia Commons (CC0, CC BY and CC BY-SA), resized for the web and served by Race Manager itself. The photo on screen is always credited in the corner, and *About the images* (`/about-images`, also `public/skin/CREDITS.txt`) lists the photographers, licences and originals. The drivers, teams and sponsors shown don't endorse Race Manager.
+
 ## Championships & scoring
 
 A **session** is a championship: its standings are the "Session Leaders" table, and "Points by Round" shows every driver's points in each race (round) plus the total. Rounds are numbered in the order the races were run.
