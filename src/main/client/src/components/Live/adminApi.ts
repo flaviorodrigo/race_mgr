@@ -22,13 +22,8 @@ const call = async <T>(config: {url: string, method: 'get' | 'post' | 'put' | 'd
 	}
 };
 
-export interface INextSessionSettings {
-	TrackId?: number,
-	RaceLength?: number,
-	PracticeLength?: number,
-	QualifyLength?: number,
-	OpponentDifficulty?: number,
-}
+// Any writable session setting, as the whole number the game server's API takes
+export type INextSessionSettings = Record<string, number>;
 
 export const applyNextSession = (settings: INextSessionSettings) => call({url: '/gameserver/session/next', method: 'post', data: settings});
 export const advanceSession = () => call({url: '/gameserver/session/advance', method: 'post'});

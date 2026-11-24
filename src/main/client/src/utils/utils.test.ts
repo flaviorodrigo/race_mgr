@@ -8,7 +8,7 @@ import {sectorRows, lapSeries, formatLap, formatSector} from './sectors';
 import {careerStats, trackRecords} from './careerStats';
 import {atLeast, generatePassword} from './roles';
 import {configFromModel, modelFromConfig} from './rotation';
-import {findOption, flagNames, formatFlags, groupOf, labelOf, prettyOption, storedOption} from './sessionSettings';
+import {findOption, flagNames, formatFlags, groupOf, labelOf, prettyOption, storedOption, toNextSessionValues} from './sessionSettings';
 import realRotation from './rotation_from_a_real_server.json';
 import {parseServerJson} from './serverJson';
 import liveRotation from './sms_rotate_config_live.json.txt?raw';
@@ -335,5 +335,37 @@ describe('the game server\'s relaxed JSON', () => {
 		expect(saved.defaultConfig).toEqual(original.default);
 		expect(saved.rotation).toEqual(original.rotation);
 		expect(saved.persist_index).toBe(true);
+	});
+});
+
+describe('next-session values', () => {
+	const schema = {
+		attributes: [
+			{name: 'DamageType', type: 'int8', description: '', kind: 'enum' as const, enumName: 'damage'},
+			{name: 'RaceWeatherSlot1', type: 'int32', description: '', kind: 'enum' as const, enumName: 'weather'},
+			{name: 'Flags', type: 'int32', description: '', kind: 'flags' as const},
+			{name: 'TrackId', type: 'int32', description: '', kind: 'track' as const},
+			{name: 'VehicleClassId', type: 'int32', description: '', kind: 'vehicleClass' as const},
+			{name: 'RaceLength', type: 'int16', description: '', kind: 'number' as const},
+			{name: 'RaceMandatoryPitStops', type: 'int8', description: '', kind: 'toggle' as const},
+		],
+		enums: {damage: [{name: 'OFF', value: 0}, {name: 'FULL', value: 3}], weather: [{name: 'Clear', value: -934211870}]},
+		flags: [{name: 'ABS_ALLOWED', value: 32}, {name: 'SC_ALLOWED', value: 64}, {name: 'COOLDOWNLAP', value: 2147483648}],
+	};
+	const lists = {tracks: [{id: 1534602052, name: 'BrandsHatch_GP'}], classes: [{id: -1, name: 'GT3'}], vehicles: []};
+
+	it('turns names into the numbers the game server takes', () => {
+		const {values, skipped} = toNextSessionValues({
+			DamageType: 'FULL', RaceWeatherSlot1: 'clear', Flags: 'ABS_ALLOWED,SC_ALLOWED', TrackId: 'BrandsHatch_GP',
+			VehicleClassId: 'GT3', RaceLength: 12, RaceMandatoryPitStops: 1,
+		}, schema, lists);
+		expect(values).toEqual({DamageType: 3, RaceWeatherSlot1: -934211870, Flags: 96, TrackId: 1534602052, VehicleClassId: -1, RaceLength: 12, RaceMandatoryPitStops: 1});
+		expect(skipped).toEqual([]);
+	});
+
+	it('keeps numbers, writes the top flag as a signed 32-bit number, and skips what it cannot convert', () => {
+		const {values, skipped} = toNextSessionValues({DamageType: 3, Flags: 'COOLDOWNLAP,ABS_ALLOWED', TrackId: 'Nowhere', Unknown: 5, RaceLength: '7'}, schema, lists);
+		expect(values).toEqual({DamageType: 3, Flags: -2147483616, RaceLength: 7});
+		expect(skipped).toEqual(['TrackId', 'Unknown']);
 	});
 });

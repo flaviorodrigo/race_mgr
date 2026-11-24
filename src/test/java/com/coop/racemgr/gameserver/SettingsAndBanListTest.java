@@ -21,6 +21,15 @@ class SettingsAndBanListTest {
         assertThat(SessionSettings.validate(Map.of("OpponentDifficulty", 101))).contains("out of range");
         assertThat(SessionSettings.validate(Map.of("RaceDateHour", 24))).contains("out of range");
         assertThat(SessionSettings.validate(Map.of("ServerControlsSetup", 1))).contains("not allowed");
+        // Every writable session setting is accepted, as whole 32-bit numbers (weather and flag values are often negative)
+        assertThat(SessionSettings.validate(Map.of("DamageType", 3, "RaceWeatherSlot1", -934211870, "Flags", -2147483000, "RaceMandatoryPitStops", 1))).isNull();
+        assertThat(SessionSettings.validate(Map.of("ServerControlsTrack", 1))).contains("not allowed");
+        assertThat(SessionSettings.validate(Map.of("SessionState", 1))).contains("not allowed");
+        var many = new java.util.HashMap<String, Integer>();
+        for (int i = 0; i < 101; i++) {
+            many.put("RaceLength" + i, 1);
+        }
+        assertThat(SessionSettings.validate(many)).isNotNull();
         // Names are never echoed back verbatim
         assertThat(SessionSettings.validate(Map.of("Race&Length=1", 1))).doesNotContain("&").doesNotContain("=");
     }

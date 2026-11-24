@@ -7,14 +7,18 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * The session attributes admins may change for the next session from the UI. Only these names are accepted, each
- * with sane bounds, so a request can't set arbitrary game server attributes.
+ * The session attributes that may be set for the next session: the writable session settings the game server
+ * describes (the same list rotations may use, without the ServerControls* switches), whole numbers only. The
+ * common ones also have sane bounds. Anything else is refused, so a request can't set arbitrary attributes.
  */
 public final class SessionSettings {
     private SessionSettings() {}
 
     private record Range(int min, int max) {}
 
+    private static final int MAX_SETTINGS = 100;
+
+    // Bounds for the common ones; the rest only need to be whole numbers
     private static final Map<String, Range> ALLOWED = new LinkedHashMap<>();
 
     static {
@@ -40,14 +44,19 @@ public final class SessionSettings {
         if (settings == null || settings.isEmpty()) {
             return "No settings given";
         }
+        if (settings.size() > MAX_SETTINGS) {
+            return "Too many settings";
+        }
         for (var entry : settings.entrySet()) {
-            Range range = ALLOWED.get(entry.getKey());
-            if (range == null) {
-                return "Setting not allowed: " + entry.getKey().replaceAll("[^A-Za-z0-9_]", "?");
+            String key = entry.getKey();
+            Range range = ALLOWED.get(key);
+            if (range == null && !com.coop.racemgr.rotation.RotationValidator.allowedSettings().contains(key)) {
+                return "Setting not allowed: " + key.replaceAll("[^A-Za-z0-9_]", "?");
             }
             Integer value = entry.getValue();
-            if (value == null || value < range.min() || value > range.max()) {
-                return entry.getKey() + " is out of range";
+            // Values are 32-bit; ids, weather and flag values are often negative
+            if (value == null || (range != null && (value < range.min() || value > range.max()))) {
+                return key + " is out of range";
             }
         }
         return null;

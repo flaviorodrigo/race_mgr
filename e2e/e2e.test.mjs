@@ -193,6 +193,21 @@ const api = (method, url, body) => state.page.evaluate(async (m, u, b) => {
   return response.status === 204 ? {status: 204} : {httpStatus: response.status, ...await response.json()};
 }, method, url, body);
 
+// Groups of the settings editor: inside a dialog when one is open, otherwise inside the open admin tool
+const openSettingsGroup = async title => {
+  await state.page.evaluate(t => [...document.querySelectorAll(document.querySelector('[role="dialog"]')
+    ? '[role="dialog"] .MuiAccordionSummary-root' : '.MuiAccordionDetails-root .MuiAccordionSummary-root')]
+    .find(b => b.innerText.trim().startsWith(t))?.click(), title);
+  await sleep(500);
+};
+
+const pickOption = async (selector, option) => {
+  await state.page.click(selector);
+  await state.page.waitForSelector('[role="listbox"]');
+  await state.page.evaluate(o => [...document.querySelectorAll('[role="option"]')].find(x => x.innerText.trim() === o)?.click(), option);
+  await sleep(300);
+};
+
 const fakeCalls = async () => (await fetch(`http://127.0.0.1:${state.fakePort}/_calls`)).json();
 
 // ---------------------------------------------------------------- tests
@@ -369,29 +384,30 @@ scenario('kicking a player reaches the game server, and the action is in the act
   assert.ok(audit.data.some(e => e.action === 'kick and ban'));
 });
 
-scenario('a preset saves the next-session settings and applies them to the game server in one click', async () => {
+scenario('a preset saves any next-session settings and applies them to the game server in one click', async () => {
   await go('/manageserver');
   await openSection('Next session settings');
-  await (await state.page.$('[role="combobox"][aria-labelledby~="next-track"]')).click();
-  await state.page.waitForSelector('[role="listbox"]');
-  await state.page.evaluate(() => [...document.querySelectorAll('[role="option"]')].find(o => o.innerText.includes('Brands Hatch GP'))?.click());
-  await sleep(300);
-  await setInput(await labelled('Race laps'), '10');
-  await setInput(await labelled('Qualifying minutes'), '15');
+  await openSettingsGroup('Session');
+  await pickOption('#next-TrackId', 'Brands Hatch GP');
+  await setInput(await state.page.$('#next-RaceLength'), '10');
+  await setInput(await state.page.$('#next-QualifyLength'), '15');
+  await openSettingsGroup('Rules and realism');
+  await pickOption('#next-DamageType', 'Full');
   await setInput(await labelled('Save these settings as a preset'), 'Sprint');
   await clickText('button', 'save preset');
   await sleep(1500);
   const saved = await rows('table[aria-label="Presets"]');
   assert.equal(saved.length, 1);
-  assert.match(saved[0], /^Sprint Brands Hatch GP · 10 laps · qualifying 15 min/);
+  assert.match(saved[0], /^Sprint Brands Hatch GP · 10 laps · qualifying 15 min · 1 more setting/);
 
   await clickText('table[aria-label="Presets"] button', 'apply');
   await sleep(1200);
   const call = (await fakeCalls()).filter(c => c.call === 'set_next').pop();
   assert.ok(call, 'the game server was told');
-  assert.match(call.raw_query, /session_TrackId=1534602052/);
-  assert.match(call.raw_query, /session_RaceLength=10/);
-  assert.match(call.raw_query, /session_QualifyLength=15/);
+  // Names are sent as the numbers the game server's API takes
+  for (const part of ['session_TrackId=1534602052', 'session_RaceLength=10', 'session_QualifyLength=15', 'session_DamageType=3']) {
+    assert.ok(call.raw_query.split('&').includes(part), `${part} in ${call.raw_query}`);
+  }
 
   await clickText('table[aria-label="Presets"] button', 'delete');
   await state.page.waitForSelector('[role="dialog"]');
@@ -584,6 +600,17 @@ scenario('the rotation builder offers every setting the game server describes, f
   assert.equal(config.defaultConfig.GridSize, 20);
   assert.equal(config.defaultConfig.RaceMandatoryPitStops, 1);
   assert.deepEqual(config.rotation, [{TrackId: 'Brands_Hatch_GP', RaceLength: 8}, {TrackId: 'Test_Track'}]);
+
+  // Race next: round 1 (the default setup with its own race length) goes to the next session right away
+  await state.page.evaluate(() => [...document.querySelectorAll('[aria-label="Round 1"] button')].find(b => b.innerText.trim().toLowerCase() === 'race next')?.click());
+  await sleep(1200);
+  const call = (await fakeCalls()).filter(c => c.call === 'set_next').pop();
+  const sent = call.raw_query.split('&');
+  for (const part of ['session_TrackId=1534602052', 'session_RaceLength=8', 'session_DamageType=3', 'session_GridSize=20', 'session_RaceMandatoryPitStops=1']) {
+    assert.ok(sent.includes(part), `${part} in ${call.raw_query}`);
+  }
+  assert.ok(sent.some(p => /^session_Flags=-?\d+$/.test(p)), 'flags sent as a number');
+  assert.match(await text('.MuiAccordionDetails-root .MuiAlert-message:last-of-type'), /Round 1 sent/);
 });
 
 // Not a test: with E2E_SCREENSHOTS=<folder> the app, filled with the sample races, is photographed for the README

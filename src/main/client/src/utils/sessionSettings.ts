@@ -145,3 +145,46 @@ export const flagNames = (value: unknown, flags: Array<IOption>): Array<string> 
 
 // Flags are written as names, which read better and are what the game's own samples use
 export const formatFlags = (names: Array<string>, flags: Array<IOption>): string => flags.filter(f => names.includes(f.name)).map(f => f.name).join(',');
+
+export interface INamed {
+	id: string | number,
+	name: string,
+}
+
+// The game server's "next session" call takes whole numbers only, while rotations also use names ("FULL",
+// "Clear", "ABS_ALLOWED,SC_ALLOWED", "Interlagos_GP"). This turns a setup into numbers using the server's own
+// lists. Settings it can't turn into a number are left out and listed in `skipped`.
+const toInt32 = (n: number) => (n > 2147483647 ? n - (2 ** 32) : n);
+
+export const toNextSessionValues = (settings: Record<string, unknown>, schema: ISchema,
+	lists: {tracks: Array<INamed>, classes: Array<INamed>, vehicles: Array<INamed>}): {values: Record<string, number>, skipped: Array<string>} => {
+	const values: Record<string, number> = {};
+	const skipped: Array<string> = [];
+	for (const [name, value] of Object.entries(settings)) {
+		const attribute = schema.attributes.find(a => a.name === name);
+		let n: number | undefined;
+		if (!attribute) {
+			n = undefined;
+		} else if (attribute.kind === 'flags' && value !== undefined) {
+			n = toInt32(flagNames(value, schema.flags).reduce((sum, f) => sum + schema.flags.find(x => x.name === f)!.value, 0));
+		} else if (attribute.kind === 'enum' && attribute.enumName) {
+			n = findOption(value, schema.enums[attribute.enumName] ?? [])?.value;
+		} else if (attribute.kind === 'track' || attribute.kind === 'vehicleClass' || attribute.kind === 'vehicle') {
+			const list = attribute.kind === 'track' ? lists.tracks : attribute.kind === 'vehicleClass' ? lists.classes : lists.vehicles;
+			const item = list.find(i => i.name === value || String(i.id) === String(value));
+			n = item ? Number(item.id) : (typeof value === 'number' ? value : undefined);
+		} else if (typeof value === 'number') {
+			n = value;
+		} else if (typeof value === 'string' && /^-?\d{1,10}$/.test(value.trim())) {
+			n = Number(value);
+		}
+
+		if (n === undefined || !Number.isInteger(n)) {
+			skipped.push(name);
+		} else {
+			values[name] = n;
+		}
+	}
+
+	return {values, skipped};
+};

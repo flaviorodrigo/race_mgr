@@ -1,11 +1,11 @@
 import React, {useEffect, useRef, useState} from 'react';
 
 import {
-	fetchGameList, fetchRotationConfig, fetchSavedRotations, fetchSessionSchema, saveCustomRotation, IGameListItem, ISavedRotation,
+	applyNextSession, fetchGameList, fetchRotationConfig, fetchSavedRotations, fetchSessionSchema, saveCustomRotation, IGameListItem, ISavedRotation,
 } from '../Live/adminApi';
 import {configFromModel, modelFromConfig} from '../../utils/rotation';
 import {parseServerJson} from '../../utils/serverJson';
-import {ISchema} from '../../utils/sessionSettings';
+import {ISchema, toNextSessionValues} from '../../utils/sessionSettings';
 import SettingsEditor from './SettingsEditor';
 
 import Alert from '@mui/material/Alert';
@@ -197,6 +197,28 @@ const RotationBuilder = () => {
 		);
 	};
 
+	// Sends one round (the default setup with the round's own changes) to the next session, without a restart
+	const raceNext = async (index: number) => {
+		if (!schema) {
+			setMessage({text: 'The game server isn\'t answering, so nothing can be sent to it.', severity: 'error'});
+			return;
+		}
+
+		const {values, skipped} = toNextSessionValues({...defaults, ...rounds[index]}, schema, {tracks, classes, vehicles});
+		if (skipped.length > 0) {
+			setMessage({text: `Round ${index + 1} can't be sent as it is: ${skipped.join(', ')} could not be turned into the game server's values.`, severity: 'error'});
+			return;
+		}
+
+		setBusy(true);
+		const result = await applyNextSession(values);
+		setBusy(false);
+		setMessage({
+			text: result.ok ? `Round ${index + 1} sent: it is the setup of the next session (a rotation may change it again then).` : result.message,
+			severity: result.ok ? 'success' : 'error',
+		});
+	};
+
 	const changedIn = (round: Round) => Object.keys(round).filter(k => k !== 'TrackId' && k !== 'VehicleClassId').length;
 	const editorLists = {tracks, classes, vehicles};
 
@@ -243,6 +265,9 @@ const RotationBuilder = () => {
 					{listSelect({label: 'Track', items: tracks, value: round.TrackId, emptyLabel: 'Choose a track', onPick: v => updateRound(index, {...round, TrackId: v}), width: 230})}
 					{listSelect({label: 'Cars', items: classes, value: round.VehicleClassId, emptyLabel: 'As in the default setup', onPick: v => updateRound(index, setOrRemove(round, 'VehicleClassId', v)), width: 200})}
 					<Button onClick={() => setEditing(index)}>Round settings{changedIn(round) > 0 ? ` (${changedIn(round)})` : ''}</Button>
+					<Tooltip title="Make this round the setup of the next session now, without a restart">
+						<span><Button disabled={busy || !round.TrackId} onClick={() => raceNext(index)}>Race next</Button></span>
+					</Tooltip>
 					<Tooltip title="Move up"><span><IconButton size="small" aria-label="Move up" disabled={index === 0} onClick={() => move(index, -1)}><ArrowUpwardIcon fontSize="small" /></IconButton></span></Tooltip>
 					<Tooltip title="Move down"><span><IconButton size="small" aria-label="Move down" disabled={index === rounds.length - 1} onClick={() => move(index, 1)}><ArrowDownwardIcon fontSize="small" /></IconButton></span></Tooltip>
 					<Tooltip title="Remove round"><span><IconButton size="small" aria-label="Remove round" disabled={rounds.length === 1} onClick={() => setRounds(rounds.filter((_r, i) => i !== index))}><DeleteIcon fontSize="small" /></IconButton></span></Tooltip>

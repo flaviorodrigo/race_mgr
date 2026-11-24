@@ -1,16 +1,17 @@
 import React, {useEffect, useState} from 'react';
 
 import {
-	addBan, addToWhitelist, advanceSession, applyNextSession, applyPreset, createAdminUser, deleteAdminUser, deletePreset, fetchAdminUsers, fetchPresets, savePreset,
+	addBan, addToWhitelist, advanceSession, applyNextSession, applyPreset, createAdminUser, deleteAdminUser, deletePreset, fetchAdminUsers, fetchGameList,
+	fetchPresets, fetchSessionSchema, savePreset,
 	updateAdminUser, changePassword, fetchAudit, fetchBanList, fetchGameLog, fetchServerConfig, fetchWhitelist,
 	removeBan, removeFromWhitelist, saveServerConfig,
-	IAdminUser, IApiResult, IAuditEvent, IBanEntry, ILogEvent, INextSessionSettings, ISessionPreset, IWhitelist, ServerConfigValues,
+	IAdminUser, IApiResult, IAuditEvent, IBanEntry, IGameListItem, ILogEvent, INextSessionSettings, ISessionPreset, IWhitelist, ServerConfigValues,
 } from '../Live/adminApi';
-import {fetchTrackData} from '../Leaderboard/utilities';
 import RotationBuilder from './RotationBuilder';
 import PerformancePanel from './PerformancePanel';
-import {ITrackData} from '../../interfaces/asm2Interfaces';
 import {atLeast, generatePassword, Role, roleLabel} from '../../utils/roles';
+import {ISchema, toNextSessionValues} from '../../utils/sessionSettings';
+import SettingsEditor from './SettingsEditor';
 import {useRole} from '../Live/useRole';
 
 import Accordion from '@mui/material/Accordion';
@@ -178,22 +179,28 @@ const ServerSettingsPanel = () => {
 
 // ---------------------------------------------------------------- next session
 
-// "Brands Hatch GP · 10 laps · practice 10 min · qualifying 15 min · AI 90"
-const describePreset = (settings: INextSessionSettings, tracks: Array<ITrackData>) => [
-	settings.TrackId === undefined ? null : tracks.find(t => Number(t.id) === settings.TrackId)?.name.replaceAll('_', ' ') ?? `track ${settings.TrackId}`,
-	settings.RaceLength === undefined ? null : `${settings.RaceLength} laps`,
-	settings.PracticeLength === undefined ? null : `practice ${settings.PracticeLength} min`,
-	settings.QualifyLength === undefined ? null : `qualifying ${settings.QualifyLength} min`,
-	settings.OpponentDifficulty === undefined ? null : `AI ${settings.OpponentDifficulty}`,
-].filter(Boolean).join(' · ');
+// "Brands Hatch GP · 10 laps · qualifying 15 min · AI 90 · 3 more settings"
+const describePreset = (settings: INextSessionSettings, tracks: Array<IGameListItem>) => {
+	const named: Record<string, (v: number) => string> = {
+		TrackId: v => tracks.find(t => Number(t.id) === v)?.name.replaceAll('_', ' ') ?? `track ${v}`,
+		RaceLength: v => `${v} laps`,
+		PracticeLength: v => `practice ${v} min`,
+		QualifyLength: v => `qualifying ${v} min`,
+		OpponentDifficulty: v => `AI ${v}`,
+	};
+	const parts = Object.keys(named).filter(k => settings[k] !== undefined).map(k => named[k](settings[k]));
+	const others = Object.keys(settings).filter(k => !(k in named)).length;
+	return [...parts, others > 0 ? `${others} more setting${others === 1 ? '' : 's'}` : null].filter(Boolean).join(' · ');
+};
 
+// The next session's setup, with every setting the game server offers. Applied through the game server's API, no
+// restart; only what is filled in is sent.
 const NextSessionPanel = () => {
-	const [tracks, setTracks] = useState<Array<ITrackData>>([]);
-	const [trackId, setTrackId] = useState('');
-	const [raceLength, setRaceLength] = useState('');
-	const [practiceLength, setPracticeLength] = useState('');
-	const [qualifyLength, setQualifyLength] = useState('');
-	const [difficulty, setDifficulty] = useState('');
+	const [schema, setSchema] = useState<ISchema | null>(null);
+	const [tracks, setTracks] = useState<Array<IGameListItem>>([]);
+	const [classes, setClasses] = useState<Array<IGameListItem>>([]);
+	const [vehicles, setVehicles] = useState<Array<IGameListItem>>([]);
+	const [values, setValues] = useState<Record<string, unknown>>({});
 	const [feedback, setFeedback] = useState<IFeedback | null>(null);
 	const [confirmAdvance, setConfirmAdvance] = useState(false);
 	const [busy, setBusy] = useState(false);
@@ -209,47 +216,26 @@ const NextSessionPanel = () => {
 	};
 
 	useEffect(() => {
-		fetchTrackData().then(t => setTracks(Array.isArray(t) ? t : []));
+		fetchSessionSchema().then(r => setSchema(r.ok && r.data ? r.data : null));
+		fetchGameList('tracks').then(setTracks);
+		fetchGameList('vehicle_classes').then(setClasses);
+		fetchGameList('vehicles').then(setVehicles);
 		loadPresets();
 	}, []);
 
-	// Only the fields you filled in are sent; the rest of the session stays as it is
-	const settings: INextSessionSettings = {};
-	const problems: Array<string> = [];
-	const take = (key: keyof INextSessionSettings, raw: string, label: string, range: [number, number]) => {
-		const [min, max] = range;
-		if (raw.trim() === '') {
-			return;
-		}
-
-		const n = toWhole(raw);
-		if (isNaN(n) || n < min || n > max) {
-			problems.push(`${label} must be ${min} to ${max}`);
-		} else {
-			settings[key] = n;
-		}
-	};
-
-	if (trackId !== '') {
-		settings.TrackId = Number(trackId);
-	}
-
-	take('RaceLength', raceLength, 'Race laps', [1, 999]);
-	take('PracticeLength', practiceLength, 'Practice minutes', [0, 600]);
-	take('QualifyLength', qualifyLength, 'Qualifying minutes', [0, 600]);
-	take('OpponentDifficulty', difficulty, 'AI difficulty', [0, 100]);
-	const canApply = problems.length === 0 && Object.keys(settings).length > 0 && !busy;
+	const converted = schema ? toNextSessionValues(values, schema, {tracks, classes, vehicles}) : null;
+	const canApply = Boolean(converted) && Object.keys(converted!.values).length > 0 && converted!.skipped.length === 0 && !busy;
 
 	const apply = async () => {
 		setBusy(true);
-		const result = await applyNextSession(settings);
+		const result = await applyNextSession(converted!.values);
 		setBusy(false);
 		setFeedback({text: result.ok ? 'Sent. These apply when the next session starts.' : result.message, severity: result.ok ? 'success' : 'error'});
 	};
 
 	const saveAsPreset = async () => {
 		setBusy(true);
-		const result = await savePreset(presetName.trim(), settings);
+		const result = await savePreset(presetName.trim(), converted!.values);
 		setBusy(false);
 		setFeedback({text: result.ok ? `Preset "${presetName.trim()}" saved.` : result.message, severity: result.ok ? 'success' : 'error'});
 		if (result.ok) {
@@ -287,25 +273,16 @@ const NextSessionPanel = () => {
 	return (
 		<Stack spacing={2} sx={{textAlign: 'left'}}>
 			<Typography variant="body2">
-				Change a few things for the <strong>next</strong> session without restarting the server. Leave a field empty to keep it.
-				If you use a rotation, it may set the track again when the next session starts.
+				Change the <strong>next</strong> session without restarting the server: any setting the game server offers. Only what you
+				set is sent; the rest stays as it is. If you use a rotation, it may set the track again when the next session starts.
 			</Typography>
-			<FormControl variant="standard" fullWidth>
-				<InputLabel id="next-track">Track</InputLabel>
-				<Select labelId="next-track" value={trackId} onChange={e => setTrackId(e.target.value)}>
-					<MenuItem value=""><em>Keep as it is</em></MenuItem>
-					{tracks.map(t => <MenuItem key={t.id} value={String(t.id)}>{t.name.replaceAll('_', ' ')}</MenuItem>)}
-				</Select>
-			</FormControl>
-			<Stack direction={{xs: 'column', sm: 'row'}} spacing={2}>
-				<TextField label="Race laps" variant="standard" value={raceLength} onChange={e => setRaceLength(e.target.value)} />
-				<TextField label="Practice minutes" variant="standard" value={practiceLength} onChange={e => setPracticeLength(e.target.value)} />
-				<TextField label="Qualifying minutes" variant="standard" value={qualifyLength} onChange={e => setQualifyLength(e.target.value)} />
-				<TextField label="AI difficulty (0-100)" variant="standard" value={difficulty} onChange={e => setDifficulty(e.target.value)} />
-			</Stack>
-			{problems.length > 0 && <Alert severity="warning">{problems.join('. ')}</Alert>}
+			<SettingsEditor idPrefix="next" schema={schema} values={values} onChange={setValues} tracks={tracks} classes={classes} vehicles={vehicles} />
+			{converted && converted.skipped.length > 0 && <Alert severity="warning">
+				These can&apos;t be sent as they are: {converted.skipped.join(', ')}. Pick them from the lists, or clear them.
+			</Alert>}
 			<Stack direction="row" spacing={2}>
 				<Button variant="contained" disabled={!canApply} onClick={apply}>Apply to next session</Button>
+				<Button disabled={busy || Object.keys(values).length === 0} onClick={() => setValues({})}>Clear</Button>
 				<Button color="warning" disabled={busy} onClick={() => setConfirmAdvance(true)}>Advance to next stage</Button>
 			</Stack>
 			{canEditPresets && <Stack direction={{xs: 'column', sm: 'row'}} spacing={2} sx={{alignItems: {sm: 'flex-end'}}}>
@@ -323,6 +300,10 @@ const NextSessionPanel = () => {
 								<TableCell>{describePreset(p.settings, tracks)}</TableCell>
 								<TableCell align="right" sx={{whiteSpace: 'nowrap'}}>
 									<Button size="small" disabled={busy} onClick={() => usePreset(p)}>Apply</Button>
+									<Button size="small" onClick={() => {
+										setValues({...p.settings});
+										setPresetName(p.name);
+									}}>Edit</Button>
 									{canEditPresets && <Button size="small" color="error" onClick={() => setToDelete(p)}>Delete</Button>}
 								</TableCell>
 							</TableRow>
