@@ -19,7 +19,7 @@ const racingTheme = createTheme({
 				primary: {main: RACING_RED},
 				secondary: {main: RACING_YELLOW},
 				success: {main: TIMING_GREEN},
-				background: {default: '#08080a', paper: 'rgba(16, 16, 20, 0.88)'},
+				background: {default: '#08080a', paper: 'rgba(14, 14, 18, 0.58)'},
 				text: {primary: '#f4f4f4', secondary: '#a9a9b3'},
 				divider: 'rgba(255, 255, 255, 0.10)',
 			},
@@ -39,7 +39,8 @@ const racingTheme = createTheme({
 			styleOverrides: {
 				root: {
 					backgroundImage: 'none',
-					backdropFilter: 'blur(6px)',
+					// See-through panels: the photo shows, blurred, behind the content
+					backdropFilter: 'blur(10px) saturate(120%)',
 					border: '1px solid rgba(255, 255, 255, 0.06)',
 				},
 			},
@@ -66,7 +67,7 @@ const racingTheme = createTheme({
 		MuiTableCell: {
 			styleOverrides: {
 				head: {
-					backgroundColor: '#121216', color: '#f4f4f4', fontWeight: 700, textTransform: 'uppercase',
+					backgroundColor: 'rgba(10, 10, 12, 0.75)', color: '#f4f4f4', fontWeight: 700, textTransform: 'uppercase',
 					fontSize: '0.75rem', letterSpacing: '0.06em', borderBottom: `2px solid ${RACING_RED}`,
 				},
 				body: {borderColor: 'rgba(255, 255, 255, 0.06)'},
@@ -79,8 +80,24 @@ const racingTheme = createTheme({
 		},
 		MuiAccordion: {
 			styleOverrides: {
-				root: {backgroundColor: 'rgba(20, 20, 24, 0.9)', '&::before': {backgroundColor: 'rgba(255, 255, 255, 0.08)'}},
+				root: {backgroundColor: 'rgba(18, 18, 22, 0.55)', '&::before': {backgroundColor: 'rgba(255, 255, 255, 0.08)'}},
 			},
+		},
+		// Input boxes and menus: a little see-through too, but solid enough to read and type in
+		MuiOutlinedInput: {
+			styleOverrides: {root: {backgroundColor: 'rgba(0, 0, 0, 0.35)'}},
+		},
+		MuiFilledInput: {
+			styleOverrides: {root: {backgroundColor: 'rgba(0, 0, 0, 0.35)'}},
+		},
+		MuiMenu: {
+			styleOverrides: {paper: {backgroundColor: 'rgba(14, 14, 18, 0.92)'}},
+		},
+		MuiPopover: {
+			styleOverrides: {paper: {backgroundColor: 'rgba(14, 14, 18, 0.92)'}},
+		},
+		MuiDialog: {
+			styleOverrides: {paper: {backgroundColor: 'rgba(14, 14, 18, 0.9)'}},
 		},
 		MuiTab: {
 			styleOverrides: {root: {fontWeight: 700, letterSpacing: '0.06em'}},

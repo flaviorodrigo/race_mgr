@@ -42,7 +42,7 @@ const RacingBackdrop = () => {
 				{/* Darkening and a fine carbon weave over the photo */}
 				<Box sx={{
 					position: 'absolute', inset: 0,
-					background: 'linear-gradient(180deg, rgba(8,8,10,0.55) 0%, rgba(8,8,10,0.80) 45%, rgba(8,8,10,0.92) 100%), '
+					background: 'linear-gradient(180deg, rgba(8,8,10,0.35) 0%, rgba(8,8,10,0.55) 45%, rgba(8,8,10,0.75) 100%), '
 						+ 'repeating-linear-gradient(45deg, rgba(255,255,255,0.018) 0 2px, transparent 2px 6px)',
 				}} />
 			</Box>
