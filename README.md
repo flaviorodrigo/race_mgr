@@ -165,7 +165,7 @@ Tested only on paper so far: nothing here has been run on a Synology yet. It nee
 
 ## Admin tools
 
-Under *Manage Server*, below the live session, each tool opens on its own:
+*Manage Server* has four tabs: **Race day** (live session, next session settings and presets, game server log), **Championships** (sessions, scoring, rotations, the rotation builder, *Set active* and *Update Server*), **Server** (server.cfg, ban list, whitelist, balance of performance) and **People** (admins, your account, activity log). Stewards only see *Race day* and their account. The tab is kept in the address (`/manageserver?tab=server`). Each tool opens on its own:
 
 - **Server settings (server.cfg)** edits the server name, password, player and grid limits, session lengths, AI difficulty and a few switches. Only the value after each setting is replaced: comments and everything else in the file stay exactly as they were, and the previous version is kept as `server.cfg.bak`. The game server reads the file at start-up, so restart it to apply. The password is never shown, only whether one is set.
 - **Rotation builder** builds a rotation by hand: a default setup with every session setting the game server offers, then the rounds in order (track, cars, and any setting a round changes), with move and remove buttons. Start from a saved rotation or import a rotation file, and export the result in the game server's own file format to share it. Saving only stores it; it goes live when you select it and use *Update Server*. Rotations are checked before they are written (known settings, simple values, at most 200 rounds).

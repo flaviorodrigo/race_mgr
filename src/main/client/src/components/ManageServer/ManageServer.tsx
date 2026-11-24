@@ -7,7 +7,7 @@ import {setSelectedRotationId} from '../../state/rotations';
 
 import ServerConfig from './ServerConfig';
 
-import {Navigate, useNavigate} from 'react-router-dom';
+import {Navigate, useNavigate, useSearchParams} from 'react-router-dom';
 
 import Typography from '@mui/material/Typography';
 import Snackbar from '@mui/material/Snackbar';
@@ -17,7 +17,9 @@ import Tooltip from '@mui/material/Tooltip';
 
 import ApplyServerConfig from './ApplyServerConfig';
 import LivePanel from '../Live/LivePanel';
-import AdminTools from './AdminTools';
+import AdminTools, {AdminTab} from './AdminTools';
+import Tab from '@mui/material/Tab';
+import Tabs from '@mui/material/Tabs';
 import {atLeast} from '../../utils/roles';
 import {useRole} from '../Live/useRole';
 
@@ -47,6 +49,14 @@ const ManageServer = (props:IManageServerProps) => {
 	// Stewards run race day: the series and rotation controls are for admins
 	const {role, loaded: roleLoaded} = useRole();
 	const isAdmin = atLeast(role, 'ADMIN');
+	// Stewards get race day and their account; admins everything. The tab is kept in the address (?tab=server).
+	const tabs: Array<{id: AdminTab, label: string}> = isAdmin
+		? [{id: 'race-day', label: 'Race day'}, {id: 'championships', label: 'Championships'}, {id: 'server', label: 'Server'}, {id: 'people', label: 'People'}]
+		: [{id: 'race-day', label: 'Race day'}, {id: 'people', label: 'People'}];
+	const [search, setSearch] = useSearchParams();
+	const wanted = search.get('tab') as AdminTab | null;
+	const currentTab: AdminTab = tabs.some(t => t.id === wanted) ? wanted! : 'race-day';
+	const setTab = (tab: AdminTab) => setSearch(tab === 'race-day' ? {} : {tab}, {replace: true});
 
 	useEffect(() => {
 		dispatch(getServerStatus());
@@ -112,9 +122,22 @@ const ManageServer = (props:IManageServerProps) => {
 					</IconButton>
 				</Typography>
 
-				{isAdmin && <>
+				<Tabs value={currentTab} onChange={(_e, value) => setTab(value)} variant="scrollable" allowScrollButtonsMobile
+					sx={{borderBottom: 1, borderColor: 'divider', mb: 2}} aria-label="Manage Server">
+					{tabs.map(t => <Tab key={t.id} value={t.id} label={t.label} />)}
+				</Tabs>
+
+				{currentTab === 'race-day' && <>
+					{roleLoaded && !isAdmin && <Typography variant="subtitle1" align="left" gutterBottom={true}>
+						You are signed in as a steward: you can see who is online, kick and message players, set up the next session and give penalties.
+					</Typography>}
+					<LivePanel />
+				</>}
+
+				{currentTab === 'championships' && isAdmin && <>
 					<Typography variant="subtitle1" align="left" gutterBottom={true}>
-						Here you can create/manage race sessions & race rotations. Sessions can be thought of like a race series and they can have one to many rotations. A rotation is a configuration that consists of a various cars, tracks, weather, etc. When a race occurs, the active session & rotation ids are linked to the race results for historical tracking and querying.
+						A session is a championship; a rotation is the list of rounds (tracks, cars, weather, rules). Races are recorded under the
+						active session and rotation.
 					</Typography>
 
 					<Typography variant="subtitle1" align="left" gutterBottom={true}>
@@ -126,7 +149,6 @@ const ManageServer = (props:IManageServerProps) => {
 							showNotification={showNotification}
 							setIsServerRunning={serverStatus.isRunning}
 						></ApplyServerConfig>
-
 					</Typography>
 
 					{serverStatus.managed === false
@@ -136,13 +158,7 @@ const ManageServer = (props:IManageServerProps) => {
 					}
 				</>}
 
-				{roleLoaded && !isAdmin && <Typography variant="subtitle1" align="left" gutterBottom={true}>
-					You are signed in as a steward: you can see who is online, kick and message players, set up the next session and give penalties.
-				</Typography>}
-
-				<LivePanel />
-
-				<AdminTools />
+				<AdminTools tab={currentTab} />
 
 				<Snackbar
 					anchorOrigin={{vertical: 'bottom', horizontal: 'right'}}

@@ -169,7 +169,23 @@ const clickText = (selector, label) => state.page.evaluate((s, t) => {
   return Boolean(element);
 }, selector, label);
 
+// Manage Server's tools live in tabs: open the tab first, then the tool
+const TOOL_TABS = {
+  'Next session settings': 'Race day', 'Game server log': 'Race day', 'Rotation builder': 'Championships',
+  'Server settings (server.cfg)': 'Server', 'Ban list': 'Server', 'Whitelist': 'Server', 'Balance of performance': 'Server',
+  Admins: 'People', Account: 'People', 'Activity log': 'People',
+};
+
+const openTab = async label => {
+  await state.page.evaluate(l => [...document.querySelectorAll('[role="tab"]')].find(t => t.innerText.trim().toLowerCase() === l.toLowerCase())?.click(), label);
+  await sleep(600);
+};
+
 const openSection = async title => {
+  if (TOOL_TABS[title]) {
+    await openTab(TOOL_TABS[title]);
+  }
+
   await state.page.evaluate(t => [...document.querySelectorAll('.MuiAccordionSummary-root')].find(b => b.innerText.trim() === t)?.click(), title);
   await sleep(1000);
 };
@@ -288,7 +304,7 @@ scenario('the leaderboard shows the standings', async () => {
 });
 
 scenario('Set active records the championship and rotation without touching the game server\'s rotation file', async () => {
-  await go('/manageserver');
+  await go('/manageserver?tab=championships');
   assert.ok(await clickText('button', 'set active'));
   await sleep(1200);
   assert.match(await text('body'), /Set as active/);
@@ -466,8 +482,13 @@ scenario('the owner gives a friend a steward sign-in that only reaches race day,
   await signOut();
   await signIn('steve', password);
   await go('/manageserver');
-  const sections = await state.page.$$eval('.MuiAccordionSummary-root', e => e.map(x => x.innerText.trim()));
-  assert.deepEqual(sections, ['Next session settings', 'Game server log', 'Account']);
+  const tabs = await state.page.$$eval('[role="tab"]', e => e.map(x => x.innerText.trim().toLowerCase()));
+  assert.deepEqual(tabs, ['race day', 'people']);
+  const sections = async () => state.page.$$eval('.MuiAccordionSummary-root', e => e.map(x => x.innerText.trim()));
+  assert.deepEqual(await sections(), ['Next session settings', 'Game server log']);
+  await openTab('People');
+  assert.deepEqual(await sections(), ['Account']);
+  await openTab('Race day');
   assert.match(await text('body'), /signed in as a steward/);
 
   // The server says no to everything beyond race day, and yes to race day

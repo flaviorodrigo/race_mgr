@@ -799,28 +799,30 @@ const AdminsPanel = () => {
 
 // ---------------------------------------------------------------- the group
 
-// The least role that can use each tool; the server enforces the same rules
-const sections: Array<{id: string, title: string, needs: Role, body: React.ReactNode}> = [
-	{id: 'bop', title: 'Balance of performance', needs: 'ADMIN', body: <PerformancePanel />},
-	{id: 'rotation', title: 'Rotation builder', needs: 'ADMIN', body: <RotationBuilder />},
-	{id: 'config', title: 'Server settings (server.cfg)', needs: 'ADMIN', body: <ServerSettingsPanel />},
-	{id: 'next', title: 'Next session settings', needs: 'STEWARD', body: <NextSessionPanel />},
-	{id: 'bans', title: 'Ban list', needs: 'ADMIN', body: <BanListPanel />},
-	{id: 'whitelist', title: 'Whitelist', needs: 'ADMIN', body: <WhitelistPanel />},
-	{id: 'log', title: 'Game server log', needs: 'STEWARD', body: <GameLogPanel />},
-	{id: 'audit', title: 'Activity log', needs: 'ADMIN', body: <AuditPanel />},
-	{id: 'admins', title: 'Admins', needs: 'OWNER', body: <AdminsPanel />},
-	{id: 'account', title: 'Account', needs: 'STEWARD', body: <AccountPanel />},
+// The least role that can use each tool (the server enforces the same rules), and the tab it is under
+export type AdminTab = 'race-day' | 'championships' | 'server' | 'people';
+
+const sections: Array<{id: string, title: string, needs: Role, tab: AdminTab, body: React.ReactNode}> = [
+	{id: 'next', title: 'Next session settings', needs: 'STEWARD', tab: 'race-day', body: <NextSessionPanel />},
+	{id: 'log', title: 'Game server log', needs: 'STEWARD', tab: 'race-day', body: <GameLogPanel />},
+	{id: 'rotation', title: 'Rotation builder', needs: 'ADMIN', tab: 'championships', body: <RotationBuilder />},
+	{id: 'config', title: 'Server settings (server.cfg)', needs: 'ADMIN', tab: 'server', body: <ServerSettingsPanel />},
+	{id: 'bans', title: 'Ban list', needs: 'ADMIN', tab: 'server', body: <BanListPanel />},
+	{id: 'whitelist', title: 'Whitelist', needs: 'ADMIN', tab: 'server', body: <WhitelistPanel />},
+	{id: 'bop', title: 'Balance of performance', needs: 'ADMIN', tab: 'server', body: <PerformancePanel />},
+	{id: 'admins', title: 'Admins', needs: 'OWNER', tab: 'people', body: <AdminsPanel />},
+	{id: 'account', title: 'Account', needs: 'STEWARD', tab: 'people', body: <AccountPanel />},
+	{id: 'audit', title: 'Activity log', needs: 'ADMIN', tab: 'people', body: <AuditPanel />},
 ];
 
 // Collapsed by default, and each section only loads its data when it is opened
-const AdminTools = () => {
+const AdminTools = ({tab}: {tab: AdminTab}) => {
 	const [open, setOpen] = useState<string | false>(false);
 	const {role} = useRole();
 
 	return (
-		<div style={{marginTop: 24}}>
-			{sections.filter(s => atLeast(role, s.needs)).map(s => (
+		<div style={{marginTop: 16}}>
+			{sections.filter(s => s.tab === tab && atLeast(role, s.needs)).map(s => (
 				<Accordion key={s.id} expanded={open === s.id} onChange={(_event, isOpen) => setOpen(isOpen ? s.id : false)}
 					disableGutters slotProps={{transition: {unmountOnExit: true}}}>
 					<AccordionSummary expandIcon={<ExpandMoreIcon />} aria-controls={`${s.id}-content`} id={`${s.id}-header`}>
