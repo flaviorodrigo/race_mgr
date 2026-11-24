@@ -1,6 +1,7 @@
 import React, {useEffect, useRef, useState} from 'react';
 
 import {fetchGameList, fetchRotationConfig, fetchSavedRotations, saveCustomRotation, IGameListItem, ISavedRotation} from '../Live/adminApi';
+import {CLEAR, configFromModel, emptyEntry, IRotationEntry, modelFromConfig} from '../../utils/rotation';
 
 import Alert from '@mui/material/Alert';
 import Button from '@mui/material/Button';
@@ -17,16 +18,8 @@ import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import DeleteIcon from '@mui/icons-material/Delete';
 
-interface IEntry {
-	track: string,
-	qualifyWeather1: string,
-	qualifyWeather2: string,
-	raceWeather1: string,
-	raceWeather2: string,
-}
+type IEntry = IRotationEntry;
 
-const CLEAR = 'Clear';
-const emptyEntry = (): IEntry => ({track: '', qualifyWeather1: CLEAR, qualifyWeather2: CLEAR, raceWeather1: CLEAR, raceWeather2: CLEAR});
 const SAFE_NAME = /^[A-Za-z0-9_,.()\- ]{1,200}$/;
 const MAX_ENTRIES = 200;
 
@@ -54,6 +47,7 @@ const RotationBuilder = () => {
 	const [practiceMinutes, setPracticeMinutes] = useState('0');
 	const [entries, setEntries] = useState<Array<IEntry>>([emptyEntry()]);
 	const [base, setBase] = useState<Record<string, unknown>>(DEFAULTS);
+	const [persistIndex, setPersistIndex] = useState(true);
 	const [message, setMessage] = useState<{text: string, severity: 'success' | 'error' | 'info'} | null>(null);
 	const [busy, setBusy] = useState(false);
 	const fileInput = useRef<HTMLInputElement>(null);
@@ -89,58 +83,43 @@ const RotationBuilder = () => {
 		problems.push('Every round needs a track');
 	}
 
-	// Persist_index is the game server's own spelling
-	/* eslint-disable camelcase */
-	const buildConfig = () => ({
-		persist_index: true,
-		defaultConfig: {
+	const buildConfig = () => configFromModel({
+		persistIndex,
+		defaults: {
 			...base,
 			PracticeLength: whole(practiceMinutes),
 			QualifyLength: whole(qualifyMinutes),
 			RaceLength: whole(raceLaps),
 			VehicleClassId: vehicleClass,
 		},
-		rotation: entries.map(e => ({
-			TrackId: e.track,
-			QualifyWeatherSlot1: e.qualifyWeather1,
-			QualifyWeatherSlot2: e.qualifyWeather2,
-			RaceWeatherSlot1: e.raceWeather1,
-			RaceWeatherSlot2: e.raceWeather2,
-		})),
+		entries,
 	});
-	/* eslint-enable camelcase */
 
 	const loadConfig = (config: any, fallbackName = '') => {
-		const defaults = config?.defaultConfig ?? config?.default;
-		const rotation = config?.rotation;
-		if (!defaults || !Array.isArray(rotation) || rotation.length === 0 || rotation.length > MAX_ENTRIES) {
+		const model = modelFromConfig(config);
+		if (!model || model.entries.length > MAX_ENTRIES) {
 			setMessage({text: 'That is not a rotation Race Manager can read.', severity: 'error'});
 			return;
 		}
 
-		const bad = rotation.some((r: any) => typeof r?.TrackId !== 'string' || !SAFE_NAME.test(r.TrackId));
-		if (bad) {
+		if (model.entries.some(e => !SAFE_NAME.test(e.track))) {
 			setMessage({text: 'Some rounds in that rotation have no valid track.', severity: 'error'});
 			return;
 		}
 
+		const {defaults} = model;
 		setBase(defaults);
+		setPersistIndex(model.persistIndex);
 		setVehicleClass(String(defaults.VehicleClassId ?? ''));
 		setRaceLaps(String(defaults.RaceLength ?? 5));
 		setQualifyMinutes(String(defaults.QualifyLength ?? 5));
 		setPracticeMinutes(String(defaults.PracticeLength ?? 0));
-		setEntries(rotation.map((r: any) => ({
-			track: r.TrackId,
-			qualifyWeather1: r.QualifyWeatherSlot1 ?? defaults.QualifyWeatherSlot1 ?? CLEAR,
-			qualifyWeather2: r.QualifyWeatherSlot2 ?? defaults.QualifyWeatherSlot2 ?? CLEAR,
-			raceWeather1: r.RaceWeatherSlot1 ?? defaults.RaceWeatherSlot1 ?? CLEAR,
-			raceWeather2: r.RaceWeatherSlot2 ?? defaults.RaceWeatherSlot2 ?? CLEAR,
-		})));
+		setEntries(model.entries);
 		if (fallbackName) {
 			setName(fallbackName);
 		}
 
-		setMessage({text: `Loaded ${rotation.length} rounds. Change anything, then save it under a new name.`, severity: 'info'});
+		setMessage({text: `Loaded ${model.entries.length} rounds. Change anything, then save it under a new name.`, severity: 'info'});
 	};
 
 	const loadSaved = async (id: string) => {
@@ -208,10 +187,12 @@ const RotationBuilder = () => {
 		setEntries(copy);
 	};
 
-	const weatherSelect = (label: string, value: string, onChange: (v: string) => void) => (
+	// A numeric weather hash (from a server's own file) is kept as it is and shown as "(as in the file)"
+	const weatherSelect = (label: string, value: string | number, onChange: (v: string | number) => void) => (
 		<FormControl variant="standard" sx={{minWidth: 110}}>
 			<InputLabel>{label}</InputLabel>
-			<Select value={weatherOptions.includes(value) ? value : ''} onChange={e => onChange(e.target.value)}>
+			<Select value={String(value)} onChange={e => onChange(e.target.value === String(value) ? value : e.target.value)}>
+				{!weatherOptions.includes(String(value)) && <MenuItem value={String(value)}>(as in the file)</MenuItem>}
 				{weatherOptions.map(w => <MenuItem key={w} value={w}>{pretty(w)}</MenuItem>)}
 			</Select>
 		</FormControl>

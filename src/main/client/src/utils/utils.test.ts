@@ -7,6 +7,8 @@ import {toCsv} from './csv';
 import {sectorRows, lapSeries, formatLap, formatSector} from './sectors';
 import {careerStats, trackRecords} from './careerStats';
 import {atLeast, generatePassword} from './roles';
+import {configFromModel, modelFromConfig} from './rotation';
+import realRotation from './rotation_from_a_real_server.json';
 
 describe('calculatePoints', () => {
 	it('gives the winner a 40% bonus over a half-field points scale', () => {
@@ -236,5 +238,35 @@ describe('roles', () => {
 		expect(a).toMatch(/^[A-Za-z0-9]{16}$/);
 		expect(generatePassword()).not.toBe(a);
 		expect(generatePassword(24)).toHaveLength(24);
+	});
+});
+
+describe('rotation files', () => {
+	it('loads and saves a real server rotation without changing it', () => {
+		const file = realRotation as any;
+		const model = modelFromConfig(file.config);
+		expect(model).not.toBeNull();
+		expect(model!.persistIndex).toBe(false);
+		expect(model!.entries.map(e => e.track)).toEqual(['Laguna_Seca_2020', 'Brasilia_Full', 'Spielberg_Modern', 'Monza_2005', 'Interlagos_GP']);
+		// The numeric weather hash comes through as it is
+		expect(model!.entries[0].raceWeather1).toBe(-934211870);
+
+		const saved = configFromModel(model!);
+		expect(saved.persist_index).toBe(false);
+		expect(saved.defaultConfig).toEqual(file.config.default);
+		expect(saved.rotation).toEqual(file.config.rotation);
+	});
+
+	it('keeps a round\'s own settings and only adds weather that differs from the default', () => {
+		const model = modelFromConfig({default: {RaceWeatherSlot1: 'Clear'}, rotation: [{TrackId: 'A', RaceLength: 8, QualifyWeatherSlot1: 'Clear'}]})!;
+		model.entries[0].raceWeather1 = 'LightRain';
+		expect(configFromModel(model).rotation).toEqual([{TrackId: 'A', RaceLength: 8, QualifyWeatherSlot1: 'Clear', RaceWeatherSlot1: 'LightRain'}]);
+		expect(configFromModel(model).persist_index).toBe(true);
+	});
+
+	it('refuses something that is not a rotation', () => {
+		expect(modelFromConfig(null)).toBeNull();
+		expect(modelFromConfig({default: {}, rotation: []})).toBeNull();
+		expect(modelFromConfig({default: {}, rotation: [{RaceLength: 5}]})).toBeNull();
 	});
 });

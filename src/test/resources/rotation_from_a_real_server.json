@@ -1,0 +1,45 @@
+{
+  "version": 7,
+  "config": {
+    "persist_index": false,
+    "default": {
+      "VehicleClassId": "F-V8_Gen2",
+      "PracticeLength": 0,
+      "QualifyLength": 10,
+      "RaceLength": 15,
+      "GridSize": 22,
+      "MaxPlayers": 3,
+      "OpponentDifficulty": 87,
+      "DamageType": 2,
+      "DamageScale": 1,
+      "TireWearType": 3,
+      "FuelUsageType": 0,
+      "PenaltiesType": 1,
+      "RaceMandatoryPitStops": 1,
+      "RaceMandatoryPitStopsMinTyres": 0,
+      "DisablePitstopRefuelling": 0,
+      "QualifyWeatherSlots": 1,
+      "QualifyWeatherSlot1": -934211870,
+      "RaceWeatherSlots": 1,
+      "RaceWeatherSlot1": -934211870,
+      "Flags": 1212809448
+    },
+    "rotation": [
+      {
+        "TrackId": "Laguna_Seca_2020"
+      },
+      {
+        "TrackId": "Brasilia_Full"
+      },
+      {
+        "TrackId": "Spielberg_Modern"
+      },
+      {
+        "TrackId": "Monza_2005"
+      },
+      {
+        "TrackId": "Interlagos_GP"
+      }
+    ]
+  }
+}

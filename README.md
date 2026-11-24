@@ -305,7 +305,9 @@ If you are looking to add or enhance features, fix bugs, etc then this is the se
 ## Custom rotations
 - Build one in the web UI: *Manage Server → Rotation builder* (a vehicle class, then the track and weather for each round; import or export the game server's own file format).
 - Or send one to the API (`POST /api/v1/admin/race/rotation`); the Postman collection has examples, including a set of sample F1 rotations in `sample_files/rotations`.
-- Rotations are validated before they are written (known settings, simple values, at most 200 rounds).
+- **Bring your server's current rotation in:** *Import file* in the Rotation builder takes the game server's own file (the live one is `lua_config/sms_rotate_config.json`, the default `lua/sms_rotate/sms_rotate_default_config.json`). Everything the builder doesn't edit (grid, AI, damage, pit stops, numeric weather and flag values, `persist_index`) is kept exactly, so importing and saving changes nothing.
+- **What *Update Server* does to the game server's files:** it writes the selected rotation to `lua/sms_rotate/sms_rotate_default_config.json` and deletes `lua_config/sms_rotate_config.json`, so the rotation addon rebuilds its working copy from it at the next start. Import your current rotation (or back that file up) before the first *Update Server*, or it is gone.
+- Rotations are checked before they are written: every setting must be one the game server lists as writable for a session (except the `ServerControls*` switches), numbers fit in 32 bits (counts and lengths 0 to 1000), text is plain, at most 200 rounds.
 
 ## Not built yet
 - A race calendar with sign-ups (it needs a way to tell friends apart without giving everyone an account).

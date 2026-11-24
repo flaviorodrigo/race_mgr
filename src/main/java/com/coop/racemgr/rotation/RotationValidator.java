@@ -16,17 +16,36 @@ public final class RotationValidator {
     public static final int MAX_ENTRIES = 200;
     private static final Pattern SAFE_TEXT = Pattern.compile("^[A-Za-z0-9_,.()\\- ]{1,200}$");
 
-    private static final Set<String> DEFAULT_KEYS = Set.of(
-            "PracticeLength", "QualifyLength", "RaceLength", "VehicleClassId", "Flags", "DamageType", "TireWearType",
-            "FuelUsageType", "PenaltiesType", "AllowedViews", "QualifyDateHour", "QualifyDateProgression",
-            "QualifyWeatherSlots", "QualifyWeatherSlot1", "QualifyWeatherSlot2", "QualifyWeatherSlot3", "QualifyWeatherSlot4",
-            "RaceWeatherSlots", "RaceWeatherSlot1", "RaceWeatherSlot2", "RaceWeatherSlot3", "RaceWeatherSlot4",
-            "RaceDateProgression");
+    // The session attributes a dedicated server lists as writable (its /api/list/attributes/session), except the
+    // ServerControls* switches, which decide who controls the setup and are left to the rotation addon itself.
+    // The rotation addon applies these to each session, so a real rotation file may use any of them.
+    private static final Set<String> SESSION_ATTRIBUTES = Set.of(
+            "GridSize", "GridLayout", "MaxPlayers", "OpponentDifficulty", "Flags", "AutoAdvanceSession",
+            "DamageType", "DamageScale", "DamageRandomFailures", "TireWearType", "FuelUsageType", "PenaltiesType",
+            "PitWhiteLinePenalty", "DriveThroughPenalty", "AllowedCutsBeforePenalty", "PitSpeedLimit", "ManualPitStops",
+            "ManualRollingStarts", "AllowedViews", "FullCourseYellows", "TrackId", "VehicleClassId", "MultiClassSlots",
+            "MultiClassSlot1", "MultiClassSlot2", "MultiClassSlot3", "MultiClassSlot4", "MultiClassSlot5", "MultiClassSlot6",
+            "MultiClassSlot7", "MultiClassSlot8", "MultiClassSlot9", "VehicleModelId", "MinimumOnlineRank", "MinimumOnlineStrength",
+            "PracticeLength", "PracticeDateHour", "PracticeDateProgression", "PracticeWeatherProgression", "PracticeWeatherSlots",
+            "PracticeWeatherSlot1", "PracticeWeatherSlot2", "PracticeWeatherSlot3", "PracticeWeatherSlot4", "PracticeLiveTrackPreset",
+            "QualifyLength", "QualifyDateHour", "QualifyDateProgression", "QualifyWeatherProgression", "QualifyWeatherSlots",
+            "QualifyWeatherSlot1", "QualifyWeatherSlot2", "QualifyWeatherSlot3", "QualifyWeatherSlot4", "QualifyLiveTrackPreset",
+            "QualifyPrivateSession", "QualifyStintLimit", "QualifyLapLimit",
+            "RaceLength", "RaceExtraLap", "RaceDateYear", "RaceDateMonth", "RaceDateDay", "RaceDateHour", "RaceDateProgression",
+            "RaceWeatherProgression", "RaceWeatherSlots", "RaceWeatherSlot1", "RaceWeatherSlot2", "RaceWeatherSlot3", "RaceWeatherSlot4",
+            "RaceRollingStart", "RaceMandatoryPitStops", "RaceMandatoryPitStopsMinTyres", "RaceFormationLap", "RaceLiveTrackPreset",
+            "RaceScheduledFullCourseYellow", "DisablePitstopRefuelling");
 
-    private static final Set<String> ENTRY_KEYS = Set.of(
-            "TrackId", "RaceLength", "QualifyLength", "PracticeLength",
-            "QualifyWeatherSlot1", "QualifyWeatherSlot2", "QualifyWeatherSlot3", "QualifyWeatherSlot4",
-            "RaceWeatherSlot1", "RaceWeatherSlot2", "RaceWeatherSlot3", "RaceWeatherSlot4");
+    private static final Set<String> DEFAULT_KEYS = SESSION_ATTRIBUTES;
+    // A rotation entry may change any of them for its round (the addon applies it on top of the default setup)
+    private static final Set<String> ENTRY_KEYS = SESSION_ATTRIBUTES;
+
+    // Counts and lengths are small and never negative; everything else is a 32-bit value (ids, weather and flag
+    // hashes are often negative)
+    private static boolean isCount(String key) {
+        return key.endsWith("Length") || key.endsWith("Slots") || key.equals("GridSize") || key.equals("MaxPlayers")
+                || key.equals("OpponentDifficulty");
+    }
 
     /** @return a problem description, or null when the rotation is acceptable */
     public static String validate(Object config) {
@@ -64,7 +83,7 @@ public final class RotationValidator {
         if (!(node instanceof Map<?, ?> map)) {
             return "The " + where + " must be an object";
         }
-        if (requireTrack && !(map.get("TrackId") instanceof String)) {
+        if (requireTrack && !(map.get("TrackId") instanceof String || map.get("TrackId") instanceof Integer)) {
             return "The " + where + " needs a track";
         }
         for (var entry : map.entrySet()) {
@@ -73,7 +92,7 @@ public final class RotationValidator {
                 return "Unknown setting in the " + where + ": " + printable(key);
             }
             Object value = entry.getValue();
-            boolean ok = value instanceof Integer n ? n >= 0 && n <= 100_000
+            boolean ok = value instanceof Integer n ? !isCount(key) || (n >= 0 && n <= 1000)
                     : value instanceof String s && SAFE_TEXT.matcher(s).matches();
             if (!ok) {
                 return "Invalid value for " + key + " in the " + where;

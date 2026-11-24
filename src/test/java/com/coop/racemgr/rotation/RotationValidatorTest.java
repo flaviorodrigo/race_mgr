@@ -30,6 +30,25 @@ class RotationValidatorTest {
     }
 
     @Test
+    void acceptsARotationFromARealServer() throws Exception {
+        // A rotation the AMS2 server runs (lua_config/sms_rotate_config.json): numeric weather and flag hashes,
+        // grid, AI, damage and pit stop settings
+        try (var in = RotationValidatorTest.class.getResourceAsStream("/rotation_from_a_real_server.json")) {
+            var file = (Map<?, ?>) JsonMapper.shared().readValue(in, Object.class);
+            assertThat(RotationValidator.validate(file.get("config"))).isNull();
+        }
+    }
+
+    @Test
+    void numbersAreThirtyTwoBitAndCountsAreSmall() {
+        assertThat(RotationValidator.validate(parse(GOOD.replace("\"RaceLength\": 8", "\"RaceWeatherSlot2\": -2147483648")))).isNull();
+        assertThat(RotationValidator.validate(parse(GOOD.replace("\"RaceLength\": 8", "\"RaceWeatherSlot2\": 2147483648")))).contains("Invalid value");
+        assertThat(RotationValidator.validate(parse(GOOD.replace("\"RaceLength\": 8", "\"GridSize\": 5000")))).contains("Invalid value");
+        assertThat(RotationValidator.validate(parse(GOOD.replace("\"RaceLength\": 8", "\"OpponentDifficulty\": -1")))).contains("Invalid value");
+        assertThat(RotationValidator.validate(parse(GOOD.replace("\"Interlagos_GP\"", "-559709709")))).isNull();
+    }
+
+    @Test
     void rejectsStructureProblems() {
         assertThat(RotationValidator.validate(null)).isNotNull();
         assertThat(RotationValidator.validate("text")).isNotNull();

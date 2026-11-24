@@ -474,6 +474,38 @@ scenario('the owner gives a friend a steward sign-in that only reaches race day,
   await signIn('admin', state.adminPassword);
 });
 
+scenario('a real server\'s rotation file can be imported, saved and made active without changing it', async () => {
+  const fixture = path.join(root, 'src', 'test', 'resources', 'rotation_from_a_real_server.json');
+  const original = JSON.parse(fs.readFileSync(fixture, 'utf8'));
+  await go('/manageserver');
+  await openSection('Rotation builder');
+  const input = await state.page.$('.MuiAccordionDetails-root input[type=file]');
+  await input.uploadFile(fixture);
+  await sleep(800);
+  assert.match(await text('.MuiAccordionDetails-root .MuiAlert-message:last-of-type'), /Loaded 5 rounds/);
+  await clickText('button', 'save rotation');
+  await sleep(1500);
+
+  const saved = await state.page.evaluate(async () => (await (await fetch('/api/v1/race/rotation?page=0&limit=100')).json()).data.content.find(r => r.name === 'rotation_from_a_real_server'));
+  assert.ok(saved, 'the rotation was saved under the file name');
+  const config = await state.page.evaluate(async id => (await (await fetch(`/api/v1/race/rotation/${id}`)).json()).data.config, saved.id);
+  assert.deepEqual(config.defaultConfig, original.config.default);
+  assert.deepEqual(config.rotation, original.config.rotation);
+  assert.equal(config.persist_index, false);
+
+  // Making it active writes it as the game server's default rotation, and drops the addon's working copy
+  fs.mkdirSync(path.join(state.serverDir, 'lua', 'sms_rotate'), {recursive: true});
+  fs.writeFileSync(path.join(state.serverDir, 'lua_config', 'sms_rotate_config.json'), JSON.stringify(original));
+  const activated = await api('POST', `/api/v1/admin/race/rotation/${saved.id}/activate`);
+  assert.equal(activated.status, 200, JSON.stringify(activated));
+  const written = JSON.parse(fs.readFileSync(path.join(state.serverDir, 'lua', 'sms_rotate', 'sms_rotate_default_config.json'), 'utf8'));
+  assert.equal(written.version, 7);
+  assert.deepEqual(written.config.default, original.config.default);
+  assert.deepEqual(written.config.rotation, original.config.rotation);
+  assert.equal(written.config.persist_index, false);
+  assert.equal(fs.existsSync(path.join(state.serverDir, 'lua_config', 'sms_rotate_config.json')), false);
+});
+
 // Not a test: with E2E_SCREENSHOTS=<folder> the app, filled with the sample races, is photographed for the README
 scenario('screenshots for the documentation (only when E2E_SCREENSHOTS is set)', async () => {
   const folder = process.env.E2E_SCREENSHOTS;
