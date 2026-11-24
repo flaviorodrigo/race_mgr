@@ -17,7 +17,9 @@ permissions:
 
 jobs:
   image:
-    name: Build the image (and publish it on a version tag)
+    name: Build, test and publish the images for this commit
+    # A version tag doesn't build: the release job names the images the commit's branch push already tested
+    if: ${{ !startsWith(github.ref, 'refs/tags/') }}
     runs-on: ubuntu-latest   # amd64, which the Wine base image needs
     permissions:
       contents: read
@@ -91,47 +93,56 @@ jobs:
       - name: The NAS setup works (another user, a separately mounted server.cfg, a real MongoDB)
         run: docker/ci/nas-smoke.sh racemgr-external:ci
 
-      # Only a version tag (v1.2.3) publishes. The images hold no game server files.
+      # The tested images, exactly as built above, go to the registry under the commit (sha-1234567). A version
+      # tag later just gives them a name (release job below): nothing is built twice. They hold no game server files.
       - name: Sign in to GitHub's container registry
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: github.event_name == 'push'
         uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Name the images
-        if: startsWith(github.ref, 'refs/tags/v')
-        id: meta
-        uses: docker/metadata-action@v6
+      - name: Publish the tested images under the commit
+        if: github.event_name == 'push'
+        run: |
+          repo="ghcr.io/${GITHUB_REPOSITORY,,}"
+          sha="sha-${GITHUB_SHA::7}"
+          docker tag racemgr:ci "$repo:$sha"
+          docker tag racemgr-external:ci "$repo-external:$sha"
+          docker push -q "$repo:$sha"
+          docker push -q "$repo-external:$sha"
+          echo "Published $repo:$sha and $repo-external:$sha"
+
+  release:
+    name: Name the tested images after the version tag
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
         with:
-          images: ghcr.io/${{ github.repository }}
-      - name: Name the external-server image
-        if: startsWith(github.ref, 'refs/tags/v')
-        id: meta-external
-        uses: docker/metadata-action@v6
-        with:
-          images: ghcr.io/${{ github.repository }}-external
-      - name: Publish the image
-        if: startsWith(github.ref, 'refs/tags/v')
-        uses: docker/build-push-action@v7
-        with:
-          context: .
-          platforms: linux/amd64
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-      - name: Publish the external-server image
-        if: startsWith(github.ref, 'refs/tags/v')
-        uses: docker/build-push-action@v7
-        with:
-          context: .
-          file: docker/Dockerfile.external
-          platforms: linux/amd64
-          push: true
-          tags: ${{ steps.meta-external.outputs.tags }}
-          labels: ${{ steps.meta-external.outputs.labels }}
-          cache-from: type=gha,scope=external
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      # The branch push of this commit builds, tests and publishes sha-<commit>; wait for it if it is still running
+      - name: Point the version at the images tested for this commit
+        run: |
+          repo="ghcr.io/${GITHUB_REPOSITORY,,}"
+          sha="sha-${GITHUB_SHA::7}"
+          version="${GITHUB_REF_NAME}"
+          for image in "$repo" "$repo-external"; do
+            for _ in $(seq 1 60); do
+              docker buildx imagetools inspect "$image:$sha" > /dev/null 2>&1 && break
+              echo "Waiting for $image:$sha (built and tested by the branch push of this commit)..."
+              sleep 30
+            done
+            docker buildx imagetools inspect "$image:$sha" > /dev/null || { echo "No tested image $image:$sha: push the commit to a branch first" >&2; exit 1; }
+            docker buildx imagetools create -t "$image:$version" -t "$image:latest" "$image:$sha"
+            echo "$image:$version -> $image:$sha"
+          done
 
   real-download:
     name: with-server image with the real game server download (manual, never published)

@@ -101,7 +101,7 @@ Instead of step 2, the build itself can download the game server: `./docker/buil
 
 #### Building on GitHub
 
-`.github/workflows/docker.yml` builds the image on every push and pull request and checks it (Java and Wine are there, a start without game server files says so, and the `with-server` target copies stand-in server files in on first start and then leaves them alone). Pushing a version tag such as `v1.0.0` also **publishes** the plain image to `ghcr.io/<owner>/race_mgr`, which contains no game server files, so `image: ghcr.io/<owner>/race_mgr:v1.0.0` can replace `build: .` in the compose file.
+`.github/workflows/docker.yml` builds the image on every push and pull request and checks it (Java and Wine are there, a start without game server files says so, and the `with-server` target copies stand-in server files in on first start and then leaves them alone). Every push publishes the tested images under the commit (`ghcr.io/<owner>/race_mgr:sha-1234567` and `ghcr.io/<owner>/race_mgr-external:sha-1234567`; no game server files in either). Pushing a version tag such as `v1.0.0` builds nothing: it gives the images already tested for that commit the version name (and `latest`), within a minute, so a release is exactly what was tested. Push the commit to a branch before tagging it.
 
 The `with-server` image is never published, on purpose: it holds Reiza's server files, so publishing it would redistribute them. A manual run of the workflow (*Run workflow*, tick *real_download*) builds it with the real download to check it still works, and throws it away. Every push also runs the NAS setup for real: the external image as user 1029:100 with a separately mounted `server.cfg` and a real MongoDB, signing in and saving settings.
 
