@@ -3,7 +3,7 @@ import {useSelector, useDispatch} from 'react-redux';
 
 import {updateServerStatus} from '../../state/serverStatus';
 import {getServerConfig, updateServerConfig} from '../../state/serverConfig';
-import {updateServerConfig as saveActiveConfig} from './utilities';
+import {fetchSessionDetail, updateServerConfig as saveActiveConfig, updateSession} from './utilities';
 
 import Button from '@mui/material/Button';
 import Stack from '@mui/material/Stack';
@@ -62,7 +62,17 @@ const ApplyServerConfig = (props:IProps) => {
 			activeRaceSessionId: sessions.selectedSessionId ?? '',
 			activeRaceRotationId: rotations.selectedRotationId ?? '',
 		});
-		const ok = response?.data?.status === 200;
+		let ok = response?.data?.status === 200;
+		// The rotation joins the championship's list, so the leaderboard offers it under that championship
+		if (ok) {
+			const session: any = await fetchSessionDetail(sessions.selectedSessionId);
+			const ids: Array<string> = session?.raceRotationIds ?? [];
+			if (session && !ids.includes(rotations.selectedRotationId)) {
+				const linked: any = await updateSession(session.name, sessions.selectedSessionId, [...ids, rotations.selectedRotationId]);
+				ok = linked?.status === 200;
+			}
+		}
+
 		props.showNotification(ok ? 'Set as active. New races are recorded under this championship and rotation.' : 'Could not set them as active', ok ? 'success' : 'error');
 		if (ok) {
 			dispatch(getServerConfig());

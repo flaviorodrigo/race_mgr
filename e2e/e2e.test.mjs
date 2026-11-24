@@ -304,6 +304,11 @@ scenario('the leaderboard shows the standings', async () => {
 });
 
 scenario('Set active records the championship and rotation without touching the game server\'s rotation file', async () => {
+  // Start with the rotation not in the championship's list
+  const before = await state.page.evaluate(async () => (await (await fetch('/api/v1/config')).json()).data);
+  const session = (await api('GET', `/api/v1/race/session/${before.activeRaceSessionId}`)).data;
+  assert.equal((await api('PUT', `/api/v1/admin/race/session/${session.id}`, {name: session.name, raceRotationIds: []})).status, 200);
+
   await go('/manageserver?tab=championships');
   assert.ok(await clickText('button', 'set active'));
   await sleep(1200);
@@ -311,6 +316,9 @@ scenario('Set active records the championship and rotation without touching the 
   assert.equal(fs.existsSync(path.join(state.serverDir, 'lua', 'sms_rotate', 'sms_rotate_default_config.json')), false, 'no rotation file written');
   const config = await state.page.evaluate(async () => (await (await fetch('/api/v1/config')).json()).data);
   assert.ok(config.activeRaceSessionId && config.activeRaceRotationId);
+  // ...and the rotation is now part of the championship, so the leaderboard offers it there
+  const after = (await api('GET', `/api/v1/race/session/${session.id}`)).data;
+  assert.deepEqual(after.raceRotationIds, [config.activeRaceRotationId]);
 });
 
 scenario('a race page shows the result, sector times and lap chart', async () => {
