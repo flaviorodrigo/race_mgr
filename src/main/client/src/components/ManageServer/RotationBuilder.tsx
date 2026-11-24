@@ -1,7 +1,7 @@
 import React, {useEffect, useRef, useState} from 'react';
 
 import {
-	applyNextSession, fetchGameList, fetchRotationConfig, fetchSavedRotations, fetchSessionSchema, saveCustomRotation, IGameListItem, ISavedRotation,
+	applyNextSession, fetchGameList, fetchRotationConfig, fetchSavedRotations, fetchSessionSchema, saveCustomRotation, savePreset, IGameListItem, ISavedRotation,
 } from '../Live/adminApi';
 import {configFromModel, modelFromConfig} from '../../utils/rotation';
 import {parseServerJson} from '../../utils/serverJson';
@@ -59,6 +59,7 @@ const RotationBuilder = () => {
 	const [defaults, setDefaults] = useState<Record<string, unknown>>(STARTING_SETUP);
 	const [rounds, setRounds] = useState<Array<Round>>([{TrackId: ''}]);
 	const [editing, setEditing] = useState<number | null>(null);
+	const [presetFor, setPresetFor] = useState<{index: number, name: string} | null>(null);
 	const [message, setMessage] = useState<{text: string, severity: 'success' | 'error' | 'info'} | null>(null);
 	const [busy, setBusy] = useState(false);
 	const fileInput = useRef<HTMLInputElement>(null);
@@ -197,16 +198,26 @@ const RotationBuilder = () => {
 		);
 	};
 
-	// Sends one round (the default setup with the round's own changes) to the next session, without a restart
-	const raceNext = async (index: number) => {
+	// A round as the game server's API takes it: the default setup with the round's own changes, as numbers
+	const roundValues = (index: number): Record<string, number> | null => {
 		if (!schema) {
-			setMessage({text: 'The game server isn\'t answering, so nothing can be sent to it.', severity: 'error'});
-			return;
+			setMessage({text: 'The game server isn\'t answering, so its settings can\'t be turned into the values it takes.', severity: 'error'});
+			return null;
 		}
 
 		const {values, skipped} = toNextSessionValues({...defaults, ...rounds[index]}, schema, {tracks, classes, vehicles});
 		if (skipped.length > 0) {
-			setMessage({text: `Round ${index + 1} can't be sent as it is: ${skipped.join(', ')} could not be turned into the game server's values.`, severity: 'error'});
+			setMessage({text: `Round ${index + 1}: ${skipped.join(', ')} could not be turned into the game server's values.`, severity: 'error'});
+			return null;
+		}
+
+		return values;
+	};
+
+	// Sends one round to the next session, without a restart
+	const raceNext = async (index: number) => {
+		const values = roundValues(index);
+		if (!values) {
 			return;
 		}
 
@@ -217,6 +228,44 @@ const RotationBuilder = () => {
 			text: result.ok ? `Round ${index + 1} sent: it is the setup of the next session (a rotation may change it again then).` : result.message,
 			severity: result.ok ? 'success' : 'error',
 		});
+	};
+
+	// "Season 1 · 2 · Interlagos": the rotation, the round and its track, within a preset name's 40 characters
+	const presetNameFor = (index: number) => {
+		const track = name(known(tracks, rounds[index].TrackId)) || String(rounds[index].TrackId ?? '');
+		return [rotationName.trim() || 'Round', String(index + 1), track].join(' · ').replace(/\p{Cc}/gu, ' ').slice(0, 40).trim();
+	};
+
+	const saveRoundPreset = async (index: number, presetName: string) => {
+		const values = roundValues(index);
+		if (!values) {
+			return false;
+		}
+
+		const result = await savePreset(presetName, values);
+		if (!result.ok) {
+			setMessage({text: `Round ${index + 1}: ${result.message}`, severity: 'error'});
+		}
+
+		return result.ok;
+	};
+
+	const saveAllPresets = async () => {
+		setBusy(true);
+		let saved = 0;
+		for (let i = 0; i < rounds.length; i++) {
+			// eslint-disable-next-line no-await-in-loop -- one at a time, so a full preset list stops it cleanly
+			if (await saveRoundPreset(i, presetNameFor(i))) {
+				saved++;
+			} else {
+				break;
+			}
+		}
+
+		setBusy(false);
+		if (saved === rounds.length) {
+			setMessage({text: `Saved ${saved} presets, one per round. Apply them under Next session settings.`, severity: 'success'});
+		}
 	};
 
 	const changedIn = (round: Round) => Object.keys(round).filter(k => k !== 'TrackId' && k !== 'VehicleClassId').length;
@@ -268,6 +317,9 @@ const RotationBuilder = () => {
 					<Tooltip title="Make this round the setup of the next session now, without a restart">
 						<span><Button disabled={busy || !round.TrackId} onClick={() => raceNext(index)}>Race next</Button></span>
 					</Tooltip>
+					<Tooltip title="Save this round (with the default setup) as a preset, to apply it any time under Next session settings">
+						<span><Button disabled={busy || !round.TrackId} onClick={() => setPresetFor({index, name: presetNameFor(index)})}>Save as preset</Button></span>
+					</Tooltip>
 					<Tooltip title="Move up"><span><IconButton size="small" aria-label="Move up" disabled={index === 0} onClick={() => move(index, -1)}><ArrowUpwardIcon fontSize="small" /></IconButton></span></Tooltip>
 					<Tooltip title="Move down"><span><IconButton size="small" aria-label="Move down" disabled={index === rounds.length - 1} onClick={() => move(index, 1)}><ArrowDownwardIcon fontSize="small" /></IconButton></span></Tooltip>
 					<Tooltip title="Remove round"><span><IconButton size="small" aria-label="Remove round" disabled={rounds.length === 1} onClick={() => setRounds(rounds.filter((_r, i) => i !== index))}><DeleteIcon fontSize="small" /></IconButton></span></Tooltip>
@@ -277,10 +329,39 @@ const RotationBuilder = () => {
 			<Stack direction="row" spacing={2}>
 				<Button disabled={rounds.length >= MAX_ROUNDS} onClick={() => setRounds([...rounds, {TrackId: ''}])}>Add round</Button>
 				<Button disabled={problems.length > 0} onClick={exportFile}>Export file</Button>
+				<Button disabled={problems.length > 0 || busy} onClick={saveAllPresets}>Save every round as a preset</Button>
 				<Button variant="contained" disabled={problems.length > 0 || busy} onClick={save}>Save rotation</Button>
 			</Stack>
 			{problems.length > 0 && <Alert severity="info">{problems.join('. ')}</Alert>}
 			{message && <Alert severity={message.severity}>{message.text}</Alert>}
+
+			<Dialog open={presetFor !== null} onClose={() => setPresetFor(null)}>
+				<DialogTitle>Save round {presetFor ? presetFor.index + 1 : ''} as a preset</DialogTitle>
+				<DialogContent>
+					<Typography variant="body2" color="text.secondary" sx={{mb: 1}}>
+						The default setup with this round&apos;s changes. A preset with the same name is replaced.
+					</Typography>
+					<TextField label="Preset name" variant="standard" fullWidth value={presetFor?.name ?? ''} slotProps={{htmlInput: {maxLength: 40}}}
+						onChange={e => setPresetFor(presetFor && {...presetFor, name: e.target.value})} />
+				</DialogContent>
+				<DialogActions>
+					<Button onClick={() => setPresetFor(null)}>Cancel</Button>
+					<Button variant="contained" disabled={!presetFor || presetFor.name.trim() === '' || busy} onClick={async () => {
+						if (!presetFor) {
+							return;
+						}
+
+						setBusy(true);
+						const ok = await saveRoundPreset(presetFor.index, presetFor.name.trim());
+						setBusy(false);
+						if (ok) {
+							setMessage({text: `Saved the preset "${presetFor.name.trim()}". Apply it under Next session settings.`, severity: 'success'});
+						}
+
+						setPresetFor(null);
+					}}>Save preset</Button>
+				</DialogActions>
+			</Dialog>
 
 			<Dialog open={editing !== null} onClose={() => setEditing(null)} fullWidth maxWidth="lg">
 				<DialogTitle>

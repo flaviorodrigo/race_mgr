@@ -611,6 +611,20 @@ scenario('the rotation builder offers every setting the game server describes, f
   }
   assert.ok(sent.some(p => /^session_Flags=-?\d+$/.test(p)), 'flags sent as a number');
   assert.match(await text('.MuiAccordionDetails-root .MuiAlert-message:last-of-type'), /Round 1 sent/);
+
+  // Presets out of the rotation: one per round, each the default setup with that round's changes
+  await clickText('button', 'save every round as a preset');
+  await sleep(2000);
+  assert.match(await text('.MuiAccordionDetails-root .MuiAlert-message:last-of-type'), /Saved 2 presets/);
+  const presets = (await api('GET', '/api/v1/admin/gameserver/presets')).data;
+  const first = presets.find(p => p.name === 'Full setup · 1 · Brands Hatch GP');
+  const second = presets.find(p => p.name === 'Full setup · 2 · Test Track');
+  assert.ok(first && second, JSON.stringify(presets.map(p => p.name)));
+  assert.equal(first.settings.TrackId, 1534602052);
+  assert.equal(first.settings.RaceLength, 8);
+  assert.equal(first.settings.DamageType, 3);
+  assert.equal(second.settings.TrackId, 1234);
+  assert.equal(second.settings.RaceLength, 5, 'round 2 takes the default race length');
 });
 
 // Not a test: with E2E_SCREENSHOTS=<folder> the app, filled with the sample races, is photographed for the README

@@ -5,7 +5,7 @@ Notable changes, newest first. This file starts with the security and modernisat
 ## Unreleased
 
 ### Added
-- **Next session settings and presets** use the full settings editor (any setting, sent as the numbers the game server takes); **Race next** sends a rotation round to the next session.
+- **Next session settings and presets** use the full settings editor (any setting, sent as the numbers the game server takes); **Race next** sends a rotation round to the next session, and rounds can be saved as presets (one or all).
 - **Full rotation builder**: every session setting the game server describes (grouped, with the right control and the server's description), for the default setup and per round; cars per round.
 - **Live timing** page: positions, laps, sector times, last and best lap of the running session, for everyone.
 - **Records** page: career totals per driver and the lap record at each track, across all championships.
