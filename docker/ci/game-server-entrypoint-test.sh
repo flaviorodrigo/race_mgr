@@ -10,8 +10,13 @@ set -u
 mkdir -p /srv/lua_config
 export SERVER_DIR=/srv SERVER_CMD="bash /d/ci/fake-game-server.sh" SKIP_DOWNLOAD=1 SKIP_WINE_INIT=1 STOP_GRACE_SECONDS=2
 fail() { echo "FAIL: $*"; exit 1; }
-# Is a stand-in server still running? (the slim image has no pgrep; the [r] keeps grep from finding itself)
-running() { grep -l -a "fake-game-serve[r]" /proc/[0-9]*/cmdline >/dev/null 2>&1; }
+# Is a stand-in server still running? (the slim image has no pgrep)
+running() {
+  for f in /proc/[0-9]*/cmdline; do
+    [ "$(tr "\0" " " 2>/dev/null < "$f")" = "bash /d/ci/fake-game-server.sh " ] && return 0
+  done
+  return 1
+}
 
 echo "{\"index\":3}" > /srv/lua_config/sms_rotate_data.json
 bash /d/game-server/entrypoint.sh > /tmp/log1 2>&1 & ep=$!
