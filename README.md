@@ -26,7 +26,9 @@ This fork of [cauld/race_mgr](https://github.com/cauld/race_mgr) brings the stac
 | ![A race](screenshots/race_page.png) | ![Live timing](screenshots/live_timing.png) |
 | ![Records](screenshots/records.png) | ![Manage server](screenshots/manage_server.png) |
 
-*(Screenshots are made from the committed sample races: `E2E_SCREENSHOTS=folder npm test` in `e2e/`.)*
+On a phone: ![The leaderboard on a phone](screenshots/mobile_home.png)
+
+*(Screenshots of the racing look, made from the committed sample races: `E2E_SCREENSHOTS=folder npm test` in `e2e/`.)*
 
 ### Contents
 [Demos](#demos) · [Installation](#installationupgrade) · [Web UI access](#accessing-the-web-ui) · [Docker](#running-in-docker-linux--wine) · [Championships](#championships--scoring) · [Live session](#live-session) · [Game server elsewhere](#game-server-that-runs-somewhere-else-eg-its-own-container-on-a-nas) · [Admin tools](#admin-tools) · [Admins and stewards](#admins-and-stewards) · [Discord](#discord-notifications) · [Sector times](#sector-times-and-lap-by-lap-pace-optional-ams2_stats-addon) · [Backups](#backups) · [Settings (environment variables)](#windows-environment-variables) · [Developer setup](#developer-setup) · [API](#api-endpoints)

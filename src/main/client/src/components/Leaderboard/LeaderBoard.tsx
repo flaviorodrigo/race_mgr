@@ -133,8 +133,9 @@ const LeaderBoard:React.FC = () => {
 					display: 'flex',
 					flexDirection: 'column',
 				}}>
-					<Typography variant="h5" align="left" gutterBottom={true}>
-				Leader Board
+					<Typography variant="overline" align="left" color="text.secondary" sx={{lineHeight: 1.5}}>Leader Board</Typography>
+					<Typography variant="h5" component="h2" align="left" gutterBottom={true}>
+						{sessions.sessions?.find((x: any) => x.id === selectedSessionId)?.name ?? 'Leader Board'}
 					</Typography>
 
 					<Typography variant="subtitle1" align="left" gutterBottom={true}>

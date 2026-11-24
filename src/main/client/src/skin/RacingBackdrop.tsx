@@ -46,7 +46,9 @@ const RacingBackdrop = () => {
 						+ 'repeating-linear-gradient(45deg, rgba(255,255,255,0.018) 0 2px, transparent 2px 6px)',
 				}} />
 			</Box>
+			{/* On phones the corner is too small: the credit is in the page footer there (see SkinCredit) */}
 			<Box sx={{
+				display: {xs: 'none', md: 'block'},
 				position: 'fixed', right: 8, bottom: 6, zIndex: theme => theme.zIndex.drawer + 2, fontSize: 11, px: 1, py: 0.25,
 				color: 'rgba(255,255,255,0.75)', bgcolor: 'rgba(0,0,0,0.55)', borderRadius: '2px', maxWidth: 'calc(100vw - 16px)',
 			}}>
@@ -58,3 +60,11 @@ const RacingBackdrop = () => {
 };
 
 export default RacingBackdrop;
+
+// The credit in the footer of every page, for screens where the corner credit is hidden
+export const SkinCredit = () => (
+	<Box sx={{display: {xs: 'block', md: 'none'}, fontSize: 11, color: 'text.secondary', mt: 1}}>
+		Background photos: {[...new Set(SKIN_IMAGES.map(i => i.author))].join(', ')} ·{' '}
+		<Link component={RouterLink} to="/about-images" color="inherit">About the images</Link>
+	</Box>
+);

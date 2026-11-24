@@ -119,7 +119,7 @@ const LiveTiming = () => {
 							{board.cars.map(c => (
 								<TableRow key={c.name}>
 									<TableCell><PositionBadge position={c.position} /></TableCell>
-									<TableCell component="th" scope="row">{c.name}{!c.player && <Chip size="small" label="AI" variant="outlined" sx={{ml: 1}} />}</TableCell>
+									<TableCell component="th" scope="row" sx={{whiteSpace: 'nowrap'}}>{c.name}{!c.player && <Chip size="small" label="AI" variant="outlined" sx={{ml: 1}} />}</TableCell>
 									<TableCell align="right">{c.lap ?? ''}</TableCell>
 									{(['s1', 's2', 's3'] as const).map((key, i) => (
 										<TableCell key={key} align="right"

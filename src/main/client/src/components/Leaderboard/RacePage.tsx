@@ -10,6 +10,8 @@ import {convertEpochTimeToRaceResult} from '../../utils/dateTimeUtils';
 import CopyLinkButton from './CopyLinkButton';
 import LapAnalysis from './LapAnalysis';
 import PositionBadge from '../common/PositionBadge';
+import RaceHighlights from '../common/RaceHighlights';
+import {TIMING_PURPLE} from '../../skin/colors';
 import RaceNotesDialog from './RaceNotesDialog';
 
 import Alert from '@mui/material/Alert';
@@ -54,6 +56,15 @@ const loadRace = async (raceId: string): Promise<State> => {
 		return {status: 'missing'};
 	}
 };
+
+const time = (ms?: number) => (ms && ms > 0 ? convertEpochTimeToRaceResult(ms) : undefined);
+
+// Winner, pole and fastest lap, with their times
+const highlightsOf = (race: IRace, results: IRace['raceResults']) => [
+	{label: 'Winner', value: race.winner ?? '', detail: time(results[0]?.totalTime), accent: '#f5c518'},
+	{label: 'Pole position', value: race.polePosition ?? '', detail: time(race.qualifyingResults?.[0]?.bestQualifyingTime), accent: '#e10600'},
+	{label: 'Fastest lap', value: race.fastestLap ?? '', detail: time(results.find(r => r.hadFastestLap)?.fastestLapTime), accent: TIMING_PURPLE},
+];
 
 // A race on its own page, for sharing a link to one result
 const RacePage = () => {
@@ -102,6 +113,8 @@ const RacePage = () => {
 				{convertEpochDate(race.startDate)?.toString()} · {convertEpochTime(race.startDate)} to {convertEpochTime(race.endDate)}
 				{' · '}{race.gridSize} drivers · {race.laps} laps
 			</Typography>
+
+			<RaceHighlights label="Race highlights" items={highlightsOf(race, results)} />
 
 			<Typography variant="h6">Result</Typography>
 			<TableContainer component={Paper} variant="outlined" sx={{mb: 3}}>

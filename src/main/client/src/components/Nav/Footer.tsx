@@ -1,3 +1,5 @@
+import {useSkin} from '../../skin/skin';
+import {SkinCredit} from '../../skin/RacingBackdrop';
 import React from 'react';
 import Typography from '@mui/material/Typography';
 import Link from '@mui/material/Link';
@@ -13,6 +15,14 @@ const Copyright = (props: any) => (
 	</Typography>
 );
 
-const Footer:React.FC = () => <Copyright sx={{pt: 4}} />;
+const Footer:React.FC = () => {
+	const {racing} = useSkin();
+	return (
+		<>
+			<Copyright sx={{pt: 4}} />
+			{racing && <SkinCredit />}
+		</>
+	);
+};
 
 export default Footer;

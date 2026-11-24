@@ -686,6 +686,13 @@ scenario('screenshots for the documentation (only when E2E_SCREENSHOTS is set)',
   await shoot('/manageserver', 'manage_server.png', {height: 1700, before: async () => {
     await openSection('Admins');
   }});
+  // The same pages on a phone
+  for (const [url, name] of [['/', 'mobile_home.png'], [`/race/${state.raceId}`, 'mobile_race.png'], ['/live', 'mobile_live.png'], ['/manageserver', 'mobile_manage.png']]) {
+    await state.page.setViewport({width: 390, height: 844, isMobile: true, hasTouch: true, deviceScaleFactor: 2});
+    await go(url);
+    await state.page.screenshot({path: path.join(folder, name)});
+  }
+
   await state.page.setViewport({width: 1400, height: 1100});
 });
 

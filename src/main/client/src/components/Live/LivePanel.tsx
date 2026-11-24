@@ -118,7 +118,7 @@ const LivePanel = () => {
 							<TableBody>
 								{live.members.map(m => (
 									<TableRow key={m.refid ?? m.name}>
-										<TableCell component="th" scope="row">{m.name}</TableCell>
+										<TableCell component="th" scope="row" sx={{whiteSpace: 'nowrap'}}>{m.name}</TableCell>
 										<TableCell>{m.steamid ?? ''}</TableCell>
 										<TableCell align="right">{m.ping ?? ''}</TableCell>
 										<TableCell align="right">
