@@ -9,6 +9,8 @@ import {careerStats, trackRecords} from './careerStats';
 import {atLeast, generatePassword} from './roles';
 import {configFromModel, modelFromConfig} from './rotation';
 import realRotation from './rotation_from_a_real_server.json';
+import {parseServerJson} from './serverJson';
+import liveRotation from './sms_rotate_config_live.json.txt?raw';
 
 describe('calculatePoints', () => {
 	it('gives the winner a 40% bonus over a half-field points scale', () => {
@@ -268,5 +270,38 @@ describe('rotation files', () => {
 		expect(modelFromConfig(null)).toBeNull();
 		expect(modelFromConfig({default: {}, rotation: []})).toBeNull();
 		expect(modelFromConfig({default: {}, rotation: [{RaceLength: 5}]})).toBeNull();
+	});
+});
+
+describe('the game server\'s relaxed JSON', () => {
+	it('reads the live rotation file the rotation addon writes (comments, bare keys, trailing commas)', () => {
+		const file = parseServerJson(liveRotation) as any;
+		expect(file.version).toBe(7);
+		expect(file.config.persist_index).toBe(true);
+		expect(file.config.default.Flags).toContain('ALLOW_CUSTOM_VEHICLE_SETUP');
+		expect(file.config.rotation.map((r: any) => [r.TrackId, r.VehicleClassId])).toEqual([['Interlagos', 'StockCarV8'], ['Londrina Long', 'SprintRace']]);
+		expect(file.config.rotation[1].RaceWeatherSlot3).toBe('Storm');
+	});
+
+	it('reads plain JSON the same as JSON.parse', () => {
+		expect(parseServerJson(JSON.stringify(realRotation))).toEqual(realRotation);
+		expect(parseServerJson('{"a": [1, -2.5, true, null, "x\\"y"]}')).toEqual({a: [1, -2.5, true, null, 'x"y']});
+	});
+
+	it('refuses what is not JSON-like and says where', () => {
+		expect(() => parseServerJson('{"a": 1')).toThrow(/Missing }/);
+		expect(() => parseServerJson('{"a" 1}')).toThrow(/Missing :/);
+		expect(() => parseServerJson('{"a": "x\nb"}')).toThrow(/line 1/);
+		expect(() => parseServerJson('a : 1\n b : @')).toThrow(/line 2/);
+		expect(() => parseServerJson('{"a": 1} extra')).toThrow(/after the end/);
+	});
+
+	it('a live rotation where every round picks its cars loads and saves without adding a class', () => {
+		const model = modelFromConfig((parseServerJson(liveRotation) as any).config)!;
+		const saved = configFromModel(model);
+		const original = (parseServerJson(liveRotation) as any).config;
+		expect(saved.defaultConfig).toEqual(original.default);
+		expect(saved.rotation).toEqual(original.rotation);
+		expect(saved.persist_index).toBe(true);
 	});
 });

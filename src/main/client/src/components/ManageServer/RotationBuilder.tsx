@@ -2,6 +2,7 @@ import React, {useEffect, useRef, useState} from 'react';
 
 import {fetchGameList, fetchRotationConfig, fetchSavedRotations, saveCustomRotation, IGameListItem, ISavedRotation} from '../Live/adminApi';
 import {CLEAR, configFromModel, emptyEntry, IRotationEntry, modelFromConfig} from '../../utils/rotation';
+import {parseServerJson} from '../../utils/serverJson';
 
 import Alert from '@mui/material/Alert';
 import Button from '@mui/material/Button';
@@ -67,7 +68,9 @@ const RotationBuilder = () => {
 		problems.push('Give the rotation a name (letters, numbers, spaces, - _ . ( ))');
 	}
 
-	if (!vehicleClass) {
+	// A rotation may pick the cars per round instead (like the game server's own rotation files can)
+	const everyRoundHasCars = entries.length > 0 && entries.every(e => typeof e.extra.VehicleClassId === 'string' || typeof e.extra.VehicleClassId === 'number');
+	if (!vehicleClass && !everyRoundHasCars) {
 		problems.push('Choose a vehicle class');
 	}
 
@@ -90,7 +93,7 @@ const RotationBuilder = () => {
 			PracticeLength: whole(practiceMinutes),
 			QualifyLength: whole(qualifyMinutes),
 			RaceLength: whole(raceLaps),
-			VehicleClassId: vehicleClass,
+			...(vehicleClass ? {VehicleClassId: vehicleClass} : {}),
 		},
 		entries,
 	});
@@ -139,10 +142,11 @@ const RotationBuilder = () => {
 		}
 
 		try {
-			const parsed = JSON.parse(await file.text());
+			// The game server's files have comments and bare keys, so they are read the way the server reads them
+			const parsed: any = parseServerJson(await file.text());
 			loadConfig(parsed?.config ?? parsed, file.name.replace(/\.json$/i, '').replace(/[^A-Za-z0-9 _.()-]/g, '').slice(0, 64));
-		} catch {
-			setMessage({text: 'That file is not valid JSON.', severity: 'error'});
+		} catch (error) {
+			setMessage({text: `That file can't be read: ${(error as Error).message}.`, severity: 'error'});
 		}
 	};
 
@@ -222,7 +226,7 @@ const RotationBuilder = () => {
 			<Stack direction={{xs: 'column', sm: 'row'}} spacing={2}>
 				<TextField label="Rotation name" variant="standard" value={name} onChange={e => setName(e.target.value)} slotProps={{htmlInput: {maxLength: 64}}} />
 				<FormControl variant="standard" sx={{minWidth: 220}}>
-					<InputLabel id="rb-class">Vehicle class</InputLabel>
+					<InputLabel id="rb-class">{everyRoundHasCars && !vehicleClass ? 'Vehicle class (each round sets its own)' : 'Vehicle class'}</InputLabel>
 					<Select labelId="rb-class" value={classes.some(c => c.name === vehicleClass) ? vehicleClass : ''} onChange={e => setVehicleClass(e.target.value)}>
 						{classes.map(c => <MenuItem key={c.name} value={c.name}>{pretty(c.name)}</MenuItem>)}
 					</Select>

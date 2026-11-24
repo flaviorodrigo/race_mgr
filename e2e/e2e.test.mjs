@@ -506,6 +506,28 @@ scenario('a real server\'s rotation file can be imported, saved and made active 
   assert.equal(fs.existsSync(path.join(state.serverDir, 'lua_config', 'sms_rotate_config.json')), false);
 });
 
+scenario('the rotation addon\'s own live file (comments, bare keys, a car class per round) imports and saves as it is', async () => {
+  const live = path.join(state.tmp, 'sms_rotate_config.json');
+  fs.copyFileSync(path.join(root, 'src', 'main', 'client', 'src', 'utils', 'sms_rotate_config_live.json.txt'), live);
+  await go('/manageserver');
+  await openSection('Rotation builder');
+  await (await state.page.$('.MuiAccordionDetails-root input[type=file]')).uploadFile(live);
+  await sleep(800);
+  assert.match(await text('.MuiAccordionDetails-root .MuiAlert-message:last-of-type'), /Loaded 2 rounds/);
+  await setInput(await labelled('Rotation name'), 'Live rotation');
+  await clickText('button', 'save rotation');
+  await sleep(1500);
+
+  const saved = await state.page.evaluate(async () => (await (await fetch('/api/v1/race/rotation?page=0&limit=100')).json()).data.content.find(r => r.name === 'Live rotation'));
+  assert.ok(saved, 'saved without choosing one vehicle class for all rounds');
+  const config = await state.page.evaluate(async id => (await (await fetch(`/api/v1/race/rotation/${id}`)).json()).data.config, saved.id);
+  assert.equal(config.persist_index, true);
+  assert.equal(config.defaultConfig.VehicleClassId, undefined, 'no class added to the default setup');
+  assert.equal(config.defaultConfig.RaceLength, 10);
+  assert.deepEqual(config.rotation.map(r => [r.TrackId, r.VehicleClassId]), [['Interlagos', 'StockCarV8'], ['Londrina Long', 'SprintRace']]);
+  assert.deepEqual([config.rotation[1].RaceWeatherSlots, config.rotation[1].RaceWeatherSlot3, config.rotation[1].RaceLength], [4, 'Storm', 8]);
+});
+
 // Not a test: with E2E_SCREENSHOTS=<folder> the app, filled with the sample races, is photographed for the README
 scenario('screenshots for the documentation (only when E2E_SCREENSHOTS is set)', async () => {
   const folder = process.env.E2E_SCREENSHOTS;
