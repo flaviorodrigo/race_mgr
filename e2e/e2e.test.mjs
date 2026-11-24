@@ -534,7 +534,7 @@ scenario('a real server\'s rotation file can be imported, saved and made active 
   const input = await state.page.$('.MuiAccordionDetails-root input[type=file]');
   await input.uploadFile(fixture);
   await sleep(800);
-  assert.match(await text('.MuiAccordionDetails-root .MuiAlert-message:last-of-type'), /Loaded 5 rounds/);
+  assert.match(await state.page.$$eval('.MuiAccordionDetails-root .MuiAlert-message', a => a.map(x => x.innerText).join(' ')), /Loaded 5 rounds/);
   await clickText('button', 'save rotation');
   await sleep(1500);
 
@@ -565,7 +565,10 @@ scenario('the rotation addon\'s own live file (comments, bare keys, a car class 
   await openSection('Rotation builder');
   await (await state.page.$('.MuiAccordionDetails-root input[type=file]')).uploadFile(live);
   await sleep(800);
-  assert.match(await text('.MuiAccordionDetails-root .MuiAlert-message:last-of-type'), /Loaded 2 rounds/);
+  assert.match(await state.page.$$eval('.MuiAccordionDetails-root .MuiAlert-message', a => a.map(x => x.innerText).join(' ')), /Loaded 2 rounds \(Interlagos, Londrina Long\)/);
+  if (process.env.E2E_SCREENSHOTS) {
+    await state.page.screenshot({path: path.join(process.env.E2E_SCREENSHOTS, 'builder_after_import.png'), fullPage: true});
+  }
   await setInput(await labelled('Rotation name'), 'Live rotation');
   await clickText('button', 'save rotation');
   await sleep(1500);

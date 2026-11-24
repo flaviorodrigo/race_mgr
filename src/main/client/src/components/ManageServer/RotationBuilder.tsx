@@ -61,6 +61,8 @@ const RotationBuilder = () => {
 	const [editing, setEditing] = useState<number | null>(null);
 	const [presetFor, setPresetFor] = useState<{index: number, name: string} | null>(null);
 	const [message, setMessage] = useState<{text: string, severity: 'success' | 'error' | 'info'} | null>(null);
+	// What loading a rotation did, shown right under the load buttons (the save message is at the bottom)
+	const [loadMessage, setLoadMessage] = useState<{text: string, severity: 'success' | 'error' | 'info'} | null>(null);
 	const [busy, setBusy] = useState(false);
 	const fileInput = useRef<HTMLInputElement>(null);
 
@@ -86,12 +88,12 @@ const RotationBuilder = () => {
 	const loadConfig = (config: any, fallbackName = '') => {
 		const model = modelFromConfig(config);
 		if (!model || model.rounds.length > MAX_ROUNDS) {
-			setMessage({text: 'That is not a rotation Race Manager can read.', severity: 'error'});
+			setLoadMessage({text: 'That is not a rotation Race Manager can read.', severity: 'error'});
 			return;
 		}
 
 		if (model.rounds.some(r => typeof r.TrackId === 'string' && !SAFE_NAME.test(r.TrackId))) {
-			setMessage({text: 'Some rounds in that rotation have no valid track.', severity: 'error'});
+			setLoadMessage({text: 'Some rounds in that rotation have no valid track.', severity: 'error'});
 			return;
 		}
 
@@ -102,7 +104,12 @@ const RotationBuilder = () => {
 			setRotationName(fallbackName);
 		}
 
-		setMessage({text: `Loaded ${model.rounds.length} rounds. Change anything, then save it under a new name.`, severity: 'info'});
+		const trackNames = model.rounds.map(r => name(known(tracks, r.TrackId)) || String(r.TrackId)).join(', ');
+		setLoadMessage({
+			text: `Loaded ${model.rounds.length} round${model.rounds.length === 1 ? '' : 's'} (${trackNames}) and a default setup with ${Object.keys(model.defaults).length} settings. `
+				+ 'Check them below, change anything, then save it under a name.',
+			severity: 'success',
+		});
 	};
 
 	const loadSaved = async (id: string) => {
@@ -117,7 +124,7 @@ const RotationBuilder = () => {
 		}
 
 		if (file.size > 200_000) {
-			setMessage({text: 'That file is too large to be a rotation.', severity: 'error'});
+			setLoadMessage({text: 'That file is too large to be a rotation.', severity: 'error'});
 			return;
 		}
 
@@ -126,7 +133,7 @@ const RotationBuilder = () => {
 			const parsed: any = parseServerJson(await file.text());
 			loadConfig(parsed?.config ?? parsed, file.name.replace(/\.json$/i, '').replace(/[^A-Za-z0-9 _.()-]/g, '').slice(0, 64));
 		} catch (error) {
-			setMessage({text: `That file can't be read: ${(error as Error).message}.`, severity: 'error'});
+			setLoadMessage({text: `That file can't be read: ${(error as Error).message}.`, severity: 'error'});
 		}
 	};
 
@@ -182,7 +189,10 @@ const RotationBuilder = () => {
 		setRounds(copy);
 	};
 
-	const known = (items: Array<IGameListItem>, value: unknown) => items.find(i => i.name === value || String(i.id) === String(value));
+	// Exact name or id first; otherwise ignoring case, spaces and underscores ("Londrina Long" is Londrina_long)
+	const loose = (v: unknown) => String(v).toLowerCase().replace(/[^a-z0-9]/g, '');
+	const known = (items: Array<IGameListItem>, value: unknown) => items.find(i => i.name === value || String(i.id) === String(value))
+		?? (value === undefined || value === '' ? undefined : items.find(i => loose(i.name) === loose(value)));
 	const listSelect = ({label, items, value, emptyLabel, onPick, width}: {label: string, items: Array<IGameListItem>, value: unknown, emptyLabel: string, onPick: (v: string) => void, width: number}) => {
 		const current = known(items, value);
 		const raw = value !== undefined && value !== '' && !current ? String(value) : null;
@@ -292,6 +302,7 @@ const RotationBuilder = () => {
 					e.target.value = '';
 				}} />
 			</Stack>
+			{loadMessage && <Alert severity={loadMessage.severity} onClose={() => setLoadMessage(null)}>{loadMessage.text}</Alert>}
 
 			<Stack direction={{xs: 'column', sm: 'row'}} spacing={2} sx={{alignItems: {sm: 'flex-end'}}}>
 				<TextField label="Rotation name" variant="standard" value={rotationName} onChange={e => setRotationName(e.target.value)} slotProps={{htmlInput: {maxLength: 64}}} />
