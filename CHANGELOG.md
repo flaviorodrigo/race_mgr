@@ -32,6 +32,7 @@ Notable changes, newest first. This file starts with the security and modernisat
 - Admin login uses an HttpOnly session cookie with CSRF protection, a lockout after repeated failures and a password that can be changed in the UI. Race Manager listens on `127.0.0.1` unless told otherwise; every `/api` route not listed as public is refused.
 
 ### Fixed
+- *Restart game server* said the server hadn't answered when the restart was simply quicker than the page's check; it now follows the request being picked up by the game server's entrypoint, and says so if it never is.
 - A rotation saved in the Rotation builder only appeared in the Rotation dropdown after leaving the page.
 - *Set active* also adds the rotation to the championship, so the leaderboard lists it under that championship (only *Update Server* did before).
 - A car class in a round or preset was left out when sent to the game server (*Race next*, presets): car classes were looked up by the wrong field.

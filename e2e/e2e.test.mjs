@@ -763,7 +763,9 @@ scenario('an admin restarts the game server in its own container through the sig
   assert.match(await text('body'), /Restart requested/);
   // Until the game server's entrypoint has picked it up, another one is refused
   assert.equal((await api('POST', '/api/v1/admin/gameserver/restart', {})).httpStatus, 409);
+  // The entrypoint takes the request (removes the file) and the server answers: the page says it's back
   fs.rmSync(signal);
+  await state.page.waitForFunction(() => document.body.innerText.includes('The game server is back'), {timeout: 20000});
 });
 
 scenario('signing out ends the admin session', async () => {

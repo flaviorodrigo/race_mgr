@@ -569,9 +569,11 @@ class RacemgrApplicationTests {
             mvc.perform(get("/api/v1/gameserver")).andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.data.restartable").value(true));
             mvc.perform(adminJson(post(restart), session, "{\"resetRotation\":true}")).andExpect(status().isOk());
             assertThat(java.nio.file.Files.readString(server.resolve(".racemanager-restart"))).isEqualTo("reset-rotation\n");
+            mvc.perform(get(restart).cookie(session)).andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.data.pending").value(true));
             // Until the game server picks it up, a second request is refused
             mvc.perform(adminJson(post(restart), session, "{}")).andExpect(status().isConflict());
             java.nio.file.Files.delete(server.resolve(".racemanager-restart"));
+            mvc.perform(get(restart).cookie(session)).andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.data.pending").value(false));
             mvc.perform(adminJson(post(restart), session, "{}")).andExpect(status().isOk());
             assertThat(java.nio.file.Files.readString(server.resolve(".racemanager-restart"))).isEqualTo("restart\n");
         } finally {

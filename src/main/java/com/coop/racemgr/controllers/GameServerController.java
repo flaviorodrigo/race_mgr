@@ -377,6 +377,17 @@ public class GameServerController {
         private Boolean resetRotation;
     }
 
+    // Whether a requested restart is still waiting for the game server's entrypoint to pick it up
+    @GetMapping("/api/v1/admin/gameserver/restart")
+    public ResponseEntity<Object> restartStatus() {
+        try {
+            return ResponseHandler.generateResponse("Restart", HttpStatus.OK,
+                    Map.of("enabled", RestartSignal.isEnabled(), "pending", RestartSignal.isEnabled() && RestartSignal.isPending()));
+        } catch (Exception e) {
+            return ResponseHandler.generateResponse("Request failed", HttpStatus.MULTI_STATUS, null);
+        }
+    }
+
     // Restarts a game server that runs in its own container, through the restart signal (see RestartSignal)
     @PostMapping("/api/v1/admin/gameserver/restart")
     public ResponseEntity<Object> restartExternal(@RequestBody(required = false) RestartRequest request, Authentication authentication) {

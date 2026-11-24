@@ -176,3 +176,4 @@ export const fetchSessionSchema = () => call<ISchema>({url: '/gameserver/schema'
 // Restarts a game server that runs in its own container (through the restart signal); resetRotation starts its
 // rotation again from round 1
 export const restartGameServer = (resetRotation: boolean) => call({url: '/gameserver/restart', method: 'post', data: {resetRotation}});
+export const fetchRestartStatus = () => call<{enabled: boolean, pending: boolean}>({url: '/gameserver/restart', method: 'get'});

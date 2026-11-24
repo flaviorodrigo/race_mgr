@@ -1,7 +1,7 @@
 import React, {useEffect, useState} from 'react';
 import {useSelector} from 'react-redux';
 
-import {restartGameServer} from '../Live/adminApi';
+import {fetchRestartStatus, restartGameServer} from '../Live/adminApi';
 import {fetchLiveSession} from '../Live/liveApi';
 
 import Alert from '@mui/material/Alert';
@@ -17,27 +17,39 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 
 const BACK_TIMEOUT_MS = 3 * 60 * 1000;
+// The game server's entrypoint checks for the request every 2 seconds
+const PICKUP_TIMEOUT_MS = 30 * 1000;
 
 // Restart for a game server that runs in its own container: asks for it, then waits until the server answers again
 const GameServerRestart = () => {
 	const {serverStatus} = useSelector((state: any) => state);
 	const [open, setOpen] = useState(false);
 	const [resetRotation, setResetRotation] = useState(false);
-	const [phase, setPhase] = useState<'idle' | 'restarting' | 'back' | 'slow' | 'error'>('idle');
+	const [phase, setPhase] = useState<'idle' | 'restarting' | 'back' | 'slow' | 'not-picked-up' | 'error'>('idle');
 	const [message, setMessage] = useState('');
 
-	// While restarting: first the server goes away, then it answers again
+	// While restarting: the game server's entrypoint takes the request (the signal file goes away), then the server
+	// answers again. A restart is quick, so its going away isn't always seen: the picked-up request is what counts.
 	useEffect(() => {
 		if (phase !== 'restarting') {
 			return undefined;
 		}
 
 		const started = Date.now();
-		let wentAway = false;
+		let pickedUp = false;
 		const timer = setInterval(async () => {
+			if (!pickedUp) {
+				const status = await fetchRestartStatus();
+				pickedUp = status.ok && status.data?.pending === false;
+				if (!pickedUp && Date.now() - started > PICKUP_TIMEOUT_MS) {
+					setPhase('not-picked-up');
+				}
+
+				return;
+			}
+
 			const live = await fetchLiveSession(true);
-			wentAway = wentAway || live === null;
-			if (live && wentAway) {
+			if (live) {
 				setPhase('back');
 			} else if (Date.now() - started > BACK_TIMEOUT_MS) {
 				setPhase('slow');
@@ -69,6 +81,10 @@ const GameServerRestart = () => {
 			{phase === 'back' && <Alert severity="success" onClose={() => setPhase('idle')}>The game server is back.</Alert>}
 			{phase === 'slow' && <Alert severity="warning" onClose={() => setPhase('idle')}>
 				The game server hasn&apos;t answered for three minutes. Check its container on the NAS (docker compose logs).
+			</Alert>}
+			{phase === 'not-picked-up' && <Alert severity="warning" onClose={() => setPhase('idle')}>
+				The game server hasn&apos;t picked up the restart request. Is its container using Race Manager&apos;s entrypoint
+				(docker/game-server/entrypoint.sh)? The request is the file .racemanager-restart in the server folder.
 			</Alert>}
 			{phase === 'error' && <Alert severity="error" onClose={() => setPhase('idle')}>{message}</Alert>}
 
