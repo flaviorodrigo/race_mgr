@@ -124,6 +124,8 @@ before(async () => {
       RM_PATH_TO_DEDICATED_SERVER: state.serverDir,
       RM_STATS_SOURCE: 'ams2_stats',
       RM_STATS_TIMEZONE: 'UTC',
+      // The game server's container has the restart signal (docker/game-server/entrypoint.sh)
+      RM_GAMESERVER_RESTART: 'signal',
     },
   });
   await waitFor(async () => (await fetch(`${state.base}/api`)).ok, `Race Manager to start:\n${app.output().slice(-1500)}`, 120_000);
@@ -747,6 +749,21 @@ scenario('screenshots for the documentation (only when E2E_SCREENSHOTS is set)',
   }
 
   await state.page.setViewport({width: 1400, height: 1100});
+});
+
+scenario('an admin restarts the game server in its own container through the signal file it watches', async () => {
+  await go('/manageserver');
+  assert.ok(await clickText('button', 'restart game server'));
+  await state.page.waitForSelector('[role="dialog"]');
+  await state.page.evaluate(() => [...document.querySelectorAll('[role="dialog"] label')].find(l => l.innerText.includes('first round'))?.click());
+  await clickText('[role="dialog"] button', 'restart');
+  await sleep(1200);
+  const signal = path.join(state.serverDir, '.racemanager-restart');
+  assert.equal(fs.readFileSync(signal, 'utf8'), 'reset-rotation\n');
+  assert.match(await text('body'), /Restart requested/);
+  // Until the game server's entrypoint has picked it up, another one is refused
+  assert.equal((await api('POST', '/api/v1/admin/gameserver/restart', {})).httpStatus, 409);
+  fs.rmSync(signal);
 });
 
 scenario('signing out ends the admin session', async () => {

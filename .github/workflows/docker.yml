@@ -90,6 +90,8 @@ jobs:
           cache-to: type=gha,mode=max,scope=external
       - name: It has Java and the jar, and runs as a non-root user
         run: docker run --rm --entrypoint sh racemgr-external:ci -c 'java -version && test -f /app/racemgr.jar && test "$(id -u)" != 0'
+      - name: The game server entrypoint restarts on Race Manager's signal
+        run: docker/ci/game-server-entrypoint-test.sh
       - name: The NAS setup works (another user, a separately mounted server.cfg, a real MongoDB)
         run: docker/ci/nas-smoke.sh racemgr-external:ci
 

@@ -18,6 +18,7 @@ import Tooltip from '@mui/material/Tooltip';
 import ApplyServerConfig from './ApplyServerConfig';
 import LivePanel from '../Live/LivePanel';
 import AdminTools, {AdminTab} from './AdminTools';
+import GameServerRestart from './GameServerRestart';
 import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
 import {atLeast} from '../../utils/roles';
@@ -131,6 +132,7 @@ const ManageServer = (props:IManageServerProps) => {
 					{roleLoaded && !isAdmin && <Typography variant="subtitle1" align="left" gutterBottom={true}>
 						You are signed in as a steward: you can see who is online, kick and message players, set up the next session and give penalties.
 					</Typography>}
+					{isAdmin && <GameServerRestart />}
 					<LivePanel />
 				</>}
 
@@ -153,7 +155,9 @@ const ManageServer = (props:IManageServerProps) => {
 
 					{serverStatus.managed === false
 					&& <Alert severity="info" sx={{textAlign: 'left', mt: 2}}>
-						The game server is run outside Race Manager. After changing the rotation, restart the game server yourself for it to take effect.
+						{serverStatus.restartable
+							? 'The game server runs in its own container. After Update Server, use Restart game server on the Race day tab for the new rotation to take effect.'
+							: 'The game server is run outside Race Manager. After changing the rotation, restart the game server yourself for it to take effect.'}
 					</Alert>
 					}
 				</>}

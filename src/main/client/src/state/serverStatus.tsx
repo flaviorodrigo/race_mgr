@@ -3,6 +3,8 @@ import {createSlice} from '@reduxjs/toolkit';
 export interface IServerStatusState {
     isRunning: boolean,
 	managed: boolean,
+	// Race Manager can restart it (it runs it, or the game server's container has the restart signal set up)
+	restartable: boolean,
 	isLoading: boolean,
 	hasError: boolean
   }
@@ -10,6 +12,7 @@ export interface IServerStatusState {
 const initialState: IServerStatusState = {
 	isRunning: true,
 	managed: true,
+	restartable: true,
 	isLoading: true,
 	hasError: false,
 };
@@ -25,6 +28,7 @@ export const serverStatusSlice = createSlice({
 			state.isRunning = action.payload.isRunning;
 			// False when the game server is run by something else (e.g. its own container)
 			state.managed = action.payload.managed !== false;
+			state.restartable = action.payload.restartable !== false;
 			state.isLoading = false;
 		},
 		getServerStatusFailure(state) {

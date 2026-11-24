@@ -172,3 +172,7 @@ export const savePerformance = (tables: IPerformance) => call({url: '/gameserver
 
 // Every session setting, as the game server describes it (for the rotation builder)
 export const fetchSessionSchema = () => call<ISchema>({url: '/gameserver/schema', method: 'get'});
+
+// Restarts a game server that runs in its own container (through the restart signal); resetRotation starts its
+// rotation again from round 1
+export const restartGameServer = (resetRotation: boolean) => call({url: '/gameserver/restart', method: 'post', data: {resetRotation}});

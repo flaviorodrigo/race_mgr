@@ -5,6 +5,7 @@ Notable changes, newest first. This file starts with the security and modernisat
 ## Unreleased
 
 ### Added
+- Restart a game server that runs in its own container from *Race day*, optionally starting its rotation from round 1: Race Manager writes a signal file into the shared folder and `docker/game-server/entrypoint.sh` restarts the server (`RM_GAMESERVER_RESTART=signal`).
 - Saved rotations can be changed in place (*Save changes*), copied (*Save as new*) or deleted from the Rotation builder; the active rotation can't be deleted.
 - **Racing look** (on by default, toggle in the top bar): carbon and chequered-flag theme, motorsport type, position badges, a championship podium, TV timing colours, and freely licensed photos of Fittipaldi, Piquet, Senna and Schumacher in the background with an *About the images* credits page.
 - Race pages open with the winner, pole and fastest lap; the leaderboard is titled with the championship; the racing look works on phones (credits in the footer there).

@@ -11,6 +11,7 @@ import com.coop.racemgr.gameserver.SessionSettings;
 import com.coop.racemgr.gameserver.GameServerLog;
 import com.coop.racemgr.gameserver.LiveSession;
 import com.coop.racemgr.gameserver.LiveTiming;
+import com.coop.racemgr.gameserver.RestartSignal;
 import com.coop.racemgr.utils.RacemgrUtils;
 
 import lombok.Data;
@@ -371,6 +372,35 @@ public class GameServerController {
         }
     }
 
+    @Data
+    public static class RestartRequest {
+        private Boolean resetRotation;
+    }
+
+    // Restarts a game server that runs in its own container, through the restart signal (see RestartSignal)
+    @PostMapping("/api/v1/admin/gameserver/restart")
+    public ResponseEntity<Object> restartExternal(@RequestBody(required = false) RestartRequest request, Authentication authentication) {
+        if (!GameServerMgr.isExternal()) {
+            return ResponseHandler.generateResponse("Race Manager runs this game server itself: use Restart Server", HttpStatus.CONFLICT, null);
+        }
+        if (!RestartSignal.isEnabled()) {
+            return ResponseHandler.generateResponse("Restarting the game server from here isn't set up: see the README (RM_GAMESERVER_RESTART)", HttpStatus.CONFLICT, null);
+        }
+
+        boolean reset = request != null && Boolean.TRUE.equals(request.getResetRotation());
+        try {
+            if (RestartSignal.isPending()) {
+                return ResponseHandler.generateResponse("A restart is already on its way", HttpStatus.CONFLICT, null);
+            }
+            RestartSignal.request(reset);
+            auditLog.record(authentication.getName(), "game server restart", reset ? "rotation from its first round" : "");
+            return ResponseHandler.generateResponse("Restart requested. The game server is back in about half a minute.", HttpStatus.OK, null);
+        } catch (Exception e) {
+            logger.warn("Restart request failed: " + e);
+            return ResponseHandler.generateResponse("Request failed", HttpStatus.MULTI_STATUS, null);
+        }
+    }
+
     /** PUBLIC ENDPOINTS **/
 
     // Live timing: the cars in race order with lap and sector times. Names only: no reference or Steam ids.
@@ -396,7 +426,8 @@ public class GameServerController {
 
     @GetMapping("/api/v1/gameserver")
     public ResponseEntity<Object> gameserver() throws InterruptedException, IOException {
-        Map<String, Object> response = Map.of("isRunning", GameServerMgr.isRunning(), "managed", !GameServerMgr.isExternal());
+        Map<String, Object> response = Map.of("isRunning", GameServerMgr.isRunning(), "managed", !GameServerMgr.isExternal(),
+                "restartable", !GameServerMgr.isExternal() || RestartSignal.isEnabled());
         return ResponseHandler.generateResponse("Current external game server status", HttpStatus.OK, response);
     }
 

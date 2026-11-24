@@ -33,6 +33,9 @@ services:
       RM_PORT: ${RM_PORT:-8080}
       RM_GAMESERVER_HOST: 127.0.0.1
       RM_GAMESERVER_PORT: "9000"
+      # "signal" once the game server's container uses docker/game-server/entrypoint.sh: Race Manager can then restart
+      # it (Race day > Restart game server) by writing a file into the shared folder
+      RM_GAMESERVER_RESTART: ${RM_GAMESERVER_RESTART:-}
       # Only if the game server's API is NOT reached from 127.0.0.1: its HTTP basic auth user (see
       # httpApiUsers / httpApiGroups in server.cfg). Plain HTTP, so only on a trusted network.
       # RM_GAMESERVER_USER: admin
