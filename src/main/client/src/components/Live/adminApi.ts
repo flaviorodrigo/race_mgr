@@ -104,7 +104,9 @@ export const fetchServerConfig = () => call<ServerConfigValues>({url: '/gameserv
 export const saveServerConfig = (changes: ServerConfigValues) => call({url: '/gameserver/config', method: 'put', data: changes});
 
 export interface IGameListItem {
-	id: string | number,
+	// Tracks and cars have an id; car classes a value
+	id?: string | number,
+	value?: number,
 	name: string,
 	translated_name?: string,
 }

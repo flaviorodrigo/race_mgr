@@ -352,7 +352,8 @@ describe('next-session values', () => {
 		enums: {damage: [{name: 'OFF', value: 0}, {name: 'FULL', value: 3}], weather: [{name: 'Clear', value: -934211870}]},
 		flags: [{name: 'ABS_ALLOWED', value: 32}, {name: 'SC_ALLOWED', value: 64}, {name: 'COOLDOWNLAP', value: 2147483648}],
 	};
-	const lists = {tracks: [{id: 1534602052, name: 'BrandsHatch_GP'}], classes: [{id: -1, name: 'GT3'}], vehicles: []};
+	// Car classes come with a value, not an id, as the game server lists them
+	const lists = {tracks: [{id: 1534602052, name: 'BrandsHatch_GP'}], classes: [{value: -1, name: 'GT3'}], vehicles: []};
 
 	it('turns names into the numbers the game server takes', () => {
 		const {values, skipped} = toNextSessionValues({

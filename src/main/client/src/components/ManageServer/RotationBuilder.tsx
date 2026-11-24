@@ -44,6 +44,9 @@ const STARTING_SETUP: Record<string, unknown> = {
 };
 
 const name = (item?: IGameListItem) => (item ? item.translated_name ?? item.name.replaceAll('_', ' ') : '');
+// In lists: the game's display name with the id rotation files use ("Formula V8 Gen2 · F-V8_Gen2"), alphabetical
+const optionLabel = (item: IGameListItem) => (item.translated_name ? `${item.translated_name} · ${item.name}` : item.name.replaceAll('_', ' '));
+const byLabel = (items: Array<IGameListItem>) => [...items].sort((a, b) => optionLabel(a).localeCompare(optionLabel(b)));
 
 // Builds a rotation: the default setup every round starts from (every setting the game server offers), then the
 // rounds in order, each with its track and anything it changes.
@@ -191,7 +194,7 @@ const RotationBuilder = () => {
 
 	// Exact name or id first; otherwise ignoring case, spaces and underscores ("Londrina Long" is Londrina_long)
 	const loose = (v: unknown) => String(v).toLowerCase().replace(/[^a-z0-9]/g, '');
-	const known = (items: Array<IGameListItem>, value: unknown) => items.find(i => i.name === value || String(i.id) === String(value))
+	const known = (items: Array<IGameListItem>, value: unknown) => items.find(i => i.name === value || String(i.id ?? i.value) === String(value))
 		?? (value === undefined || value === '' ? undefined : items.find(i => loose(i.name) === loose(value)));
 	const listSelect = ({label, items, value, emptyLabel, onPick, width}: {label: string, items: Array<IGameListItem>, value: unknown, emptyLabel: string, onPick: (v: string) => void, width: number}) => {
 		const current = known(items, value);
@@ -202,7 +205,7 @@ const RotationBuilder = () => {
 				<Select value={current ? current.name : (raw ?? '')} onChange={e => onPick(e.target.value)}>
 					<MenuItem value=""><em>{emptyLabel}</em></MenuItem>
 					{raw && <MenuItem value={raw}>{raw} (as in the file)</MenuItem>}
-					{items.map(i => <MenuItem key={i.name} value={i.name}>{name(i)}</MenuItem>)}
+					{byLabel(items).map(i => <MenuItem key={i.name} value={i.name}>{optionLabel(i)}</MenuItem>)}
 				</Select>
 			</FormControl>
 		);

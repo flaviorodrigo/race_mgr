@@ -616,6 +616,11 @@ scenario('the rotation builder offers every setting the game server describes, f
 
   // Round 1 at Brands Hatch with its own race length; round 2 at the test track
   await pick('[aria-label="Round 1"] [role="combobox"]', 'Brands Hatch GP');
+  // Cars by the game's display name, with the id rotation files use
+  await (await state.page.$$('[aria-label="Round 1"] [role="combobox"]'))[1].click();
+  await state.page.waitForSelector('[role="listbox"]');
+  await state.page.evaluate(() => [...document.querySelectorAll('[role="option"]')].find(x => x.innerText.trim() === 'Formula V8 Gen2 · F-V8_Gen2')?.click());
+  await sleep(300);
   await clickText('button', 'round settings');
   await state.page.waitForSelector('[role="dialog"]');
   await openGroup('Session');
@@ -638,7 +643,7 @@ scenario('the rotation builder offers every setting the game server describes, f
   assert.ok(config.defaultConfig.Flags.split(',').includes('PIT_SPEED_LIMITER'));
   assert.equal(config.defaultConfig.GridSize, 20);
   assert.equal(config.defaultConfig.RaceMandatoryPitStops, 1);
-  assert.deepEqual(config.rotation, [{TrackId: 'Brands_Hatch_GP', RaceLength: 8}, {TrackId: 'Test_Track'}]);
+  assert.deepEqual(config.rotation, [{TrackId: 'Brands_Hatch_GP', VehicleClassId: 'F-V8_Gen2', RaceLength: 8}, {TrackId: 'Test_Track'}]);
 
   // Race next: round 1 (the default setup with its own race length) goes to the next session right away
   await state.page.evaluate(() => [...document.querySelectorAll('[aria-label="Round 1"] button')].find(b => b.innerText.trim().toLowerCase() === 'race next')?.click());

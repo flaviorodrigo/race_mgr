@@ -17,7 +17,8 @@ import Typography from '@mui/material/Typography';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 
 export interface INamedItem {
-	id: string | number,
+	id?: string | number,
+	value?: number,
 	name: string,
 	translated_name?: string,
 }
@@ -44,7 +45,7 @@ const without = (values: Record<string, unknown>, name: string) => {
 	return copy;
 };
 
-const listItem = (items: Array<INamedItem>, value: unknown) => items.find(i => i.name === value || String(i.id) === String(value));
+const listItem = (items: Array<INamedItem>, value: unknown) => items.find(i => i.name === value || String(i.id ?? i.value) === String(value));
 
 interface IFieldProps {
 	attribute: IAttribute,
@@ -87,7 +88,9 @@ const pickerFor = (attribute: IAttribute, value: unknown, schema: ISchema | null
 		const current = listItem(items, value);
 		const unknown = raw(Boolean(current));
 		return {
-			options: [...unknown, ...items.map(i => ({key: i.name, label: i.translated_name ?? i.name.replaceAll('_', ' ')}))],
+			options: [...unknown, ...items
+				.map(i => ({key: i.name, label: i.translated_name ? `${i.translated_name} · ${i.name}` : i.name.replaceAll('_', ' ')}))
+				.sort((a, b) => a.label.localeCompare(b.label))],
 			current: current ? current.name : (unknown[0]?.key ?? NOT_SET),
 			toStored: (key: string) => key,
 		};

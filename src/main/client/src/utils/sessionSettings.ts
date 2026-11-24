@@ -146,10 +146,14 @@ export const flagNames = (value: unknown, flags: Array<IOption>): Array<string> 
 // Flags are written as names, which read better and are what the game's own samples use
 export const formatFlags = (names: Array<string>, flags: Array<IOption>): string => flags.filter(f => names.includes(f.name)).map(f => f.name).join(',');
 
+// The game server's lists name the number differently: tracks and cars have an id, car classes a value
 export interface INamed {
-	id: string | number,
+	id?: string | number,
+	value?: number,
 	name: string,
 }
+
+const idOf = (item: INamed) => Number(item.id ?? item.value);
 
 // The game server's "next session" call takes whole numbers only, while rotations also use names ("FULL",
 // "Clear", "ABS_ALLOWED,SC_ALLOWED", "Interlagos_GP"). This turns a setup into numbers using the server's own
@@ -171,8 +175,8 @@ export const toNextSessionValues = (settings: Record<string, unknown>, schema: I
 			n = findOption(value, schema.enums[attribute.enumName] ?? [])?.value;
 		} else if (attribute.kind === 'track' || attribute.kind === 'vehicleClass' || attribute.kind === 'vehicle') {
 			const list = attribute.kind === 'track' ? lists.tracks : attribute.kind === 'vehicleClass' ? lists.classes : lists.vehicles;
-			const item = list.find(i => i.name === value || String(i.id) === String(value));
-			n = item ? Number(item.id) : (typeof value === 'number' ? value : undefined);
+			const item = list.find(i => i.name === value || String(i.id ?? i.value) === String(value));
+			n = item ? idOf(item) : (typeof value === 'number' ? value : undefined);
 		} else if (typeof value === 'number') {
 			n = value;
 		} else if (typeof value === 'string' && /^-?\d{1,10}$/.test(value.trim())) {
