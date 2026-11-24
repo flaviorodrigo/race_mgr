@@ -25,6 +25,7 @@ Notable changes, newest first. This file starts with the security and modernisat
 - Admin login uses an HttpOnly session cookie with CSRF protection, a lockout after repeated failures and a password that can be changed in the UI. Race Manager listens on `127.0.0.1` unless told otherwise; every `/api` route not listed as public is refused.
 
 ### Fixed
+- The NAS compose file also tried to build the image from source (Container Manager's *Build* failed with "unable to evaluate symlinks in Dockerfile path"): it now only pulls `RACEMGR_IMAGE`; building is an optional extra file.
 - A rotation from a real server (grid, AI, damage and pit-stop settings, numeric weather and flag values) was refused; rotations now accept every writable session setting, and importing then saving one in the Rotation builder keeps it exactly.
 - A `server.cfg` mounted into the container on its own (as on some NAS setups) could not be saved: it is now written in place.
 - Race Manager's own fields of a race (database id, void, penalties, video link) are never taken from the stats file.

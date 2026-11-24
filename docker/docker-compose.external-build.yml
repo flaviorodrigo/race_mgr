@@ -1,0 +1,8 @@
+# Builds the external-server image from this repository instead of pulling RACEMGR_IMAGE:
+#   docker compose -f docker/docker-compose.external-server.yml -f docker/docker-compose.external-build.yml up -d --build
+# (Set RACEMGR_IMAGE to any local name, e.g. racemgr-external:local.)
+services:
+  racemgr:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.external
