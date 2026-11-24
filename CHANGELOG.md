@@ -30,6 +30,7 @@ Notable changes, newest first. This file starts with the security and modernisat
 - Admin login uses an HttpOnly session cookie with CSRF protection, a lockout after repeated failures and a password that can be changed in the UI. Race Manager listens on `127.0.0.1` unless told otherwise; every `/api` route not listed as public is refused.
 
 ### Fixed
+- A rotation saved in the Rotation builder only appeared in the Rotation dropdown after leaving the page.
 - *Set active* also adds the rotation to the championship, so the leaderboard lists it under that championship (only *Update Server* did before).
 - A car class in a round or preset was left out when sent to the game server (*Race next*, presets): car classes were looked up by the wrong field.
 - Car and track lists are alphabetical and show the game's name with the id rotation files use ("Formula V8 Gen2 · F-V8_Gen2").

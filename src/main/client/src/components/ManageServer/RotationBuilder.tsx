@@ -1,4 +1,7 @@
 import React, {useEffect, useRef, useState} from 'react';
+import {useDispatch} from 'react-redux';
+
+import {getRotations} from '../../state/rotations';
 
 import {
 	applyNextSession, fetchGameList, fetchRotationConfig, fetchSavedRotations, fetchSessionSchema, saveCustomRotation, savePreset, IGameListItem, ISavedRotation,
@@ -68,6 +71,7 @@ const RotationBuilder = () => {
 	const [loadMessage, setLoadMessage] = useState<{text: string, severity: 'success' | 'error' | 'info'} | null>(null);
 	const [busy, setBusy] = useState(false);
 	const fileInput = useRef<HTMLInputElement>(null);
+	const dispatch = useDispatch();
 
 	useEffect(() => {
 		fetchSessionSchema().then(r => setSchema(r.ok && r.data ? r.data : null));
@@ -166,6 +170,8 @@ const RotationBuilder = () => {
 		});
 		if (result.ok) {
 			fetchSavedRotations().then(setSaved);
+			// The Rotation dropdown at the top of the tab lists it straight away
+			dispatch(getRotations());
 		}
 	};
 

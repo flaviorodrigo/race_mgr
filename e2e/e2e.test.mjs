@@ -646,6 +646,13 @@ scenario('the rotation builder offers every setting the game server describes, f
   await sleep(1500);
   const saved = await state.page.evaluate(async () => (await (await fetch('/api/v1/race/rotation?page=0&limit=100')).json()).data.content.find(r => r.name === 'Full setup'));
   assert.ok(saved, 'saved');
+  // It shows in the Rotation dropdown at the top of the tab straight away, without leaving the page
+  await state.page.click('[role="combobox"][aria-labelledby~="rotation-select"]');
+  await state.page.waitForSelector('[role="listbox"]');
+  const choices = await state.page.$$eval('[role="option"]', o => o.map(x => x.innerText.trim()));
+  await state.page.keyboard.press('Escape');
+  await sleep(300);
+  assert.ok(choices.includes('Full setup'), JSON.stringify(choices));
   const config = await state.page.evaluate(async id => (await (await fetch(`/api/v1/race/rotation/${id}`)).json()).data.config, saved.id);
   assert.equal(config.defaultConfig.DamageType, 'FULL');
   assert.ok(config.defaultConfig.Flags.split(',').includes('PIT_SPEED_LIMITER'));
