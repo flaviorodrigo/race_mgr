@@ -1,0 +1,20 @@
+{
+  "result" : "ok",
+  "response" : {
+    "description" : "Enum describing private session settings",
+    "list" : [
+      {
+        "value" : 0,
+        "name" : "Off"
+      },
+      {
+        "value" : 1,
+        "name" : "Solo"
+      },
+      {
+        "value" : 2,
+        "name" : "SameClass"
+      }
+    ]
+  }
+}

@@ -5,6 +5,7 @@ Notable changes, newest first. This file starts with the security and modernisat
 ## Unreleased
 
 ### Added
+- **Full rotation builder**: every session setting the game server describes (grouped, with the right control and the server's description), for the default setup and per round; cars per round.
 - **Live timing** page: positions, laps, sector times, last and best lap of the running session, for everyone.
 - **Records** page: career totals per driver and the lap record at each track, across all championships.
 - **Penalties** on finished races (time penalties and disqualifications), re-ordering the result and the points; **video links** (YouTube/Twitch) on races.

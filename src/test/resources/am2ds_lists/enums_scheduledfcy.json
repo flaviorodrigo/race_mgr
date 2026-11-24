@@ -1,0 +1,28 @@
+{
+  "result" : "ok",
+  "response" : {
+    "description" : "Enum describing live track presets",
+    "list" : [
+      {
+        "value" : 0,
+        "name" : "Off"
+      },
+      {
+        "value" : 1,
+        "name" : "25%"
+      },
+      {
+        "value" : 2,
+        "name" : "50%"
+      },
+      {
+        "value" : 3,
+        "name" : "75%"
+      },
+      {
+        "value" : 4,
+        "name" : "Random"
+      }
+    ]
+  }
+}

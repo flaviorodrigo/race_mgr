@@ -131,6 +131,45 @@ public class GameServerProxy {
         }
     }
 
+    // What a session can set, from the game server's own lists. They only change with a game update, so kept a while.
+    private static final long SCHEMA_CACHE_MILLIS = 10 * 60 * 1000;
+    private static volatile SessionSchema.Schema cachedSchema;
+    private static volatile long cachedSchemaAt;
+
+    public SessionSchema.Schema getSessionSchema() {
+        long now = System.currentTimeMillis();
+        SessionSchema.Schema cached = cachedSchema;
+        if (cached != null && now - cachedSchemaAt < SCHEMA_CACHE_MILLIS) {
+            return cached;
+        }
+        java.util.Map<String, JsonNode> separate = new java.util.LinkedHashMap<>();
+        for (String name : SessionSchema.SEPARATE_ENUMS) {
+            try {
+                separate.put(name, listResponse("/list/enums/" + name));
+            } catch (Exception e) {
+                // Older servers may not have it; the setting is then edited as a number
+            }
+        }
+        SessionSchema.Schema schema = SessionSchema.build(listResponse("/list/attributes/session"), listResponse("/list/enums"),
+                separate, listResponse("/list/flags/session"));
+        cachedSchema = schema;
+        cachedSchemaAt = now;
+        return schema;
+    }
+
+    private JsonNode listResponse(String path) {
+        String body = REST_CLIENT.get().uri(gameServerBaseUrl + path).retrieve().body(String.class);
+        try {
+            JsonNode response = RacemgrUtils.JSON.readTree(body).path("response");
+            if (response.isMissingNode()) {
+                throw new IllegalStateException("Unexpected response from the game server");
+            }
+            return response;
+        } catch (JacksonException e) {
+            throw new IllegalStateException("Unreadable response from the game server", e);
+        }
+    }
+
     /** Moves the running session on to its next stage. */
     public void advanceSession() {
         REST_CLIENT.get().uri(SessionSettings.advanceUri(gameServerBaseUrl)).retrieve().toBodilessEntity();

@@ -13,6 +13,17 @@ members = [
 ]
 calls = []
 
+# What a real dedicated server answers for these (saved from one): the session settings, option lists, flags, car classes
+LISTS = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'src', 'test', 'resources', 'am2ds_lists')
+REAL_LISTS = {
+    '/api/list/attributes/session': 'attributes_session.json',
+    '/api/list/enums': 'enums.json',
+    '/api/list/enums/privatesession': 'enums_privatesession.json',
+    '/api/list/enums/scheduledfcy': 'enums_scheduledfcy.json',
+    '/api/list/flags/session': 'flags_session.json',
+    '/api/list/vehicle_classes': 'vehicle_classes.json',
+}
+
 
 def car(i, name, pos, lap, sector, s1, s2, s3, last, best, player=1, state="Racing"):
     return {"id": i, "attributes": {"RefId": 7 + i, "Name": name, "IsPlayer": player, "RacePosition": pos, "CurrentLap": lap, "CurrentSector": sector,
@@ -84,7 +95,9 @@ class Handler(BaseHTTPRequestHandler):
             self.reply({"result": "ok", "response": {"list": [{"id": 1534602052, "name": "Brands_Hatch_GP", "gridsize": 32}, {"id": 1234, "name": "Test_Track", "gridsize": 20}]}})
         elif url.path == '/api/list/vehicles':
             self.reply({"result": "ok", "response": {"list": [{"id": 55, "name": "Test GT3", "class": "GT3"}]}})
-        elif url.path == '/api/list/vehicle_classes':
+        elif url.path in REAL_LISTS:
+            self.reply(json.load(open(os.path.join(LISTS, REAL_LISTS[url.path]))))
+        elif url.path == '/api/list/vehicle_classes_fake':
             self.reply({"result": "ok", "response": {"list": [{"id": 1, "name": "F-V12"}, {"id": 2, "name": "GT3"}]}})
         elif url.path == '/api/list/enums/weather':
             self.reply({"result": "ok", "response": {"list": [{"name": "Clear"}, {"name": "LightRain"}, {"name": "Overcast"}]}})

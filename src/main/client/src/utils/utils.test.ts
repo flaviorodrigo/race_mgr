@@ -8,6 +8,7 @@ import {sectorRows, lapSeries, formatLap, formatSector} from './sectors';
 import {careerStats, trackRecords} from './careerStats';
 import {atLeast, generatePassword} from './roles';
 import {configFromModel, modelFromConfig} from './rotation';
+import {findOption, flagNames, formatFlags, groupOf, labelOf, prettyOption, storedOption} from './sessionSettings';
 import realRotation from './rotation_from_a_real_server.json';
 import {parseServerJson} from './serverJson';
 import liveRotation from './sms_rotate_config_live.json.txt?raw';
@@ -249,9 +250,7 @@ describe('rotation files', () => {
 		const model = modelFromConfig(file.config);
 		expect(model).not.toBeNull();
 		expect(model!.persistIndex).toBe(false);
-		expect(model!.entries.map(e => e.track)).toEqual(['Laguna_Seca_2020', 'Brasilia_Full', 'Spielberg_Modern', 'Monza_2005', 'Interlagos_GP']);
-		// The numeric weather hash comes through as it is
-		expect(model!.entries[0].raceWeather1).toBe(-934211870);
+		expect(model!.rounds.map(r => r.TrackId)).toEqual(['Laguna_Seca_2020', 'Brasilia_Full', 'Spielberg_Modern', 'Monza_2005', 'Interlagos_GP']);
 
 		const saved = configFromModel(model!);
 		expect(saved.persist_index).toBe(false);
@@ -259,17 +258,49 @@ describe('rotation files', () => {
 		expect(saved.rotation).toEqual(file.config.rotation);
 	});
 
-	it('keeps a round\'s own settings and only adds weather that differs from the default', () => {
-		const model = modelFromConfig({default: {RaceWeatherSlot1: 'Clear'}, rotation: [{TrackId: 'A', RaceLength: 8, QualifyWeatherSlot1: 'Clear'}]})!;
-		model.entries[0].raceWeather1 = 'LightRain';
-		expect(configFromModel(model).rotation).toEqual([{TrackId: 'A', RaceLength: 8, QualifyWeatherSlot1: 'Clear', RaceWeatherSlot1: 'LightRain'}]);
-		expect(configFromModel(model).persist_index).toBe(true);
+	it('takes a track by name or by id', () => {
+		expect(modelFromConfig({default: {}, rotation: [{TrackId: -559709709}]})!.rounds[0].TrackId).toBe(-559709709);
 	});
 
 	it('refuses something that is not a rotation', () => {
 		expect(modelFromConfig(null)).toBeNull();
 		expect(modelFromConfig({default: {}, rotation: []})).toBeNull();
 		expect(modelFromConfig({default: {}, rotation: [{RaceLength: 5}]})).toBeNull();
+		expect(modelFromConfig({default: [], rotation: [{TrackId: 'A'}]})).toBeNull();
+	});
+});
+
+describe('session settings as the game server describes them', () => {
+	const flags = [{name: 'ABS_ALLOWED', value: 32}, {name: 'SC_ALLOWED', value: 64}, {name: 'COOLDOWNLAP', value: 2147483648}];
+	const weather = [{name: 'Clear', value: -934211870}, {name: 'LightRain', value: 1}];
+
+	it('groups and names the settings', () => {
+		expect(groupOf('RaceMandatoryPitStops')).toBe('Start and pit stops');
+		expect(groupOf('QualifyWeatherSlot2')).toBe('Qualifying weather and time');
+		expect(groupOf('MultiClassSlot4')).toBe('Cars and grid');
+		expect(groupOf('SomethingNew')).toBe('Other');
+		expect(labelOf('RaceMandatoryPitStopsMinTyres')).toBe('Race mandatory pit stops min tyres');
+		expect(prettyOption('VISUAL_ONLY')).toBe('Visual only');
+		expect(prettyOption('LightRain')).toBe('Light rain');
+	});
+
+	it('reads flags written as names or as the number they add up to', () => {
+		expect(flagNames('abs_allowed, SC_ALLOWED', flags)).toEqual(['ABS_ALLOWED', 'SC_ALLOWED']);
+		expect(flagNames(96, flags)).toEqual(['ABS_ALLOWED', 'SC_ALLOWED']);
+		// The top bit: stored as a negative 32-bit number
+		expect(flagNames(-2147483648 + 32, flags)).toEqual(['ABS_ALLOWED', 'COOLDOWNLAP']);
+		expect(flagNames(undefined, flags)).toEqual([]);
+		expect(formatFlags(['SC_ALLOWED', 'ABS_ALLOWED'], flags)).toBe('ABS_ALLOWED,SC_ALLOWED');
+	});
+
+	it('finds options by name or number and stores plain names', () => {
+		expect(findOption(-934211870, weather)?.name).toBe('Clear');
+		expect(findOption('clear', weather)?.name).toBe('Clear');
+		expect(findOption('Fog', weather)).toBeUndefined();
+		expect(storedOption({name: 'LightRain', value: 1})).toBe('LightRain');
+		// Names the rotation check wouldn't accept are written as their number
+		expect(storedOption({name: '25%', value: 1})).toBe(1);
+		expect(storedOption({name: 'Default Progressing', value: 0})).toBe(0);
 	});
 });
 
@@ -298,6 +329,7 @@ describe('the game server\'s relaxed JSON', () => {
 
 	it('a live rotation where every round picks its cars loads and saves without adding a class', () => {
 		const model = modelFromConfig((parseServerJson(liveRotation) as any).config)!;
+		expect(model.rounds.map(r => r.VehicleClassId)).toEqual(['StockCarV8', 'SprintRace']);
 		const saved = configFromModel(model);
 		const original = (parseServerJson(liveRotation) as any).config;
 		expect(saved.defaultConfig).toEqual(original.default);

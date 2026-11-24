@@ -1,6 +1,7 @@
 import RaceMgrApi from '../../api/RaceMgrApi';
 import {IPenalty} from '../../utils/penalties';
 import {Role} from '../../utils/roles';
+import {ISchema} from '../../utils/sessionSettings';
 
 // Small helpers for the admin tools. Each resolves to {ok, message, data}; the message is the server's own
 // explanation (already safe to show) or a generic one.
@@ -110,10 +111,11 @@ export const saveServerConfig = (changes: ServerConfigValues) => call({url: '/ga
 export interface IGameListItem {
 	id: string | number,
 	name: string,
+	translated_name?: string,
 }
 
 // The game server's own lists (tracks, vehicle classes, weather...) through Race Manager
-export const fetchGameList = async (kind: 'tracks' | 'vehicle_classes' | 'weather'): Promise<Array<IGameListItem>> => {
+export const fetchGameList = async (kind: 'tracks' | 'vehicle_classes' | 'vehicles' | 'weather'): Promise<Array<IGameListItem>> => {
 	const rmApi = new RaceMgrApi();
 	try {
 		const response = await rmApi.makeApiCall({url: `${rmApi.getBaseApiUrl()}/gameserver/${kind}`, method: 'get'});
@@ -167,3 +169,6 @@ export interface IPerformance {
 
 export const fetchPerformance = () => call<IPerformance>({url: '/gameserver/performance', method: 'get'});
 export const savePerformance = (tables: IPerformance) => call({url: '/gameserver/performance', method: 'put', data: tables});
+
+// Every session setting, as the game server describes it (for the rotation builder)
+export const fetchSessionSchema = () => call<ISchema>({url: '/gameserver/schema', method: 'get'});

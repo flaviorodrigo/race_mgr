@@ -348,6 +348,17 @@ public class GameServerController {
         }
     }
 
+    // Everything a session can set, as the game server describes it (for the rotation builder)
+    @GetMapping("/api/v1/admin/gameserver/schema")
+    public ResponseEntity<Object> sessionSchema() {
+        try {
+            return ResponseHandler.generateResponse("Session settings", HttpStatus.OK, this.gameServerProxy.getSessionSchema());
+        } catch (Exception e) {
+            logger.warn("Session settings unavailable: " + e);
+            return ResponseHandler.generateResponse("Request failed", HttpStatus.MULTI_STATUS, null);
+        }
+    }
+
     // The game server's own event log, newest first
     @GetMapping("/api/v1/admin/gameserver/log")
     public ResponseEntity<Object> log(@RequestParam(required = false) Integer count) {

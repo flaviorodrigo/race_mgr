@@ -1,0 +1,674 @@
+{
+  "result" : "ok",
+  "response" : {
+    "description" : "Gameplay attributes associated with a session",
+    "list" : [
+      {
+        "name" : "ServerControlsSetup",
+        "type" : "int8",
+        "access" : "ReadWrite",
+        "description" : "Does the server control the game's setup? If yes, the host's lobby settings will be disabled. Set automatically from the server's settings, can't be modified by HTTP or Lua APIs."
+      },
+      {
+        "name" : "ServerControlsTrack",
+        "type" : "int8",
+        "access" : "ReadWrite",
+        "description" : "Does the server control the track selection? If yes, everyone's track selection will be disabled."
+      },
+      {
+        "name" : "ServerControlsVehicleClass",
+        "type" : "int8",
+        "access" : "ReadWrite",
+        "description" : "Does the server control the vehicle class selection? If yes, everyone's vehicle selection will be restricted to vehicles from class VehicleClassId, any attempts to change to another class via the garage will not work. Should be always combined with the FORCE_SAME_VEHICLE_CLASS session flag."
+      },
+      {
+        "name" : "ServerControlsVehicle",
+        "type" : "int8",
+        "access" : "ReadWrite",
+        "description" : "Does the server control the vehicle selection? If yes, everyone's vehicle selection will be restricted to vehicle VehicleModelId. Should be always combined with the FORCE_IDENTICAL_VEHICLE session flag."
+      },
+      {
+        "name" : "GridSize",
+        "type" : "int8",
+        "access" : "ReadWrite",
+        "description" : "Total maximum grid size, including AI participants. Can be modified only for the 'next session' and can never be larger than the maximum session size set in the server config."
+      },
+      {
+        "name" : "GridLayout",
+        "type" : "int8",
+        "access" : "ReadWrite",
+        "description" : "Defines how players are distributed over the grid. Can be modified only for the 'next session'. Use (position+10) to set exact position of admin player. Use enum value for other cases. The enum values are available also via HTTP API at /api/list/enums/grid_positions or in Lua global tables lists.enums.grid_positions, GridPositions and value_to_grid_positions."
+      },
+      {
+        "name" : "MaxPlayers",
+        "type" : "int8",
+        "access" : "ReadWrite",
+        "description" : "Maximum number of players. Can't be higher than GridSize, but can be lower and then the extra slots will be reserved for AI vehicles. Can be modified only for the 'next session'."
+      },
+      {
+        "name" : "OpponentDifficulty",
+        "type" : "int8",
+        "access" : "ReadWrite",
+        "description" : "Difficulty of AI participants. Valid values in range 0-100."
+      },
+      {
+        "name" : "Flags",
+        "type" : "int32",
+        "access" : "ReadWrite",
+        "description" : "Session setup flags. The flag values are available also via HTTP API at /api/list/flags/session or in Lua global tables lists.flags.session, SessionFlags and value_to_session_flag."
+      },
+      {
+        "name" : "Privacy",
+        "type" : "int8",
+        "access" : "ReadOnly",
+        "description" : "Session privacy, defined when the session is created. Usually server-hosted sessions will be public and use password-protection or blacklists/whitelists to control who can join them. The possible values are 0 to 2, with 0 meaning public, 1 for friends only and 2 for private."
+      },
+      {
+        "name" : "AutoAdvanceSession",
+        "type" : "int8",
+        "access" : "ReadWrite",
+        "description" : "When enabled, Sessions will advance from the end leaderboard automatically if there is no input from the host. (0) disabled (1) enabled"
+      },
+      {
+        "name" : "DamageType",
+        "type" : "int8",
+        "access" : "ReadWrite",
+        "description" : "Damage type. The enum values are available also via HTTP API at /api/list/enums/damage or in Lua global tables lists.enums.damage, Damage and value_to_damage."
+      },
+      {
+        "name" : "DamageScale",
+        "type" : "int8",
+        "access" : "ReadWrite",
+        "description" : "Scales the forces required to damage/detach parts when vehicle damage is enabled. The enum values are available also via HTTP API at /api/list/enums/damage_scale or in Lua global tables lists.enums.damage_scale, DamageScale and value_to_damage_scale."
+      },
+      {
+        "name" : "DamageRandomFailures",
+        "type" : "int8",
+        "access" : "ReadWrite",
+        "description" : "Enables/disables/timescales random mechanical failures. he enum values are available also via HTTP API at /api/list/enums/random_failures or in Lua global tables lists.enums.random_failures, Damage and value_to_random_failure"
+      },
+      {
+        "name" : "TireWearType",
+        "type" : "int8",
+        "access" : "ReadWrite",
+        "description" : "Tire wear type. The enum values are available also via HTTP API at /api/list/enums/tire_wear or in Lua global tables lists.enums.tire_wear, TireWear and value_to_tire_wear."
+      },
+      {
+        "name" : "FuelUsageType",
+        "type" : "int8",
+        "access" : "ReadWrite",
+        "description" : "Fuel usage type. The enum values are available also via HTTP API at /api/list/enums/fuel_usage or in Lua global tables lists.enums.fuel_usage, FuelUsage and value_to_fuel_usage."
+      },
+      {
+        "name" : "PenaltiesType",
+        "type" : "int8",
+        "access" : "ReadWrite",
+        "description" : "Penalties type. The enum values are available also via HTTP API at /api/list/enums/penalties or in Lua global tables lists.enums.penalties, Penalties and value_to_penalties."
+      },
+      {
+        "name" : "PitWhiteLinePenalty",
+        "type" : "int8",
+        "access" : "ReadWrite",
+        "description" : "White line penalty on pit exit. Set 1 to enable."
+      },
+      {
+        "name" : "DriveThroughPenalty",
+        "type" : "int8",
+        "access" : "ReadWrite",
+        "description" : "Drive through penalty. Set 1 to enable."
+      },
+      {
+        "name" : "AllowedCutsBeforePenalty",
+        "type" : "int8",
+        "access" : "ReadWrite",
+        "description" : "The number of times a driver will be warned for cutting the track before a drive-through penalty (or time penalty if drive-throughs are disabled) is issued. 0 to disable cut penalties, valid range supported by game is 1 to 50."
+      },
+      {
+        "name" : "PitSpeedLimit",
+        "type" : "int8",
+        "access" : "ReadWrite",
+        "description" : "The pit speed limit in KPH. Values between 40 and 200 in steps of 5 are valid (rounded down when needed). Unset, 0 or < 40 will result in track default limit."
+      },
+      {
+        "name" : "ManualPitStops",
+        "type" : "int8",
+        "access" : "ReadWrite",
+        "description" : "TODO: rename to PitControl. Control mode while driving through pits. The enum values are available also via HTTP API at /api/list/enums/pit_control or in Lua global tables lists.enums.pit_control, PitControl and value_to_pit_control."
+      },
+      {
+        "name" : "ManualRollingStarts",
+        "type" : "int8",
+        "access" : "ReadWrite",
+        "description" : "Does the admin set manual rolling starts.  Set 1 to enable."
+      },
+      {
+        "name" : "AllowedViews",
+        "type" : "int8",
+        "access" : "ReadWrite",
+        "description" : "Allowed cameras. Only Any (0) and CockpitHelmet (2) are supported by the game, writes of other values will be ignored. The enum values are available also via HTTP API at /api/list/enums/allowed_view or in Lua global tables lists.enums.allowed_view, AllowedView and value_to_allowed_view."
+      },
+      {
+        "name" : "FullCourseYellows",
+        "type" : "int8",
+        "access" : "ReadWrite",
+        "description" : "Full Course Yellows. (0) disabled (1) enabled"
+      },
+      {
+        "name" : "TrackId",
+        "type" : "int32",
+        "access" : "ReadWrite",
+        "description" : "Track id. Players will be able to change this unless ServerControlsTrack is set to non-zero. The list of all valid tracks is available also via HTTP API at /api/list/tracks or in Lua global tables lists.tracks, id_to_track and name_to_track."
+      },
+      {
+        "name" : "VehicleClassId",
+        "type" : "int32",
+        "access" : "ReadWrite",
+        "description" : "Vehicle class id, used when forcing vehicle class (session flag FORCE_SAME_VEHICLE_CLASS is set). If controlled from the server also set attribute ServerControlsVehicleClass. Latest class list is available also via HTTP API at /api/list/vehicle_classes and in Lua global tables lists.vehicle_classes, id_to_vehicle_class and name_to_vehicle_class."
+      },
+      {
+        "name" : "MultiClassSlots",
+        "type" : "int8",
+        "access" : "ReadWrite",
+        "description" : "Number of additional vehicle classes (up to 3), used when Multi-class is forced (session flag FORCE_MULTI_VEHICLE_CLASS is set). If controlled from the server also set attribute ServerControlsVehicleClass. Number between 1 and 3 to specify ids from predefined templates in MultiClassSlotN."
+      },
+      {
+        "name" : "MultiClassSlot1",
+        "type" : "int32",
+        "access" : "ReadWrite",
+        "description" : "Additional vehicle class id, slot 1. Latest class list is available via HTTP API at /api/list/vehicle_classes and in Lua global tables lists.vehicle_classes, id_to_vehicle_class and name_to_vehicle_class."
+      },
+      {
+        "name" : "MultiClassSlot2",
+        "type" : "int32",
+        "access" : "ReadWrite",
+        "description" : "Additional vehicle class id, slot 2. Latest class list is available via HTTP API at /api/list/vehicle_classes and in Lua global tables lists.vehicle_classes, id_to_vehicle_class and name_to_vehicle_class."
+      },
+      {
+        "name" : "MultiClassSlot3",
+        "type" : "int32",
+        "access" : "ReadWrite",
+        "description" : "Additional vehicle class id, slot 3. Latest class list is available via HTTP API at /api/list/vehicle_classes and in Lua global tables lists.vehicle_classes, id_to_vehicle_class and name_to_vehicle_class."
+      },
+      {
+        "name" : "MultiClassSlot4",
+        "type" : "int32",
+        "access" : "ReadWrite",
+        "description" : "Additional vehicle class id, slot 4. Latest class list is available via HTTP API at /api/list/vehicle_classes and in Lua global tables lists.vehicle_classes, id_to_vehicle_class and name_to_vehicle_class."
+      },
+      {
+        "name" : "MultiClassSlot5",
+        "type" : "int32",
+        "access" : "ReadWrite",
+        "description" : "Additional vehicle class id, slot 5. Latest class list is available via HTTP API at /api/list/vehicle_classes and in Lua global tables lists.vehicle_classes, id_to_vehicle_class and name_to_vehicle_class."
+      },
+      {
+        "name" : "MultiClassSlot6",
+        "type" : "int32",
+        "access" : "ReadWrite",
+        "description" : "Additional vehicle class id, slot 6. Latest class list is available via HTTP API at /api/list/vehicle_classes and in Lua global tables lists.vehicle_classes, id_to_vehicle_class and name_to_vehicle_class."
+      },
+      {
+        "name" : "MultiClassSlot7",
+        "type" : "int32",
+        "access" : "ReadWrite",
+        "description" : "Additional vehicle class id, slot 7. Latest class list is available via HTTP API at /api/list/vehicle_classes and in Lua global tables lists.vehicle_classes, id_to_vehicle_class and name_to_vehicle_class."
+      },
+      {
+        "name" : "MultiClassSlot8",
+        "type" : "int32",
+        "access" : "ReadWrite",
+        "description" : "Additional vehicle class id, slot 8. Latest class list is available via HTTP API at /api/list/vehicle_classes and in Lua global tables lists.vehicle_classes, id_to_vehicle_class and name_to_vehicle_class."
+      },
+      {
+        "name" : "MultiClassSlot9",
+        "type" : "int32",
+        "access" : "ReadWrite",
+        "description" : "Additional vehicle class id, slot 9. Latest class list is available via HTTP API at /api/list/vehicle_classes and in Lua global tables lists.vehicle_classes, id_to_vehicle_class and name_to_vehicle_class."
+      },
+      {
+        "name" : "VehicleModelId",
+        "type" : "int32",
+        "access" : "ReadWrite",
+        "description" : "Vehicle model id, used when forcing identical vehicles (session flag FORCE_IDENTICAL_VEHICLES is set). If controlled from the server also set attribute ServerControlsVehicle. Latest vehicle list is available also via HTTP API at /api/list/vehicles and in Lua global tables lists.vehicles, id_to_vehicle and name_to_vehicle."
+      },
+      {
+        "name" : "GameMode",
+        "type" : "int32",
+        "access" : "ReadOnly",
+        "description" : "Game mode hash. Multiplayer sessions always use -1958878043 or 'MP_RaceWeekend'."
+      },
+      {
+        "name" : "MinimumOnlineRank",
+        "type" : "int32",
+        "access" : "ReadWrite",
+        "description" : "Minimum online safety rank. The enum values are available also via HTTP API at /api/list/enums/online_rep or in Lua global tables lists.enums.online_rep, OnlineRep and value_to_online_rep."
+      },
+      {
+        "name" : "MinimumOnlineStrength",
+        "type" : "int32",
+        "access" : "ReadWrite",
+        "description" : "Minimum online strength. Valid values are in range from 100 to 5000."
+      },
+      {
+        "name" : "Latitude",
+        "type" : "int32",
+        "access" : "ReadOnly",
+        "description" : "Track's latitude, in degrees multiplied by 1000 (so 180000 corresponds to 180 degrees)."
+      },
+      {
+        "name" : "Longitude",
+        "type" : "int32",
+        "access" : "ReadOnly",
+        "description" : "Track's longitude, in degrees multiplied by 1000."
+      },
+      {
+        "name" : "Altitude",
+        "type" : "int32",
+        "access" : "ReadOnly",
+        "description" : "Track's base altitude, in millimeters."
+      },
+      {
+        "name" : "PracticeLength",
+        "type" : "int16",
+        "access" : "ReadWrite",
+        "description" : "Length of practice session in minutes."
+      },
+      {
+        "name" : "PracticeDateHour",
+        "type" : "int8",
+        "access" : "ReadWrite",
+        "description" : "Starting practice session date - hour of day."
+      },
+      {
+        "name" : "PracticeDateProgression",
+        "type" : "int8",
+        "access" : "ReadWrite",
+        "description" : "Practice session date/time progression multiplier. Only some values between 1 and 60 are valid, the game might change the requested value to closest valid one."
+      },
+      {
+        "name" : "PracticeWeatherProgression",
+        "type" : "int8",
+        "access" : "ReadWrite",
+        "description" : "Practice session time-based forecast progression multiplier. Only some values between 1 and 60 are valid, the game might change the requested value to closest valid one."
+      },
+      {
+        "name" : "PracticeWeatherSlots",
+        "type" : "int8",
+        "access" : "ReadWrite",
+        "description" : "Number of practice session weather slots in use. Set to 0 to use real weather, and to a number between 1 and 4 to interpolate between predefined templates in WeatherSlotN."
+      },
+      {
+        "name" : "PracticeWeatherSlot1",
+        "type" : "int32",
+        "access" : "ReadWrite",
+        "description" : "Fixed practice session weather, slot 1. The enum values are available via HTTP API at /api/list/enums/weather or in Lua global tables lists.enums.weather, Weather and value_to_weather."
+      },
+      {
+        "name" : "PracticeWeatherSlot2",
+        "type" : "int32",
+        "access" : "ReadWrite",
+        "description" : "Fixed practice session weather, slot 2. The enum values are available via HTTP API at /api/list/enums/weather or in Lua global tables lists.enums.weather, Weather and value_to_weather."
+      },
+      {
+        "name" : "PracticeWeatherSlot3",
+        "type" : "int32",
+        "access" : "ReadWrite",
+        "description" : "Fixed practice session weather, slot 3. The enum values are available via HTTP API at /api/list/enums/weather or in Lua global tables lists.enums.weather, Weather and value_to_weather."
+      },
+      {
+        "name" : "PracticeWeatherSlot4",
+        "type" : "int32",
+        "access" : "ReadWrite",
+        "description" : "Fixed practice session weather, slot 4. The enum values are available via HTTP API at /api/list/enums/weather or in Lua global tables lists.enums.weather, Weather and value_to_weather."
+      },
+      {
+        "name" : "PracticeLiveTrackPreset",
+        "type" : "int32",
+        "access" : "ReadWrite",
+        "description" : "Starting Live Track preset for the qualifying session. The enum values are available via HTTP API at /api/list/enums/weather"
+      },
+      {
+        "name" : "QualifyLength",
+        "type" : "int16",
+        "access" : "ReadWrite",
+        "description" : "Length of qualification session in minutes."
+      },
+      {
+        "name" : "QualifyDateHour",
+        "type" : "int8",
+        "access" : "ReadWrite",
+        "description" : "Starting qualifying session date - hour of day."
+      },
+      {
+        "name" : "QualifyDateProgression",
+        "type" : "int8",
+        "access" : "ReadWrite",
+        "description" : "Qualifying session date/time progression multiplier. Only some values between 1 and 60 are valid, the game might change the requested value to closest valid one."
+      },
+      {
+        "name" : "QualifyWeatherProgression",
+        "type" : "int8",
+        "access" : "ReadWrite",
+        "description" : "Qualifying session time-based forecast progression multiplier. Only some values between 1 and 60 are valid, the game might change the requested value to closest valid one."
+      },
+      {
+        "name" : "QualifyWeatherSlots",
+        "type" : "int8",
+        "access" : "ReadWrite",
+        "description" : "Number of qualifying session weather slots in use. Set to 0 to use real weather, and to a number between 1 and 4 to interpolate between predefined templates in WeatherSlotN."
+      },
+      {
+        "name" : "QualifyWeatherSlot1",
+        "type" : "int32",
+        "access" : "ReadWrite",
+        "description" : "Fixed qualifying session weather, slot 1. The enum values are available via HTTP API at /api/list/enums/weather or in Lua global tables lists.enums.weather, Weather and value_to_weather."
+      },
+      {
+        "name" : "QualifyWeatherSlot2",
+        "type" : "int32",
+        "access" : "ReadWrite",
+        "description" : "Fixed qualifying session weather, slot 2. The enum values are available via HTTP API at /api/list/enums/weather or in Lua global tables lists.enums.weather, Weather and value_to_weather."
+      },
+      {
+        "name" : "QualifyWeatherSlot3",
+        "type" : "int32",
+        "access" : "ReadWrite",
+        "description" : "Fixed qualifying session weather, slot 3. The enum values are available via HTTP API at /api/list/enums/weather or in Lua global tables lists.enums.weather, Weather and value_to_weather."
+      },
+      {
+        "name" : "QualifyWeatherSlot4",
+        "type" : "int32",
+        "access" : "ReadWrite",
+        "description" : "Fixed qualifying session weather, slot 4. The enum values are available via HTTP API at /api/list/enums/weather or in Lua global tables lists.enums.weather, Weather and value_to_weather."
+      },
+      {
+        "name" : "QualifyLiveTrackPreset",
+        "type" : "int32",
+        "access" : "ReadWrite",
+        "description" : "Starting Live Track preset for the qualifying session."
+      },
+      {
+        "name" : "QualifyPrivateSession",
+        "type" : "int8",
+        "access" : "ReadWrite",
+        "description" : "Should qualifying session be private. The enum values are available via HTTP API at /api/list/enums/privatesession or in Lua global tables lists.enums.privatesession, Weather and value_to_privatesession."
+      },
+      {
+        "name" : "QualifyStintLimit",
+        "type" : "int8",
+        "access" : "ReadWrite",
+        "description" : "Number of times drivers can leave the pits. (0) disabled, (1-15) number stints allowed"
+      },
+      {
+        "name" : "QualifyLapLimit",
+        "type" : "int8",
+        "access" : "ReadWrite",
+        "description" : "Max number of laps drivers may complete in the session inc. in/out laps. (0) disabled, (3-15) the allowed lap count. NOTE: When QualifyStintLimit > 0 this limit applies per stint"
+      },
+      {
+        "name" : "RaceLength",
+        "type" : "int16",
+        "access" : "ReadWrite",
+        "description" : "Race 1 length in lap count."
+      },
+      {
+        "name" : "RaceExtraLap",
+        "type" : "int8",
+        "access" : "ReadWrite",
+        "description" : "When enabled an extra full lap will be added to the race distance of timed races. Set to 0/1 to disable/enable."
+      },
+      {
+        "name" : "RaceDateYear",
+        "type" : "int16",
+        "access" : "ReadWrite",
+        "description" : "Starting race date - year."
+      },
+      {
+        "name" : "RaceDateMonth",
+        "type" : "int8",
+        "access" : "ReadWrite",
+        "description" : "Starting race date - month."
+      },
+      {
+        "name" : "RaceDateDay",
+        "type" : "int8",
+        "access" : "ReadWrite",
+        "description" : "Starting race date - day of month."
+      },
+      {
+        "name" : "RaceDateHour",
+        "type" : "int8",
+        "access" : "ReadWrite",
+        "description" : "Starting race date - hour of day."
+      },
+      {
+        "name" : "RaceDateProgression",
+        "type" : "int8",
+        "access" : "ReadWrite",
+        "description" : "Race date/time progression multiplier. Only some values between 1 and 60 are valid, the game might change the requested value to closest valid one."
+      },
+      {
+        "name" : "RaceWeatherProgression",
+        "type" : "int8",
+        "access" : "ReadWrite",
+        "description" : "Race session time-based forecast progression multiplier. Only some values between 1 and 60 are valid, the game might change the requested value to closest valid one."
+      },
+      {
+        "name" : "RaceWeatherSlots",
+        "type" : "int8",
+        "access" : "ReadWrite",
+        "description" : "Number of race weather slots in use. Set to 0 to use real weather, and to a number between 1 and 4 to interpolate between predefined templates in WeatherSlotN."
+      },
+      {
+        "name" : "RaceWeatherSlot1",
+        "type" : "int32",
+        "access" : "ReadWrite",
+        "description" : "Fixed race weather, slot 1. The enum values are available via HTTP API at /api/list/enums/weather or in Lua global tables lists.enums.weather, Weather and value_to_weather."
+      },
+      {
+        "name" : "RaceWeatherSlot2",
+        "type" : "int32",
+        "access" : "ReadWrite",
+        "description" : "Fixed race weather, slot 2. The enum values are available via HTTP API at /api/list/enums/weather or in Lua global tables lists.enums.weather, Weather and value_to_weather."
+      },
+      {
+        "name" : "RaceWeatherSlot3",
+        "type" : "int32",
+        "access" : "ReadWrite",
+        "description" : "Fixed race weather, slot 3. The enum values are available via HTTP API at /api/list/enums/weather or in Lua global tables lists.enums.weather, Weather and value_to_weather."
+      },
+      {
+        "name" : "RaceWeatherSlot4",
+        "type" : "int32",
+        "access" : "ReadWrite",
+        "description" : "Fixed race weather, slot 4. The enum values are available via HTTP API at /api/list/enums/weather or in Lua global tables lists.enums.weather, Weather and value_to_weather."
+      },
+      {
+        "name" : "RaceRollingStart",
+        "type" : "int8",
+        "access" : "ReadWrite",
+        "description" : "Race rolling start value. Set 1 to enable."
+      },
+      {
+        "name" : "RaceMandatoryPitStops",
+        "type" : "int8",
+        "access" : "ReadWrite",
+        "description" : "Race mandatory pit stops. Set 1 to enable."
+      },
+      {
+        "name" : "RaceMandatoryPitStopsMinTyres",
+        "type" : "int8",
+        "access" : "ReadWrite",
+        "description" : "Minimum tyres required for a valid mandatory stop. 0-4"
+      },
+      {
+        "name" : "RaceFormationLap",
+        "type" : "int8",
+        "access" : "ReadWrite",
+        "description" : "Race session formation lap. Set 1 to enable. Only valid if Race Rolling Start is enabled."
+      },
+      {
+        "name" : "RaceLiveTrackPreset",
+        "type" : "int32",
+        "access" : "ReadWrite",
+        "description" : "Starting Live Track preset for the race session."
+      },
+      {
+        "name" : "RaceScheduledFullCourseYellow",
+        "type" : "int8",
+        "access" : "ReadWrite",
+        "description" : "If the session should be garaunteed to have an FCY. The enum values are available via HTTP API at /api/list/enums/scheduledfcy or in Lua global tables lists.enums.scheduledfcy, ScheduledFCY and value_to_scheduledfcy"
+      },
+      {
+        "name" : "DisablePitstopRefuelling",
+        "type" : "int8",
+        "access" : "ReadWrite",
+        "description" : "Prevents refuelling during pitstops when set to 1."
+      },
+      {
+        "name" : "SessionState",
+        "type" : "string",
+        "access" : "ReadOnly",
+        "description" : "Multiplayer session state. Valid values are None, Lobby, Loading, Race, PostRace, Returning."
+      },
+      {
+        "name" : "SessionStage",
+        "type" : "string",
+        "access" : "ReadOnly",
+        "description" : "Multiplayer session flow/stage. Valid values are Practice1, Practice2, Qualifying, Warmup, FormationLap, Race1. Race2 might be used if two-race format is implemented in multiplayer."
+      },
+      {
+        "name" : "SessionPhase",
+        "type" : "string",
+        "access" : "ReadOnly",
+        "description" : "Race manager phase. This is relatively internal value used during race startup synchronization. Valid values are PreCountDownSync, PreRace, CountDownWait, CountDown, Green, Invalid."
+      },
+      {
+        "name" : "SessionTimeElapsed",
+        "type" : "int32",
+        "access" : "ReadOnly",
+        "description" : "Time elapsed since the start of the session (this stage), in seconds. Note that this value might currently start counting during loading and otehr transitions, and then reset back to zero when the race really starts."
+      },
+      {
+        "name" : "SessionTimeDuration",
+        "type" : "int32",
+        "access" : "ReadOnly",
+        "description" : "Time elapsed since the start of the session, in seconds."
+      },
+      {
+        "name" : "NumParticipantsValid",
+        "type" : "int32",
+        "access" : "ReadOnly",
+        "description" : "Number of 'valid' race participants, or positions."
+      },
+      {
+        "name" : "NumParticipantsDisqualified",
+        "type" : "int32",
+        "access" : "ReadOnly",
+        "description" : "Number of disqualified participants."
+      },
+      {
+        "name" : "NumParticipantsRetired",
+        "type" : "int32",
+        "access" : "ReadOnly",
+        "description" : "Number of retired participants."
+      },
+      {
+        "name" : "NumParticipantsDNF",
+        "type" : "int32",
+        "access" : "ReadOnly",
+        "description" : "Number of DNF participants."
+      },
+      {
+        "name" : "NumParticipantsFinished",
+        "type" : "int32",
+        "access" : "ReadOnly",
+        "description" : "Number of finished participants."
+      },
+      {
+        "name" : "CurrentYear",
+        "type" : "int16",
+        "access" : "ReadOnly",
+        "description" : "Current race date - year."
+      },
+      {
+        "name" : "CurrentMonth",
+        "type" : "int8",
+        "access" : "ReadOnly",
+        "description" : "Current race date - month."
+      },
+      {
+        "name" : "CurrentDay",
+        "type" : "int8",
+        "access" : "ReadOnly",
+        "description" : "Current race date - day of month."
+      },
+      {
+        "name" : "CurrentHour",
+        "type" : "int8",
+        "access" : "ReadOnly",
+        "description" : "Current race date - hour of day."
+      },
+      {
+        "name" : "CurrentMinute",
+        "type" : "int8",
+        "access" : "ReadOnly",
+        "description" : "Current race date - minutes."
+      },
+      {
+        "name" : "RainDensity",
+        "type" : "int16",
+        "access" : "ReadOnly",
+        "description" : "Rain density, this implies how \"visually\" rainy the weather is. Values between 0 and 1000 are valid."
+      },
+      {
+        "name" : "WetnessOnPath",
+        "type" : "int16",
+        "access" : "ReadOnly",
+        "description" : "Average wetness on path. Values between 0 and 1000 are valid."
+      },
+      {
+        "name" : "WetnessOffPath",
+        "type" : "int16",
+        "access" : "ReadOnly",
+        "description" : "Average wetness off path. Values between 0 and 1000 are valid."
+      },
+      {
+        "name" : "WetnessAverage",
+        "type" : "int16",
+        "access" : "ReadOnly",
+        "description" : "Overall average wetness on track. Values between 0 and 1000 are valid."
+      },
+      {
+        "name" : "WetnessPredictedMax",
+        "type" : "int16",
+        "access" : "ReadOnly",
+        "description" : "Predicted maximum wetness on track, if available."
+      },
+      {
+        "name" : "WetnessMaxLevel",
+        "type" : "int16",
+        "access" : "ReadOnly",
+        "description" : "Maximum water level, this implies how \"physically\" rainy the weather is. Values between 0 and 1000 are valid."
+      },
+      {
+        "name" : "TemperatureAmbient",
+        "type" : "int32",
+        "access" : "ReadOnly",
+        "description" : "Ambient temperature, in deg Celsius multiplied by 1000 (so 37000 is 37 degrees Celsius)."
+      },
+      {
+        "name" : "TemperatureTrack",
+        "type" : "int32",
+        "access" : "ReadOnly",
+        "description" : "Track temperature, in deg Celsius multiplied by 1000."
+      },
+      {
+        "name" : "AirPressure",
+        "type" : "int32",
+        "access" : "ReadOnly",
+        "description" : "Air pressure."
+      }
+    ]
+  }
+}

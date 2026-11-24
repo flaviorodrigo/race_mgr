@@ -528,6 +528,64 @@ scenario('the rotation addon\'s own live file (comments, bare keys, a car class 
   assert.deepEqual([config.rotation[1].RaceWeatherSlots, config.rotation[1].RaceWeatherSlot3, config.rotation[1].RaceLength], [4, 'Storm', 8]);
 });
 
+scenario('the rotation builder offers every setting the game server describes, for the default setup and each round', async () => {
+  await go('/manageserver');
+  await openSection('Rotation builder');
+  await setInput(await labelled('Rotation name'), 'Full setup');
+  const builder = '.MuiAccordionDetails-root';
+  const openGroup = async title => {
+    // Inside the round dialog when it is open, otherwise in the builder
+    await state.page.evaluate(t => [...document.querySelectorAll(document.querySelector('[role="dialog"]')
+      ? '[role="dialog"] .MuiAccordionSummary-root' : '.MuiAccordionDetails-root .MuiAccordionSummary-root')]
+      .find(b => b.innerText.trim().startsWith(t))?.click(), title);
+    await sleep(500);
+  };
+  const pick = async (selector, option) => {
+    await state.page.click(selector);
+    await state.page.waitForSelector('[role="listbox"]');
+    await state.page.evaluate(o => [...document.querySelectorAll('[role="option"]')].find(x => x.innerText.trim() === o)?.click(), option);
+    await sleep(300);
+  };
+
+  // All the groups are there, drawn from the server's own description
+  const groups = await state.page.$$eval(`${builder} .MuiAccordionSummary-root`, g => g.map(x => x.innerText.trim().replace(/ \(\d+ set\)$/, '')));
+  assert.deepEqual(groups, ['Session', 'Cars and grid', 'Rules and realism', 'Start and pit stops', 'Practice weather and time', 'Qualifying weather and time', 'Race weather and time']);
+
+  await openGroup('Rules and realism');
+  await pick('#default-DamageType', 'Full');
+  await state.page.evaluate(() => [...document.querySelectorAll('label')].find(l => l.innerText.trim() === 'Pit speed limiter')?.click());
+  await openGroup('Cars and grid');
+  await setInput(await state.page.$('#default-GridSize'), '20');
+  await openGroup('Start and pit stops');
+  await pick('#default-RaceMandatoryPitStops', 'On');
+
+  // Round 1 at Brands Hatch with its own race length; round 2 at the test track
+  await pick('[aria-label="Round 1"] [role="combobox"]', 'Brands Hatch GP');
+  await clickText('button', 'round settings');
+  await state.page.waitForSelector('[role="dialog"]');
+  await openGroup('Session');
+  await setInput(await state.page.$('#round0-RaceLength'), '8');
+  await clickText('[role="dialog"] button', 'done');
+  await sleep(300);
+  assert.ok(await clickText('button', 'round settings (1)'), 'the round shows it changes one setting');
+  await clickText('[role="dialog"] button', 'done');
+  await sleep(300);
+  await clickText('button', 'add round');
+  await sleep(300);
+  await pick('[aria-label="Round 2"] [role="combobox"]', 'Test Track');
+
+  await clickText('button', 'save rotation');
+  await sleep(1500);
+  const saved = await state.page.evaluate(async () => (await (await fetch('/api/v1/race/rotation?page=0&limit=100')).json()).data.content.find(r => r.name === 'Full setup'));
+  assert.ok(saved, 'saved');
+  const config = await state.page.evaluate(async id => (await (await fetch(`/api/v1/race/rotation/${id}`)).json()).data.config, saved.id);
+  assert.equal(config.defaultConfig.DamageType, 'FULL');
+  assert.ok(config.defaultConfig.Flags.split(',').includes('PIT_SPEED_LIMITER'));
+  assert.equal(config.defaultConfig.GridSize, 20);
+  assert.equal(config.defaultConfig.RaceMandatoryPitStops, 1);
+  assert.deepEqual(config.rotation, [{TrackId: 'Brands_Hatch_GP', RaceLength: 8}, {TrackId: 'Test_Track'}]);
+});
+
 // Not a test: with E2E_SCREENSHOTS=<folder> the app, filled with the sample races, is photographed for the README
 scenario('screenshots for the documentation (only when E2E_SCREENSHOTS is set)', async () => {
   const folder = process.env.E2E_SCREENSHOTS;

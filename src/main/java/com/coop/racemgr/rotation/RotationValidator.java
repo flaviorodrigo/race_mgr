@@ -36,6 +36,11 @@ public final class RotationValidator {
             "RaceRollingStart", "RaceMandatoryPitStops", "RaceMandatoryPitStopsMinTyres", "RaceFormationLap", "RaceLiveTrackPreset",
             "RaceScheduledFullCourseYellow", "DisablePitstopRefuelling");
 
+    /** The settings a rotation may use. */
+    public static Set<String> allowedSettings() {
+        return SESSION_ATTRIBUTES;
+    }
+
     private static final Set<String> DEFAULT_KEYS = SESSION_ATTRIBUTES;
     // A rotation entry may change any of them for its round (the addon applies it on top of the default setup)
     private static final Set<String> ENTRY_KEYS = SESSION_ATTRIBUTES;
