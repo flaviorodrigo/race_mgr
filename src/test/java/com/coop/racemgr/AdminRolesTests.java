@@ -290,4 +290,19 @@ class AdminRolesTests {
         assertThat(login("steve", GOOD_PASSWORD)).isNull();
         assertThat(login("admin", OWNER_PASSWORD)).isNotNull();
     }
+
+    @Test
+    void csrfCookieIsStrictAndSecureOverHttpsWithHsts() throws Exception {
+        var plain = mvc.perform(get("/api")).andReturn().getResponse();
+        Cookie plainCookie = plain.getCookie("XSRF-TOKEN");
+        assertThat(plainCookie.getAttribute("SameSite")).isEqualTo("Strict");
+        assertThat(plainCookie.getSecure()).isFalse();
+        assertThat(plain.getHeader("Strict-Transport-Security")).isNull();
+
+        var tls = mvc.perform(get("/api").secure(true)).andReturn().getResponse();
+        Cookie tlsCookie = tls.getCookie("XSRF-TOKEN");
+        assertThat(tlsCookie.getAttribute("SameSite")).isEqualTo("Strict");
+        assertThat(tlsCookie.getSecure()).isTrue();
+        assertThat(tls.getHeader("Strict-Transport-Security")).isEqualTo("max-age=31536000");
+    }
 }

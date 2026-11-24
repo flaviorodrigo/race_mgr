@@ -262,6 +262,13 @@ scenario('visitors can look but not administer', async () => {
   });
   // Anything that is not a listed public route is refused
   assert.deepEqual(statuses, {audit: 401, log: 401, ban: 401, unknown: 401});
+
+  // The CSRF cookie is SameSite=Strict on the real server too (plain HTTP here, so not Secure and no HSTS)
+  const api = await fetch(`${state.base}/api`);
+  const xsrf = api.headers.getSetCookie().find(c => c.startsWith('XSRF-TOKEN='));
+  assert.match(xsrf, /SameSite=Strict/i);
+  assert.doesNotMatch(xsrf, /Secure/i);
+  assert.equal(api.headers.get('strict-transport-security'), null);
 });
 
 scenario('an admin can sign in, and a wrong password is refused', async () => {

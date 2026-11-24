@@ -4,6 +4,9 @@ Notable changes, newest first. This file starts with the security and modernisat
 
 ## Unreleased
 
+### Security
+- The CSRF cookie is `SameSite=Strict`, and `Secure` with `RM_COOKIE_SECURE=true`, like the session cookies; that setting also sends Strict-Transport-Security for the Race Manager host name.
+
 ### Added
 - Restart a game server that runs in its own container from *Race day*, optionally starting its rotation from round 1: Race Manager writes a signal file into the shared folder and `docker/game-server/entrypoint.sh` restarts the server (`RM_GAMESERVER_RESTART=signal`).
 - Saved rotations can be changed in place (*Save changes*), copied (*Save as new*) or deleted from the Rotation builder; the active rotation can't be deleted.

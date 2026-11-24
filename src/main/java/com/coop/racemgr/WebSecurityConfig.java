@@ -2,6 +2,7 @@ package com.coop.racemgr;
 
 import com.coop.racemgr.filter.JwtRequestFilter;
 import com.coop.racemgr.security.JwtAuthenticationEntryPoint;
+import com.coop.racemgr.security.SessionCookies;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -58,7 +59,7 @@ public class WebSecurityConfig {
             // The SPA reads the XSRF-TOKEN cookie and echoes it in the X-XSRF-TOKEN header, so the
             // plain (non-XOR masked) request handler is used.
             .csrf(csrf -> csrf
-                .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+                .csrfTokenRepository(csrfTokenRepository())
                 .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler()))
             .authorizeHttpRequests(auth -> auth
                 // Managing the other admins: the owner only
@@ -91,7 +92,14 @@ public class WebSecurityConfig {
                     + "img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; "
                     + "base-uri 'self'; form-action 'self'; frame-ancestors 'none'"))
                 .referrerPolicy(referrer -> referrer.policy(
-                    org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter.ReferrerPolicy.SAME_ORIGIN)))
+                    org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter.ReferrerPolicy.SAME_ORIGIN))
+                // HSTS on HTTPS requests, and on every request behind a TLS proxy (RM_COOKIE_SECURE=true).
+                // Browsers ignore it over plain HTTP, so an SSH tunnel to http://localhost keeps working.
+                // Only this host name: other apps on the same domain are left alone.
+                .httpStrictTransportSecurity(hsts -> hsts
+                    .requestMatcher(request -> request.isSecure() || SessionCookies.httpsOnly())
+                    .includeSubDomains(false)
+                    .maxAgeInSeconds(31536000)))
             .exceptionHandling(e -> e
                 .authenticationEntryPoint(jwtAuthenticationEntryPoint)
                 // Signed in, but the role isn't enough: say so in the API's usual shape
@@ -112,6 +120,20 @@ public class WebSecurityConfig {
             .addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
+    }
+
+    // The UI must read XSRF-TOKEN, so it isn't HttpOnly. SameSite=Strict, and Secure on HTTPS or
+    // behind a TLS proxy (RM_COOKIE_SECURE=true), the same as the session cookies.
+    static CookieCsrfTokenRepository csrfTokenRepository() {
+        CookieCsrfTokenRepository repository = CookieCsrfTokenRepository.withHttpOnlyFalse();
+        boolean httpsOnly = SessionCookies.httpsOnly();
+        repository.setCookieCustomizer(cookie -> {
+            cookie.sameSite("Strict");
+            if (httpsOnly) {
+                cookie.secure(true);
+            }
+        });
+        return repository;
     }
 
     private static final class CsrfCookieFilter extends OncePerRequestFilter {

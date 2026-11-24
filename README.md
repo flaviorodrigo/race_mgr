@@ -170,7 +170,7 @@ Tested only on paper so far: nothing here has been run on a Synology yet. It nee
    If your game server keeps `server.cfg` outside its folder and mounts it on its own (a line like `- /volume1/docker/ams2-server/server.cfg:/home/steam/ams2_server/server.cfg` in its compose file), the copy inside the folder is just an empty placeholder: uncomment the matching `server.cfg` line in Race Manager's compose file so it edits the real one.
 4. Container Manager → **Project** → Create, pick that folder and the compose file. It pulls the images and starts Race Manager and MongoDB. Race Manager listens on the NAS's `127.0.0.1:8080`.
 5. Race Manager reaches the game server's API at `127.0.0.1:9000` because the compose file uses the host network; that works when the game server container uses the host network too. If it doesn't, set `RM_GAMESERVER_HOST` to the NAS address and give it the API user and password (`RM_GAMESERVER_USER` / `RM_GAMESERVER_PASSWORD` in the compose file).
-6. For friends, use DSM's reverse proxy (Control Panel → Login Portal → Advanced → Reverse Proxy) to give `localhost:8080` an HTTPS name, and set `RM_COOKIE_SECURE=true`.
+6. For friends, use DSM's reverse proxy (Control Panel → Login Portal → Advanced → Reverse Proxy) to give `localhost:18080` (your `RM_PORT`) an HTTPS name, and set `RM_COOKIE_SECURE=true`.
 7. Back up MongoDB regularly with `docker/backup-mongo.sh` from a Task Scheduler job (run it as root; first `export COMPOSE_FILE=docker/docker-compose.external-server.yml`).
 
 ## Admin tools
@@ -273,7 +273,7 @@ When using the installer .exe the required Windows environment variables will be
 - `RM_STATS_SOURCE` (optional): `ams2_stats` to read the `ams2_stats` addon's file instead of `sms_stats` (see Sector times). `RM_STATS_TIMEZONE` (optional): the time zone of the game server's clock, e.g. `Europe/London`.  
 - `RM_DISCORD_WEBHOOK_URL` (optional): a Discord webhook for race and server notifications (see Discord notifications).  
 - `RM_ADMIN_PASSWORD_RESET` (optional): `true` for one start to discard a password changed in the UI.  
-- `RM_COOKIE_SECURE` (optional): Set to `true` when a TLS proxy in front connects to Race Manager over plain HTTP, so the session cookies are marked `Secure`.  
+- `RM_COOKIE_SECURE` (optional): Set to `true` when a TLS proxy in front connects to Race Manager over plain HTTP, so the session and CSRF cookies are marked `Secure` and browsers are told to use HTTPS only for this host name (Strict-Transport-Security, one year, without subdomains). Recreate the container (Container Manager: *Build*) after changing it; a restart keeps the old value.  
 - `RM_BIND_ADDRESS` (optional): Address to listen on, default `127.0.0.1`. `RM_PORT` (optional) changes the port, default `8080`.  
 - `RM_JWT_SECRET`: This is used as part of user authentication. It must be a random string of at least 32 characters (64 recommended) that is unique to each installation. Generate it locally (e.g. `openssl rand -hex 32`), not with an online tool. Admin logins last 12 hours by default; set `RM_JWT_VALIDITY_HOURS` to change that. After 5 failed logins from one address, further attempts are refused for 15 minutes. We recommend using [this tool](http://www.unit-conversion.info/texttools/random-string-generator/) to generate one.  
   

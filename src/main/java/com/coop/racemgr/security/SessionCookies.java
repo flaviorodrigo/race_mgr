@@ -41,11 +41,18 @@ public final class SessionCookies {
         return null;
     }
 
-    // "Secure" whenever this request arrived over TLS. Behind a TLS proxy that connects over plain
-    // HTTP, set RM_COOKIE_SECURE=true so browsers only ever send the cookies over HTTPS.
+    /**
+     * RM_COOKIE_SECURE=true: Race Manager sits behind a TLS proxy that connects over plain HTTP, so
+     * treat every request as HTTPS for cookies (Secure) and send Strict-Transport-Security.
+     */
+    public static boolean httpsOnly() {
+        return "true".equalsIgnoreCase(System.getenv("RM_COOKIE_SECURE"));
+    }
+
+    // "Secure" whenever this request arrived over TLS, or always with RM_COOKIE_SECURE=true.
     private static void write(HttpServletRequest request, HttpServletResponse response, String name, String value,
                               boolean httpOnly, Duration maxAge) {
-        boolean secure = request.isSecure() || "true".equalsIgnoreCase(System.getenv("RM_COOKIE_SECURE"));
+        boolean secure = request.isSecure() || httpsOnly();
         ResponseCookie cookie = ResponseCookie.from(name, value)
                 .httpOnly(httpOnly)
                 .secure(secure)
