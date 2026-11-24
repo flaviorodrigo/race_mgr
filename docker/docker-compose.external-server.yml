@@ -44,6 +44,16 @@ services:
       RM_COOKIE_SECURE: ${RM_COOKIE_SECURE:-false}
       # Optional Discord notifications
       RM_DISCORD_WEBHOOK_URL: ${RM_DISCORD_WEBHOOK_URL:-}
+      # Optional "Sign in with Synology" behind docker/docker-compose.sso-proxy.yml (see the README)
+      RM_SSO_ISSUER: ${RM_SSO_ISSUER:-}
+      RM_SSO_CLIENT_ID: ${RM_SSO_CLIENT_ID:-}
+      RM_SSO_ADMINS: ${RM_SSO_ADMINS:-}
+      RM_SSO_STEWARDS: ${RM_SSO_STEWARDS:-}
+      RM_SSO_ADMIN_GROUPS: ${RM_SSO_ADMIN_GROUPS:-}
+      RM_SSO_STEWARD_GROUPS: ${RM_SSO_STEWARD_GROUPS:-}
+    # With Synology sign-in: if the NAS can't reach its own public name (no NAT loopback), send it straight to the NAS
+    # extra_hosts:
+    #   - "yourname.synology.me:192.168.1.10"
     volumes:
       # The game server's install folder: Race Manager reads lua_config/sms_stats_data.json and writes the
       # rotation files under lua/ and lua_config/. Set AMS2_DATA_DIR to where your server keeps them.

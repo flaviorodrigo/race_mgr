@@ -78,8 +78,8 @@ public class WebSecurityConfig {
                 // Everything else under /admin is for admins
                 .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
                 // Public read-only endpoints (also GET /api, which hands out the XSRF token)
-                .requestMatchers(HttpMethod.GET, "/api", "/api/v1/gameserver/**", "/api/v1/config", "/api/v1/race/**").permitAll()
-                .requestMatchers(HttpMethod.POST, "/api/v1/authenticate", "/api/v1/logout").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api", "/api/v1/gameserver/**", "/api/v1/config", "/api/v1/race/**", "/api/v1/sso").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/v1/authenticate", "/api/v1/logout", "/api/v1/sso/login").permitAll()
                 // Anything else under /api is denied, so a new endpoint is private unless listed above
                 .requestMatchers("/api/**").denyAll()
                 // Everything else is the React single page app's static assets

@@ -65,6 +65,9 @@ public class AccountController {
             return ResponseHandler.generateResponse("The new password must be " + MIN_PASSWORD_LENGTH + " to "
                     + MAX_PASSWORD_LENGTH + " characters", HttpStatus.BAD_REQUEST, null);
         }
+        if (authentication.getName().startsWith(com.coop.racemgr.security.SynologySso.PREFIX)) {
+            return ResponseHandler.generateResponse("You signed in with Synology: change your password in DSM", HttpStatus.BAD_REQUEST, null);
+        }
         // Every signed-in person changes their own password
         JwtUserDetailsService.RmUser me;
         try {

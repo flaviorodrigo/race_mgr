@@ -1,0 +1,44 @@
+# "Sign in with Synology" for Race Manager: oauth2-proxy signs people in with the Synology SSO Server (OpenID Connect)
+# in front of Race Manager. DSM's reverse proxy sends https://race.yourname.synology.me:<port> to 127.0.0.1:4182.
+#
+#   1. SSO Server: add an OIDC application, redirect URI https://race.yourname.synology.me:<port>/oauth2/callback
+#   2. .env next to this file (cookie secret: openssl rand -hex 16):
+#        RM_SSO_CLIENT_ID=...   RM_SSO_CLIENT_SECRET=...   RM_SSO_COOKIE_SECRET=...
+#        RM_SSO_ISSUER=https://yourname.synology.me:<port>/webman/sso
+#        RM_SSO_REDIRECT_URL=https://race.yourname.synology.me:<port>/oauth2/callback
+#   3. In Race Manager's .env set RM_SSO_ISSUER, RM_SSO_CLIENT_ID and who gets which role (RM_SSO_ADMINS, ...)
+#
+# Everyone who can sign in to the SSO Server can then see the site; RM_SSO_* decides who may manage it.
+services:
+  racemgr-proxy:
+    image: quay.io/oauth2-proxy/oauth2-proxy:v7.15.6
+    container_name: racemgr-auth-proxy
+    network_mode: host
+    restart: unless-stopped
+    # If the NAS can't reach its own public name, send it straight to the NAS:
+    # extra_hosts:
+    #   - "yourname.synology.me:192.168.1.10"
+    environment:
+      OAUTH2_PROXY_CLIENT_ID: ${RM_SSO_CLIENT_ID:?set in .env}
+      OAUTH2_PROXY_CLIENT_SECRET: ${RM_SSO_CLIENT_SECRET:?set in .env}
+      OAUTH2_PROXY_COOKIE_SECRET: ${RM_SSO_COOKIE_SECRET:?set in .env}
+      OAUTH2_PROXY_OIDC_ISSUER_URL: ${RM_SSO_ISSUER:?set in .env}
+      OAUTH2_PROXY_REDIRECT_URL: ${RM_SSO_REDIRECT_URL:?set in .env}
+    command:
+      - --provider=oidc
+      - --scope=openid email groups
+      # Only DSM's reverse proxy reaches it; Race Manager itself stays on 127.0.0.1
+      - --http-address=127.0.0.1:4182
+      - --upstream=http://127.0.0.1:${RM_PORT:-18080}/
+      # Hands the Synology ID token to Race Manager, which checks its signature for "Sign in with Synology".
+      # (Needs the tokens in the session, so no --session-cookie-minimal.)
+      - --pass-authorization-header=true
+      - --cookie-name=_rm_oauth2
+      - --cookie-secure=true
+      - --email-domain=*
+      - --oidc-email-claim=sub
+      - --insecure-oidc-allow-unverified-email=true
+      - --reverse-proxy=true
+      - --skip-provider-button=true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]

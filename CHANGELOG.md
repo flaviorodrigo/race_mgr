@@ -4,7 +4,11 @@ Notable changes, newest first. This file starts with the security and modernisat
 
 ## Unreleased
 
+### Added
+- **Sign in with Synology**: behind oauth2-proxy and the Synology SSO Server, DSM users and groups listed in `RM_SSO_*` sign in as admins or stewards; the ID token is checked against the SSO Server's keys, issuer, audience and expiry (`docker/docker-compose.sso-proxy.yml`).
+
 ### Security
+- A session cookie now wins over an `Authorization` header, which behind the sign-in proxy carries the Synology token.
 - The CSRF cookie is `SameSite=Strict`, and `Secure` with `RM_COOKIE_SECURE=true`, like the session cookies; that setting also sends Strict-Transport-Security for the Race Manager host name.
 
 ### Added

@@ -170,7 +170,7 @@ Tested only on paper so far: nothing here has been run on a Synology yet. It nee
    If your game server keeps `server.cfg` outside its folder and mounts it on its own (a line like `- /volume1/docker/ams2-server/server.cfg:/home/steam/ams2_server/server.cfg` in its compose file), the copy inside the folder is just an empty placeholder: uncomment the matching `server.cfg` line in Race Manager's compose file so it edits the real one.
 4. Container Manager → **Project** → Create, pick that folder and the compose file. It pulls the images and starts Race Manager and MongoDB. Race Manager listens on the NAS's `127.0.0.1:8080`.
 5. Race Manager reaches the game server's API at `127.0.0.1:9000` because the compose file uses the host network; that works when the game server container uses the host network too. If it doesn't, set `RM_GAMESERVER_HOST` to the NAS address and give it the API user and password (`RM_GAMESERVER_USER` / `RM_GAMESERVER_PASSWORD` in the compose file).
-6. For friends, use DSM's reverse proxy (Control Panel → Login Portal → Advanced → Reverse Proxy) to give `localhost:18080` (your `RM_PORT`) an HTTPS name, and set `RM_COOKIE_SECURE=true`.
+6. For friends, use DSM's reverse proxy (Control Panel → Login Portal → Advanced → Reverse Proxy) to give `localhost:18080` (your `RM_PORT`) an HTTPS name, and set `RM_COOKIE_SECURE=true`. To have friends sign in with their DSM accounts, see [Sign in with Synology](#sign-in-with-synology).
 7. Back up MongoDB regularly with `docker/backup-mongo.sh` from a Task Scheduler job (run it as root; first `export COMPOSE_FILE=docker/docker-compose.external-server.yml`).
 
 ## Admin tools
@@ -201,6 +201,28 @@ The account from `RM_ADMIN_USER` is the **owner**. Under *Manage Server → Admi
 | **Owner** | Everything, plus adding, changing and removing the others. There is exactly one owner |
 
 Changing someone's role, resetting their password or removing them takes effect immediately: a removed or reset person is signed out at once. Everything people do is in the activity log under their own name. The rules are enforced by the server per URL (`WebSecurityConfig`): a new admin endpoint needs the admin role until it is explicitly listed for stewards, and the pages simply hide what a role can't use. If the database can't be read, only the owner can sign in. If the owner forgets the password, `RM_ADMIN_PASSWORD_RESET=true` as before.
+
+### Sign in with Synology
+
+On a Synology NAS that runs **SSO Server**, friends can sign in with their DSM account instead of a Race Manager password. `docker/docker-compose.sso-proxy.yml` runs [oauth2-proxy](https://oauth2-proxy.github.io/oauth2-proxy/) in front of Race Manager: nobody gets to the site without signing in to Synology first, and Race Manager turns that sign-in into a role.
+
+1. In SSO Server add an OIDC application with the redirect URI `https://race.yourname.synology.me:<port>/oauth2/callback`, and note its application ID and secret.
+2. Put the proxy compose file in its own project folder with a `.env` as described at the top of the file, start it, and check on the NAS that `curl -sI http://127.0.0.1:4182/` answers `302` towards the SSO Server.
+3. Point the DSM reverse proxy rule for Race Manager at `localhost:4182` instead of Race Manager's port.
+4. In Race Manager's `.env`:
+   ```
+   RM_SSO_ISSUER=https://yourname.synology.me:4931/webman/sso
+   RM_SSO_CLIENT_ID=<the application ID>
+   RM_SSO_ADMINS=alice            # DSM user names, comma separated
+   RM_SSO_STEWARDS=bob,carol
+   RM_SSO_ADMIN_GROUPS=           # or DSM groups, e.g. racemgr-admins
+   RM_SSO_STEWARD_GROUPS=
+   ```
+   and recreate the container (Container Manager: *Build*).
+
+The login page then has **Sign in with Synology**. Race Manager checks the token's signature against the SSO Server's published keys, its issuer, that it was issued to this application, and that it hasn't expired; a header alone never signs anyone in. People appear as `synology:<user>` in the activity log. The role is worked out again on every request from the current `RM_SSO_*` settings, so taking someone off the list (and recreating the container) ends their access. Nobody becomes the owner this way: that stays the `RM_ADMIN_USER` account, which keeps working, as do the Race Manager accounts. Synology users change their password in DSM.
+
+Race Manager has to reach the SSO Server at `RM_SSO_ISSUER`. If the NAS can't reach its own public name, uncomment the `extra_hosts` lines in both compose files.
 
 ## Discord notifications
 

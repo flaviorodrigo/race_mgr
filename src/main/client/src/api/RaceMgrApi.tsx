@@ -91,6 +91,34 @@ export default class RaceMgrApi {
 		});
 	}
 
+	// Whether the login page offers "Sign in with Synology" (RM_SSO_ISSUER and RM_SSO_CLIENT_ID are set)
+	public async ssoEnabled(): Promise<boolean> {
+		try {
+			const response = await axios({method: 'get', url: `${this.BASE_API_URL_WITH_VERSION}/sso`});
+			return response?.data?.data?.enabled === true;
+		} catch {
+			return false;
+		}
+	}
+
+	// Turns the Synology sign-in the proxy forwards into a Race Manager session. 'FRESH' means the forwarded
+	// sign-in is missing or too old (the SSO Server's tokens only last minutes): sign in with Synology again.
+	public async doSsoLogin(): Promise<{result: 'OK' | 'FRESH' | 'ERROR', message?: string}> {
+		const config: AxiosRequestConfig = {method: 'post', url: `${this.BASE_API_URL_WITH_VERSION}/sso/login`};
+		await this.setXsrfTokenIfNeeded(config);
+		try {
+			await axios(config);
+			return {result: 'OK'};
+		} catch (error: any) {
+			const body = error?.response?.data;
+			if (error?.response?.status === 401 && body?.data?.freshSignIn) {
+				return {result: 'FRESH'};
+			}
+
+			return {result: 'ERROR', message: typeof body?.message === 'string' ? body.message : undefined};
+		}
+	}
+
 	// This is the general method you'd call most often. In the config
 	// obj it expects url and method at least. It will automatically set
 	// xsrf tokens as needed and also add the JWT as needed (assuming doAuth

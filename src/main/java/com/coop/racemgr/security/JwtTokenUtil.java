@@ -19,6 +19,7 @@ public class JwtTokenUtil {
     private static final long DEFAULT_VALIDITY_HOURS = 12;
 
     private static final String CREDENTIAL_VERSION = "cv";
+    private static final String GROUPS = "grp";
 
     private final SecretKey key;
     private final long validityMillis;
@@ -73,6 +74,29 @@ public class JwtTokenUtil {
                 .expiration(new Date(now + validityMillis))
                 .signWith(key) // algorithm (HS256/384/512) chosen from the key length
                 .compact();
+    }
+
+    // A session for someone signed in with Synology: "synology:<user>" plus their DSM groups at sign-in, so the
+    // role can be worked out on every request from the current settings.
+    public String generateSsoToken(String username, java.util.List<String> groups) {
+        long now = System.currentTimeMillis();
+        return Jwts.builder()
+                .subject(SynologySso.PREFIX + username)
+                .claim(CREDENTIAL_VERSION, 0L)
+                .claim(GROUPS, groups)
+                .issuedAt(new Date(now))
+                .expiration(new Date(now + validityMillis))
+                .signWith(key)
+                .compact();
+    }
+
+    @SuppressWarnings("unchecked")
+    public java.util.List<String> getGroupsFromToken(String token) {
+        Object groups = getClaimFromToken(token, c -> c.get(GROUPS));
+        if (!(groups instanceof java.util.List<?> list)) {
+            return java.util.List.of();
+        }
+        return list.stream().filter(String.class::isInstance).map(String.class::cast).toList();
     }
 
     // Validate token against the user it claims to belong to, and the password it was issued under
