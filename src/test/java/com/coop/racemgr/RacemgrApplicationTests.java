@@ -521,6 +521,36 @@ class RacemgrApplicationTests {
     }
 
     @Test
+    void aSavedRotationCanBeChangedInPlaceButTheActiveOneCannotBeDeleted() throws Exception {
+        var put = "/api/v1/admin/race/rotation/r1";
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put(put).cookie(xsrfCookie())
+                .contentType(MediaType.APPLICATION_JSON).content("{}")).andExpect(status().is4xxClientError());
+
+        Cookie session = adminSession();
+        String good = "{\"name\":\"Season\",\"config\":{\"defaultConfig\":{\"RaceLength\":5},\"rotation\":[{\"TrackId\":\"Interlagos_GP\"}]}}";
+        mvc.perform(adminJson(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put(put), session, good)).andExpect(status().isNotFound());
+
+        var rotation = new com.coop.racemgr.model.RaceRotation("Old", java.util.Map.of());
+        rotation.setId("r1");
+        rotation.setActive(true);
+        org.mockito.Mockito.when(raceRotationRepository.findItemById("r1")).thenReturn(rotation);
+        for (String bad : new String[]{"{\"name\":\"\",\"config\":{}}", "{\"name\":\"x\",\"config\":{\"defaultConfig\":{},\"rotation\":[]}}"}) {
+            mvc.perform(adminJson(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put(put), session, bad)).andExpect(status().isBadRequest());
+        }
+        mvc.perform(adminJson(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put(put), session, good)).andExpect(status().isOk());
+        assertThat(rotation.getName()).isEqualTo("Season");
+        assertThat(rotation.getId()).isEqualTo("r1");
+
+        // The active rotation (races are recorded under it) can't be deleted
+        org.mockito.Mockito.when(raceMgrConfigRepository.findItemById("1")).thenReturn(new com.coop.racemgr.model.RaceMgrConfig("s1", "r1"));
+        mvc.perform(adminJson(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete(put), session, "{}")).andExpect(status().isConflict());
+        assertThat(rotation.getActive()).isTrue();
+        org.mockito.Mockito.when(raceMgrConfigRepository.findItemById("1")).thenReturn(new com.coop.racemgr.model.RaceMgrConfig("s1", "other"));
+        mvc.perform(adminJson(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete(put), session, "{}")).andExpect(status().isOk());
+        assertThat(rotation.getActive()).isFalse();
+    }
+
+    @Test
     void serverConfigEndpointsNeedLoginAndValidateInput() throws Exception {
         mvc.perform(get("/api/v1/admin/gameserver/config")).andExpect(status().isUnauthorized());
         Cookie session = adminSession();

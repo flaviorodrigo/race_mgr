@@ -33,6 +33,14 @@ public class RaceRotationController {
     @Autowired
     private AuditLog auditLog;
 
+    @Autowired
+    private com.coop.racemgr.repositories.RaceMgrConfigRepository raceMgrConfigRepository;
+
+    private boolean isActiveRotation(String id) {
+        var config = raceMgrConfigRepository.findItemById("1");
+        return config != null && id.equals(config.getActiveRaceRotationId());
+    }
+
     @Data
     public static class RaceRotationCustomRequest {
         private String name;
@@ -108,11 +116,45 @@ public class RaceRotationController {
         }
     }
 
+    // Changes a saved rotation in place: its name and its setup. Races recorded under it stay under it.
+    @PutMapping("/api/v1/admin/race/rotation/{id}")
+    public ResponseEntity<Object> updateRotation(@PathVariable String id, @RequestBody RaceRotationCustomRequest request, Authentication authentication) {
+        if (request.name == null || request.name.isBlank() || request.name.length() > 64) {
+            return ResponseHandler.generateResponse("A rotation name of up to 64 characters is required", HttpStatus.BAD_REQUEST, null);
+        }
+        String problem = RotationValidator.validate(request.config);
+        if (problem != null) {
+            return ResponseHandler.generateResponse(problem, HttpStatus.BAD_REQUEST, null);
+        }
+
+        try {
+            var rr = raceRotationRepository.findItemById(id);
+            if (rr == null || Boolean.FALSE.equals(rr.getActive())) {
+                return ResponseHandler.generateResponse("Race rotation not found!", HttpStatus.NOT_FOUND, null);
+            }
+            rr.setName(request.name);
+            rr.setConfig(request.config);
+            rr.setUpdated(System.currentTimeMillis());
+            raceRotationRepository.save(rr);
+            auditLog.record(authentication.getName(), "rotation changed", rr.getName());
+            return ResponseHandler.generateResponse(isActiveRotation(id)
+                    ? "Saved. It is the active rotation: press Update Server to send the new version to the game server."
+                    : "Saved.", HttpStatus.OK, rr);
+        } catch (Exception e) {
+            logger.error(e);
+            return ResponseHandler.generateResponse("Request failed", HttpStatus.MULTI_STATUS, null);
+        }
+    }
+
     @DeleteMapping("/api/v1/admin/race/rotation/{id}")
     public ResponseEntity<Object> deleteRaceRotation(@PathVariable String id, Authentication authentication) {
         var rr = raceRotationRepository.findItemById(id);
         if (rr == null) {
             return ResponseHandler.generateResponse("Race rotation not found!", HttpStatus.NOT_FOUND, null);
+        }
+        // Races are being recorded under it: choose another active rotation first
+        if (isActiveRotation(id)) {
+            return ResponseHandler.generateResponse("This is the active rotation. Set another one active first.", HttpStatus.CONFLICT, null);
         }
 
         try {

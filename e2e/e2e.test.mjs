@@ -213,7 +213,8 @@ const api = (method, url, body) => state.page.evaluate(async (m, u, b) => {
 const openSettingsGroup = async title => {
   await state.page.evaluate(t => [...document.querySelectorAll(document.querySelector('[role="dialog"]')
     ? '[role="dialog"] .MuiAccordionSummary-root' : '.MuiAccordionDetails-root .MuiAccordionSummary-root')]
-    .find(b => b.innerText.trim().startsWith(t))?.click(), title);
+    // Only a closed one: clicking an open group would close it
+    .find(b => b.innerText.trim().startsWith(t) && b.getAttribute('aria-expanded') !== 'true')?.click(), title);
   await sleep(500);
 };
 
@@ -684,6 +685,35 @@ scenario('the rotation builder offers every setting the game server describes, f
   assert.equal(first.settings.DamageType, 3);
   assert.equal(second.settings.TrackId, 1234);
   assert.equal(second.settings.RaceLength, 5, 'round 2 takes the default race length');
+
+  // Change it in place: open it, change the grid size, Save changes. Still one "Full setup", with the new value.
+  const rotations = async () => (await api('GET', '/api/v1/race/rotation?page=0&limit=100')).data.content;
+  await state.page.click('[role="combobox"][aria-labelledby~="rb-load"]');
+  await state.page.waitForSelector('[role="listbox"]');
+  await state.page.evaluate(() => [...document.querySelectorAll('[role="option"]')].find(x => x.innerText.trim() === 'Full setup')?.click());
+  await sleep(800);
+  assert.match(await text('body'), /Editing a saved rotation/);
+  await openSettingsGroup('Cars and grid');
+  await setInput(await state.page.$('#default-GridSize'), '22');
+  await clickText('button', 'save changes');
+  await sleep(1500);
+  const full = (await rotations()).filter(r => r.name === 'Full setup');
+  assert.equal(full.length, 1, 'changed in place, not copied');
+  assert.equal(full[0].id, saved.id);
+  assert.equal((await api('GET', `/api/v1/race/rotation/${saved.id}`)).data.config.defaultConfig.GridSize, 22);
+
+  // Delete one that isn't active; the active one can't be deleted
+  await state.page.click('[role="combobox"][aria-labelledby~="rb-load"]');
+  await state.page.waitForSelector('[role="listbox"]');
+  await state.page.evaluate(() => [...document.querySelectorAll('[role="option"]')].find(x => x.innerText.trim() === 'Live rotation')?.click());
+  await sleep(800);
+  await clickText('button', 'delete rotation');
+  await state.page.waitForSelector('[role="dialog"]');
+  await clickText('[role="dialog"] button', 'delete');
+  await sleep(1500);
+  assert.ok(!(await rotations()).some(r => r.name === 'Live rotation'), 'deleted');
+  const active = (await state.page.evaluate(async () => (await (await fetch('/api/v1/config')).json()).data)).activeRaceRotationId;
+  assert.equal((await api('DELETE', `/api/v1/admin/race/rotation/${active}`)).httpStatus, 409);
 });
 
 // Not a test: with E2E_SCREENSHOTS=<folder> the app, filled with the sample races, is photographed for the README

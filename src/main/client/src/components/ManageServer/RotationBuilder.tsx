@@ -4,7 +4,8 @@ import {useDispatch} from 'react-redux';
 import {getRotations} from '../../state/rotations';
 
 import {
-	applyNextSession, fetchGameList, fetchRotationConfig, fetchSavedRotations, fetchSessionSchema, saveCustomRotation, savePreset, IGameListItem, ISavedRotation,
+	applyNextSession, deleteRotation, fetchGameList, fetchRotationConfig, fetchSavedRotations, fetchSessionSchema, saveCustomRotation, savePreset, updateCustomRotation,
+	IGameListItem, ISavedRotation,
 } from '../Live/adminApi';
 import {configFromModel, modelFromConfig} from '../../utils/rotation';
 import {parseServerJson} from '../../utils/serverJson';
@@ -51,6 +52,22 @@ const name = (item?: IGameListItem) => (item ? item.translated_name ?? item.name
 const optionLabel = (item: IGameListItem) => (item.translated_name ? `${item.translated_name} · ${item.name}` : item.name.replaceAll('_', ' '));
 const byLabel = (items: Array<IGameListItem>) => [...items].sort((a, b) => optionLabel(a).localeCompare(optionLabel(b)));
 
+// What stops a rotation from being saved
+const problemsOf = (rotationName: string, rounds: Array<Round>) => [
+	/^[A-Za-z0-9 _.()-]{1,64}$/.test(rotationName) ? null : 'Give the rotation a name (letters, numbers, spaces, - _ . ( ))',
+	rounds.length > 0 && rounds.every(r => r.TrackId !== '' && r.TrackId !== undefined) ? null : 'Every round needs a track',
+].filter((p): p is string => p !== null);
+
+// A new rotation is saved; an opened one can be changed in place, copied or deleted
+const SaveButtons = ({editing, disabled, busy, onSave, onSaveChanges, onDelete}: {editing: boolean, disabled: boolean, busy: boolean,
+	onSave: () => void, onSaveChanges: () => void, onDelete: () => void}) => (editing
+	? <>
+		<Button variant="contained" disabled={disabled} onClick={onSaveChanges}>Save changes</Button>
+		<Button disabled={disabled} onClick={onSave}>Save as new</Button>
+		<Button color="error" disabled={busy} onClick={onDelete}>Delete rotation</Button>
+	</>
+	: <Button variant="contained" disabled={disabled} onClick={onSave}>Save rotation</Button>);
+
 // Builds a rotation: the default setup every round starts from (every setting the game server offers), then the
 // rounds in order, each with its track and anything it changes.
 const RotationBuilder = () => {
@@ -61,6 +78,9 @@ const RotationBuilder = () => {
 	const [saved, setSaved] = useState<Array<ISavedRotation>>([]);
 
 	const [rotationName, setRotationName] = useState('');
+	// The saved rotation being edited (null for a new one or an imported file)
+	const [editingId, setEditingId] = useState<string | null>(null);
+	const [confirmDelete, setConfirmDelete] = useState(false);
 	const [persistIndex, setPersistIndex] = useState(true);
 	const [defaults, setDefaults] = useState<Record<string, unknown>>(STARTING_SETUP);
 	const [rounds, setRounds] = useState<Array<Round>>([{TrackId: ''}]);
@@ -81,14 +101,7 @@ const RotationBuilder = () => {
 		fetchSavedRotations().then(setSaved);
 	}, []);
 
-	const problems: Array<string> = [];
-	if (!/^[A-Za-z0-9 _.()-]{1,64}$/.test(rotationName)) {
-		problems.push('Give the rotation a name (letters, numbers, spaces, - _ . ( ))');
-	}
-
-	if (rounds.length === 0 || rounds.some(r => r.TrackId === '' || r.TrackId === undefined)) {
-		problems.push('Every round needs a track');
-	}
+	const problems = problemsOf(rotationName, rounds);
 
 	const buildConfig = () => configFromModel({persistIndex, defaults, rounds});
 
@@ -96,12 +109,12 @@ const RotationBuilder = () => {
 		const model = modelFromConfig(config);
 		if (!model || model.rounds.length > MAX_ROUNDS) {
 			setLoadMessage({text: 'That is not a rotation Race Manager can read.', severity: 'error'});
-			return;
+			return false;
 		}
 
 		if (model.rounds.some(r => typeof r.TrackId === 'string' && !SAFE_NAME.test(r.TrackId))) {
 			setLoadMessage({text: 'Some rounds in that rotation have no valid track.', severity: 'error'});
-			return;
+			return false;
 		}
 
 		setPersistIndex(model.persistIndex);
@@ -117,12 +130,17 @@ const RotationBuilder = () => {
 				+ 'Check them below, change anything, then save it under a name.',
 			severity: 'success',
 		});
+		// A loaded file is a new rotation until it's saved; loadSaved marks what it opened
+		setEditingId(null);
+		return true;
 	};
 
 	const loadSaved = async (id: string) => {
 		const config = await fetchRotationConfig(id);
 		const rotation = saved.find(s => s.id === id);
-		loadConfig(config, rotation ? `${rotation.name} copy`.slice(0, 64) : '');
+		if (loadConfig(config, rotation?.name ?? '')) {
+			setEditingId(id);
+		}
 	};
 
 	const importFile = async (file?: File) => {
@@ -160,18 +178,55 @@ const RotationBuilder = () => {
 		URL.revokeObjectURL(url);
 	};
 
+	const afterSave = () => {
+		fetchSavedRotations().then(setSaved);
+		// The Rotation dropdown at the top of the tab lists it straight away
+		dispatch(getRotations());
+	};
+
+	// A new rotation, or a copy of the one being edited
 	const save = async () => {
 		setBusy(true);
 		const result = await saveCustomRotation(rotationName.trim(), buildConfig());
 		setBusy(false);
 		setMessage({
-			text: result.ok ? 'Saved. Select it under Rotation and use Update Server to make it the active one.' : result.message,
+			text: result.ok ? 'Saved as a new rotation. Select it under Rotation and use Set active (or Update Server) to use it.' : result.message,
 			severity: result.ok ? 'success' : 'error',
 		});
 		if (result.ok) {
-			fetchSavedRotations().then(setSaved);
-			// The Rotation dropdown at the top of the tab lists it straight away
-			dispatch(getRotations());
+			setEditingId((result.data as {id?: string} | undefined)?.id ?? null);
+			afterSave();
+		}
+	};
+
+	// The rotation that was opened, changed in place
+	const saveChanges = async () => {
+		if (!editingId) {
+			return;
+		}
+
+		setBusy(true);
+		const result = await updateCustomRotation(editingId, rotationName.trim(), buildConfig());
+		setBusy(false);
+		setMessage({text: result.message || (result.ok ? 'Saved.' : 'Could not save'), severity: result.ok ? 'success' : 'error'});
+		if (result.ok) {
+			afterSave();
+		}
+	};
+
+	const remove = async () => {
+		setConfirmDelete(false);
+		if (!editingId) {
+			return;
+		}
+
+		setBusy(true);
+		const result = await deleteRotation(editingId);
+		setBusy(false);
+		setMessage({text: result.ok ? `Deleted "${rotationName.trim()}". Races recorded under it keep their results.` : result.message, severity: result.ok ? 'success' : 'error'});
+		if (result.ok) {
+			setEditingId(null);
+			afterSave();
 		}
 	};
 
@@ -314,6 +369,7 @@ const RotationBuilder = () => {
 			{loadMessage && <Alert severity={loadMessage.severity} onClose={() => setLoadMessage(null)}>{loadMessage.text}</Alert>}
 
 			<Stack direction={{xs: 'column', sm: 'row'}} spacing={2} sx={{alignItems: {sm: 'flex-end'}}}>
+				{editingId && <Typography variant="body2" color="text.secondary" sx={{alignSelf: 'center'}}>Editing a saved rotation</Typography>}
 				<TextField label="Rotation name" variant="standard" value={rotationName} onChange={e => setRotationName(e.target.value)} slotProps={{htmlInput: {maxLength: 64}}} />
 				<FormControlLabel control={<Checkbox checked={persistIndex} onChange={e => setPersistIndex(e.target.checked)} />}
 					label="Carry on from the same round after a restart" />
@@ -350,10 +406,22 @@ const RotationBuilder = () => {
 				<Button disabled={rounds.length >= MAX_ROUNDS} onClick={() => setRounds([...rounds, {TrackId: ''}])}>Add round</Button>
 				<Button disabled={problems.length > 0} onClick={exportFile}>Export file</Button>
 				<Button disabled={problems.length > 0 || busy} onClick={saveAllPresets}>Save every round as a preset</Button>
-				<Button variant="contained" disabled={problems.length > 0 || busy} onClick={save}>Save rotation</Button>
+				<SaveButtons editing={Boolean(editingId)} disabled={problems.length > 0 || busy} busy={busy}
+					onSave={save} onSaveChanges={saveChanges} onDelete={() => setConfirmDelete(true)} />
 			</Stack>
 			{problems.length > 0 && <Alert severity="info">{problems.join('. ')}</Alert>}
 			{message && <Alert severity={message.severity}>{message.text}</Alert>}
+
+			<Dialog open={confirmDelete} onClose={() => setConfirmDelete(false)}>
+				<DialogTitle>Delete the rotation &quot;{rotationName.trim()}&quot;?</DialogTitle>
+				<DialogContent>
+					<Typography variant="body2">Races already recorded under it keep their results. The active rotation can&apos;t be deleted.</Typography>
+				</DialogContent>
+				<DialogActions>
+					<Button onClick={() => setConfirmDelete(false)}>Cancel</Button>
+					<Button color="error" onClick={remove}>Delete</Button>
+				</DialogActions>
+			</Dialog>
 
 			<Dialog open={presetFor !== null} onClose={() => setPresetFor(null)}>
 				<DialogTitle>Save round {presetFor ? presetFor.index + 1 : ''} as a preset</DialogTitle>

@@ -5,6 +5,7 @@ Notable changes, newest first. This file starts with the security and modernisat
 ## Unreleased
 
 ### Added
+- Saved rotations can be changed in place (*Save changes*), copied (*Save as new*) or deleted from the Rotation builder; the active rotation can't be deleted.
 - **Racing look** (on by default, toggle in the top bar): carbon and chequered-flag theme, motorsport type, position badges, a championship podium, TV timing colours, and freely licensed photos of Fittipaldi, Piquet, Senna and Schumacher in the background with an *About the images* credits page.
 - Race pages open with the winner, pole and fastest lap; the leaderboard is titled with the championship; the racing look works on phones (credits in the footer there).
 - Manage Server in tabs: Race day, Championships, Server, People.

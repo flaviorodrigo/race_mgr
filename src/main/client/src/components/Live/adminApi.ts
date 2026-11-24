@@ -150,6 +150,9 @@ export const fetchRotationConfig = async (id: string): Promise<any> => {
 
 // Saves a custom rotation without applying it: activate it afterwards with Update Server
 export const saveCustomRotation = (name: string, config: unknown) => call({url: '/race/rotation', method: 'post', data: {name, config, apply: false}});
+// Changes a saved rotation in place (its races stay under it)
+export const updateCustomRotation = (id: string, name: string, config: unknown) => call({url: `/race/rotation/${id}`, method: 'put', data: {name, config}});
+export const deleteRotation = (id: string) => call({url: `/race/rotation/${id}`, method: 'delete'});
 
 export interface IPerformanceTable {
 	enabled: boolean,
