@@ -173,7 +173,7 @@ const clickText = (selector, label) => state.page.evaluate((s, t) => {
 
 // Manage Server's tools live in tabs: open the tab first, then the tool
 const TOOL_TABS = {
-  'Next session settings': 'Race day', 'Game server log': 'Race day', 'Rotation builder': 'Championships',
+  'Live lobby vs rotation': 'Race day', 'Next session settings': 'Race day', 'Game server log': 'Race day', 'Rotation builder': 'Championships',
   'Server settings (server.cfg)': 'Server', 'Ban list': 'Server', 'Whitelist': 'Server', 'Balance of performance': 'Server',
   Admins: 'People', Account: 'People', 'Activity log': 'People',
 };
@@ -503,7 +503,7 @@ scenario('the owner gives a friend a steward sign-in that only reaches race day,
   const tabs = await state.page.$$eval('[role="tab"]', e => e.map(x => x.innerText.trim().toLowerCase()));
   assert.deepEqual(tabs, ['race day', 'people']);
   const sections = async () => state.page.$$eval('.MuiAccordionSummary-root', e => e.map(x => x.innerText.trim()));
-  assert.deepEqual(await sections(), ['Next session settings', 'Game server log']);
+  assert.deepEqual(await sections(), ['Live lobby vs rotation', 'Next session settings', 'Game server log']);
   await openTab('People');
   assert.deepEqual(await sections(), ['Account']);
   await openTab('Race day');
@@ -776,13 +776,20 @@ scenario('an admin restarts the game server in its own container through the sig
 });
 
 scenario('Race day compares the live session with the rotation on the game server', async () => {
+  // A rotation file like the one the addon works from, with settings the stand-in's session has
+  fs.mkdirSync(path.join(state.serverDir, 'lua_config'), {recursive: true});
+  fs.writeFileSync(path.join(state.serverDir, 'lua_config', 'sms_rotate_config.json'),
+    JSON.stringify({version: 7, config: {persist_index: false, default: {RaceLength: 10, MaxPlayers: 12}, rotation: [{RaceLength: 12}]}}));
   const lobby = await api('GET', '/api/v1/admin/gameserver/lobby');
   assert.equal(lobby.status, 200, JSON.stringify(lobby));
   assert.equal(lobby.data.sessionOpen, true);
   assert.ok(lobby.data.rows.length > 0, 'the rotation file on the game server was read');
   // The stand-in's track (1234) is in no rotation, so only the default setup is compared, and it says so
   assert.match(lobby.data.note, /isn't in the rotation file/);
-  assert.ok(lobby.data.rows.some(r => r.match === true || r.match === false), 'live values are compared');
+  const byName = Object.fromEntries(lobby.data.rows.map(r => [r.name, r]));
+  assert.equal(byName.RaceLength.match, true, 'the live race length matches the default');
+  assert.equal(byName.MaxPlayers.match, true);
+  fs.rmSync(path.join(state.serverDir, 'lua_config', 'sms_rotate_config.json'));
 
   await go('/manageserver');
   await openSection('Live lobby vs rotation');
