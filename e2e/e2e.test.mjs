@@ -174,7 +174,7 @@ const clickText = (selector, label) => state.page.evaluate((s, t) => {
 // Manage Server's tools live in tabs: open the tab first, then the tool
 const TOOL_TABS = {
   'Live lobby vs rotation': 'Race day', 'Next session settings': 'Race day', 'Game server log': 'Race day', 'Rotation builder': 'Championships',
-  'Server settings (server.cfg)': 'Server', 'Default session settings (server.cfg)': 'Server', 'Ban list': 'Server', 'Whitelist': 'Server', 'Balance of performance': 'Server',
+  'Server settings (server.cfg)': 'Server', 'Default session settings (server.cfg)': 'Server', 'Rotation addon (no restart)': 'Server', 'Ban list': 'Server', 'Whitelist': 'Server', 'Balance of performance': 'Server',
   Admins: 'People', Account: 'People', 'Activity log': 'People',
 };
 
@@ -841,6 +841,50 @@ scenario('the settings every session starts from are edited inside server.cfg, a
   await openSection('Default session settings (server.cfg)');
   await sleep(800);
   assert.match(await text('body'), /sessionAttributes/);
+});
+
+scenario('a rotation reaches the running game server without a restart once the racemgr_rotate addon is in use', async () => {
+  const cfg = path.join(state.serverDir, 'server.cfg');
+  const original = fs.readFileSync(cfg, 'utf8');
+  fs.mkdirSync(path.join(state.serverDir, 'lua', 'sms_rotate'), {recursive: true});
+
+  const before = await api('GET', '/api/v1/admin/gameserver/rotation-addon');
+  assert.equal(before.status, 200, JSON.stringify(before));
+  assert.equal(before.data.installed, false);
+
+  const created = await api('POST', '/api/v1/admin/race/rotation', {name: 'No restart', config: {persist_index: true, default: {RaceLength: 5}, rotation: [{TrackId: 1534602052}]}, apply: false});
+  assert.equal(created.status, 200, JSON.stringify(created));
+  const list = await state.page.evaluate(async () => (await (await fetch('/api/v1/race/rotation?page=0&limit=100')).json()).data.content);
+  const rotationId = list.find(r => r.name === 'No restart').id;
+
+  // Installed, but the server doesn't load it yet: activating still asks for a restart
+  const installed = await api('POST', '/api/v1/admin/gameserver/rotation-addon/install');
+  assert.equal(installed.status, 200, JSON.stringify(installed));
+  assert.ok(fs.existsSync(path.join(state.serverDir, 'lua', 'racemgr_rotate', 'racemgr_rotate.lua')), 'the addon files are written');
+  assert.equal(installed.data.installed, true);
+  assert.equal(installed.data.ready, false);
+  const needsRestart = await api('POST', `/api/v1/admin/race/rotation/${rotationId}/activate`);
+  assert.equal(needsRestart.status, 200, JSON.stringify(needsRestart));
+  assert.equal(needsRestart.data.restartNeeded, true);
+  assert.match(needsRestart.message, /Restart the game server/);
+
+  // With racemgr_rotate where sms_rotate was, the running server is handed the rotation
+  fs.writeFileSync(cfg, original.replace(/"sms_rotate"/, '"racemgr_rotate"'));
+  assert.equal((await api('GET', '/api/v1/admin/gameserver/rotation-addon')).data.ready, true);
+  const applied = await api('POST', `/api/v1/admin/race/rotation/${rotationId}/activate`);
+  assert.equal(applied.status, 200, JSON.stringify(applied));
+  assert.equal(applied.data.restartNeeded, false);
+  assert.match(applied.message, /no restart/);
+  const handed = fs.readFileSync(path.join(state.serverDir, 'lua_config', 'racemgr_rotation.lua'), 'utf8');
+  assert.match(handed, /\["TrackId"\] = 1534602052/);
+  assert.match(handed, new RegExp(`version = ${applied.data.version}`));
+
+  await go('/manageserver');
+  await openSection('Rotation addon (no restart)');
+  await sleep(800);
+  assert.match(await text('body'), /Installed in the game server/);
+
+  fs.writeFileSync(cfg, original);
 });
 
 scenario('signing out ends the admin session', async () => {

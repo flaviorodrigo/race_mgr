@@ -4,6 +4,7 @@ import com.coop.racemgr.RacemgrApplication;
 import com.coop.racemgr.audit.AuditLog;
 import com.coop.racemgr.gameserver.GameServerMgr;
 import com.coop.racemgr.gameserver.GameServerProxy;
+import com.coop.racemgr.gameserver.RotationAddon;
 import com.coop.racemgr.model.RaceRotation;
 import com.coop.racemgr.repositories.RaceRotationRepository;
 import com.coop.racemgr.rotation.RacemgrRotationConfigMaker;
@@ -20,6 +21,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import java.util.Map;
 import java.util.UUID;
 
 // @TODO:
@@ -181,8 +183,19 @@ public class RaceRotationController {
             rotationFileMaker.writeGeneratedRotationFile();
             auditLog.record(authentication.getName(), "rotation activated", rr.getName());
             if (GameServerMgr.isExternal()) {
+                // With the racemgr_rotate addon in use, the running server picks the rotation up by itself
+                var addon = RotationAddon.forServer();
+                if (addon.isInstalled()) {
+                    long version = addon.writeRotation(rr.config);
+                    if (Boolean.TRUE.equals(addon.status().get("ready"))) {
+                        return ResponseHandler.generateResponse(
+                                "Rotation sent to the game server. It takes effect within a few seconds: no restart, and nobody has to leave.",
+                                HttpStatus.OK, Map.of("version", version, "restartNeeded", false));
+                    }
+                }
                 return ResponseHandler.generateResponse(
-                        "Rotation written. Restart the game server to apply it (it is managed outside Race Manager).", HttpStatus.OK, null);
+                        "Rotation written. Restart the game server to apply it (it is managed outside Race Manager).", HttpStatus.OK,
+                        Map.of("restartNeeded", true));
             }
 
             GameServerMgr.restart();
@@ -190,6 +203,40 @@ public class RaceRotationController {
         } catch (Exception e) {
             logger.error(e);
             return ResponseHandler.generateResponse("Request failed", HttpStatus.MULTI_STATUS, null);
+        }
+    }
+
+    // The racemgr_rotate addon: whether it is installed and in use, and what it reports
+    @GetMapping("/api/v1/admin/gameserver/rotation-addon")
+    public ResponseEntity<Object> rotationAddonStatus() {
+        try {
+            return ResponseHandler.generateResponse("Rotation addon", HttpStatus.OK, RotationAddon.forServer().status());
+        } catch (Exception e) {
+            logger.warn("Reading the rotation addon status failed: " + e);
+            return ResponseHandler.generateResponse("Could not read the game server's folder", HttpStatus.MULTI_STATUS, null);
+        }
+    }
+
+    // Copies the addon into the game server's folder and hands it the active rotation. Using it still takes one
+    // restart, to load it: server.cfg's luaApiAddons then lists racemgr_rotate where it listed sms_rotate.
+    @PostMapping("/api/v1/admin/gameserver/rotation-addon/install")
+    public ResponseEntity<Object> installRotationAddon(Authentication authentication) {
+        try {
+            var addon = RotationAddon.forServer();
+            addon.install();
+            var config = raceMgrConfigRepository.findItemById("1");
+            if (config != null && config.getActiveRaceRotationId() != null && !config.getActiveRaceRotationId().isBlank()) {
+                var active = raceRotationRepository.findItemById(config.getActiveRaceRotationId());
+                if (active != null) {
+                    addon.writeRotation(active.config);
+                }
+            }
+            auditLog.record(authentication.getName(), "rotation addon installed", "");
+            return ResponseHandler.generateResponse("Installed. In server.cfg, put \"racemgr_rotate\" in luaApiAddons instead of \"sms_rotate\", then restart the game server once.",
+                    HttpStatus.OK, addon.status());
+        } catch (Exception e) {
+            logger.warn("Installing the rotation addon failed: " + e);
+            return ResponseHandler.generateResponse("Could not install the addon in the game server's folder", HttpStatus.MULTI_STATUS, null);
         }
     }
 

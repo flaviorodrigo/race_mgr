@@ -5,7 +5,7 @@ import {
 	fetchPresets, fetchSessionSchema, savePreset,
 	updateAdminUser, changePassword, fetchAudit, fetchBanList, fetchGameLog, fetchServerConfig, fetchWhitelist,
 	removeBan, removeFromWhitelist, saveServerConfig,
-	IAdminUser, IApiResult, IAuditEvent, IBanEntry, IGameListItem, ILogEvent, INextSessionSettings, ISessionPreset, IWhitelist, ServerConfigValues, fetchSessionDefaults, saveSessionDefaults, setWhitelistActive} from '../Live/adminApi';
+	IAdminUser, IApiResult, IAuditEvent, IBanEntry, IGameListItem, ILogEvent, INextSessionSettings, ISessionPreset, IWhitelist, ServerConfigValues, fetchSessionDefaults, saveSessionDefaults, setWhitelistActive, fetchRotationAddon, installRotationAddon, IRotationAddon} from '../Live/adminApi';
 import RotationBuilder from './RotationBuilder';
 import LobbyCheckPanel from './LobbyCheckPanel';
 import PerformancePanel from './PerformancePanel';
@@ -19,6 +19,7 @@ import AccordionDetails from '@mui/material/AccordionDetails';
 import AccordionSummary from '@mui/material/AccordionSummary';
 import Alert from '@mui/material/Alert';
 import Button from '@mui/material/Button';
+import Chip from '@mui/material/Chip';
 import Dialog from '@mui/material/Dialog';
 import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
@@ -69,6 +70,84 @@ const SETTING_FIELDS: Array<{id: string, label: string, kind: 'text' | 'number' 
 
 // The settings every session starts from. The game server builds the lobby from this block of server.cfg, and a
 // setting that isn't in it may never reach the lobby, so this is where the full default setup belongs.
+// The racemgr_rotate addon: the game server picks up a changed rotation by itself, so adding a track doesn't mean a
+// restart and nobody has to leave
+const RotationAddonPanel = () => {
+	const [addon, setAddon] = useState<IRotationAddon | null>(null);
+	const [problem, setProblem] = useState('');
+	const [feedback, setFeedback] = useState<IFeedback | null>(null);
+	const [busy, setBusy] = useState(false);
+
+	const load = async () => {
+		const result = await fetchRotationAddon();
+		setAddon(result.ok && result.data ? result.data : null);
+		setProblem(result.ok ? '' : result.message || 'Could not read the game server\'s folder.');
+	};
+
+	useEffect(() => {
+		load();
+		const timer = setInterval(load, 5000);
+		return () => clearInterval(timer);
+	}, []);
+
+	const install = async () => {
+		setBusy(true);
+		const result = await installRotationAddon();
+		setBusy(false);
+		setFeedback({text: result.message, severity: result.ok ? 'success' : 'error'});
+		load();
+	};
+
+	const yes = (ok: boolean) => <Chip size="small" color={ok ? 'success' : 'default'} label={ok ? 'yes' : 'no'} />;
+	const reported = addon?.reported ?? null;
+
+	return (
+		<Stack spacing={2} sx={{textAlign: 'left'}}>
+			<Typography variant="body2">
+				Normally a changed rotation reaches the game server only after a restart, so everyone has to leave and come back. With the
+				<strong> racemgr_rotate</strong> addon in place of <code>sms_rotate</code>, <em>Update Server</em> hands the new rotation to the running
+				server: it picks it up within a few seconds, keeps its place in the rotation and queues the next session from it. Nobody has to leave.
+				A session that is already open keeps the settings it started with.
+			</Typography>
+			{problem && <Alert severity="warning">{problem}</Alert>}
+			{addon && <Table size="small" aria-label="Rotation addon">
+				<TableBody>
+					<TableRow><TableCell>Installed in the game server&apos;s folder</TableCell><TableCell>{yes(addon.installed)}</TableCell></TableRow>
+					<TableRow><TableCell>Listed in server.cfg (<code>luaApiAddons</code>)</TableCell><TableCell>{yes(addon.listed)}</TableCell></TableRow>
+					<TableRow><TableCell>Running on the game server</TableCell><TableCell>{yes(reported !== null)}</TableCell></TableRow>
+					{reported && <TableRow>
+						<TableCell>What it reports</TableCell>
+						<TableCell>
+							{`${reported.rounds ?? 0} rounds, at round ${reported.index ?? 0} · ${reported.note}`}
+							{reported.version ? ` · rotation ${new Date(reported.version).toLocaleString()}` : ''}
+						</TableCell>
+					</TableRow>}
+				</TableBody>
+			</Table>}
+			{addon?.conflict && <Alert severity="warning">
+				Both <code>sms_rotate</code> and <code>racemgr_rotate</code> are listed in server.cfg. Remove <code>sms_rotate</code>: two rotation addons would
+				each set the next session.
+			</Alert>}
+			{addon && !addon.ready && <Alert severity="info">
+				{!addon.installed
+					? 'Install the addon, then in server.cfg put "racemgr_rotate" in luaApiAddons where "sms_rotate" is, and restart the game server once.'
+					: 'In server.cfg, put "racemgr_rotate" in luaApiAddons where "sms_rotate" is, and restart the game server once.'}
+			</Alert>}
+			{addon?.ready && reported === null && <Alert severity="info">
+				It is set up in server.cfg but hasn&apos;t reported yet: restart the game server once so it loads the addon.
+			</Alert>}
+			{addon?.ready && reported && !reported.ok && <Alert severity="warning">
+				The addon is running but refused the last rotation: {reported.note}. The previous rotation stays in use; check the game server&apos;s log for the reason.
+			</Alert>}
+			<Stack direction="row" spacing={2}>
+				<Button variant="contained" disabled={busy} onClick={install}>{addon?.installed ? 'Update the addon' : 'Install the addon'}</Button>
+				<Button disabled={busy} onClick={load}>Refresh</Button>
+			</Stack>
+			<Feedback feedback={feedback} />
+		</Stack>
+	);
+};
+
 const SessionDefaultsPanel = () => {
 	const [schema, setSchema] = useState<ISchema | null>(null);
 	const [tracks, setTracks] = useState<Array<IGameListItem>>([]);
@@ -923,6 +1002,7 @@ const sections: Array<{id: string, title: string, needs: Role, tab: AdminTab, bo
 	{id: 'log', title: 'Game server log', needs: 'STEWARD', tab: 'race-day', body: <GameLogPanel />},
 	{id: 'rotation', title: 'Rotation builder', needs: 'ADMIN', tab: 'championships', body: <RotationBuilder />},
 	{id: 'config', title: 'Server settings (server.cfg)', needs: 'ADMIN', tab: 'server', body: <ServerSettingsPanel />},
+	{id: 'rotationaddon', title: 'Rotation addon (no restart)', needs: 'ADMIN', tab: 'server', body: <RotationAddonPanel />},
 	{id: 'sessiondefaults', title: 'Default session settings (server.cfg)', needs: 'ADMIN', tab: 'server', body: <SessionDefaultsPanel />},
 	{id: 'bans', title: 'Ban list', needs: 'ADMIN', tab: 'server', body: <BanListPanel />},
 	{id: 'whitelist', title: 'Whitelist', needs: 'ADMIN', tab: 'server', body: <WhitelistPanel />},

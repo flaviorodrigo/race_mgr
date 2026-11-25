@@ -199,3 +199,15 @@ export interface ILobbyCheck {
 	rows: Array<ILobbyRow>,
 }
 export const fetchLobbyCheck = () => call<ILobbyCheck>({url: '/gameserver/lobby', method: 'get'});
+
+// The racemgr_rotate addon, which lets a rotation change without restarting the game server
+export interface IRotationAddon {
+	installed: boolean,
+	listed: boolean,
+	smsRotateListed: boolean,
+	conflict: boolean,
+	ready: boolean,
+	reported: null | {version?: number, index?: number, rounds?: number, ok: boolean, note: string},
+}
+export const fetchRotationAddon = () => call<IRotationAddon>({url: '/gameserver/rotation-addon', method: 'get'});
+export const installRotationAddon = () => call<IRotationAddon>({url: '/gameserver/rotation-addon/install', method: 'post'});

@@ -1,0 +1,14 @@
+// The addon's own configuration. Race Manager's rotation (lua_config/racemgr_rotation.lua) replaces the rotation below
+// as soon as it exists, so there is nothing to set here.
+version : 7
+
+config : {
+	// Keep the position in the rotation across restarts of the server
+	"persist_index" : true,
+
+	"default" : {
+	},
+
+	"rotation" : [
+	]
+}

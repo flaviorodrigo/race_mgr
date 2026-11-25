@@ -1,0 +1,14 @@
+// Addon version. Used only as informational value.
+version : [ 1, 0 ]
+
+// Addon description.
+description : "Race Manager rotation addon - sms_rotate with a rotation that can be replaced without restarting the server"
+
+// Required API version - major and minor number.
+apiVersion : [ 3, 0 ]
+
+// Lua addon dependencies - load lib_rotate first
+depends : [ "lib_rotate" ]
+
+// Lua files to load.
+files : [ "racemgr_rotate.lua" ]
