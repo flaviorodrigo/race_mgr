@@ -5,13 +5,9 @@ Notable changes, newest first. This file starts with the security and modernisat
 ## Unreleased
 
 ### Added
+- **Real driver names for AI**: generic multiplayer AI names (e.g. "Jose Lopez (AI)") are turned into real drivers from `AgyAMS2RealNames.dat`, matched by car class, track and skill tier like the SimHub plugin, and still marked as AI.
+- Long dropdowns in the settings editor are searchable; each setting's explanation shows on mouseover.
 - **Sign in with Synology**: behind oauth2-proxy and the Synology SSO Server, DSM users and groups listed in `RM_SSO_*` sign in as admins or stewards; the ID token is checked against the SSO Server's keys, issuer, audience and expiry (`docker/docker-compose.sso-proxy.yml`).
-
-### Security
-- A session cookie now wins over an `Authorization` header, which behind the sign-in proxy carries the Synology token.
-- The CSRF cookie is `SameSite=Strict`, and `Secure` with `RM_COOKIE_SECURE=true`, like the session cookies; that setting also sends Strict-Transport-Security for the Race Manager host name.
-
-### Added
 - Restart a game server that runs in its own container from *Race day*, optionally starting its rotation from round 1: Race Manager writes a signal file into the shared folder and `docker/game-server/entrypoint.sh` restarts the server (`RM_GAMESERVER_RESTART=signal`).
 - Saved rotations can be changed in place (*Save changes*), copied (*Save as new*) or deleted from the Rotation builder; the active rotation can't be deleted.
 - **Racing look** (on by default, toggle in the top bar): carbon and chequered-flag theme, motorsport type, position badges, a championship podium, TV timing colours, and freely licensed photos of Fittipaldi, Piquet, Senna and Schumacher in the background with an *About the images* credits page.
@@ -39,6 +35,8 @@ Notable changes, newest first. This file starts with the security and modernisat
 - Admin login uses an HttpOnly session cookie with CSRF protection, a lockout after repeated failures and a password that can be changed in the UI. Race Manager listens on `127.0.0.1` unless told otherwise; every `/api` route not listed as public is refused.
 
 ### Fixed
+- Text settings and flags are written as the numbers the game server expects in `sms_rotate_default_config.json`.
+- Leaderboard crashes on races with missing values; better Flags and Fill-with-AI defaults in the rotation builder and presets.
 - *Restart game server* said the server hadn't answered when the restart was simply quicker than the page's check; it now follows the request being picked up by the game server's entrypoint, and says so if it never is.
 - A rotation saved in the Rotation builder only appeared in the Rotation dropdown after leaving the page.
 - *Set active* also adds the rotation to the championship, so the leaderboard lists it under that championship (only *Update Server* did before).
@@ -53,3 +51,7 @@ Notable changes, newest first. This file starts with the security and modernisat
 - Races imported from `ams2_stats` were hidden from the leaderboard by the AI-strength filter (the addon doesn't record it).
 - The game server hangs up on HTTP/2 upgrade requests; Race Manager now speaks HTTP/1.1 to it.
 - The ban list uses the game server's real `[ ... ]` file layout.
+
+### Security
+- A session cookie now wins over an `Authorization` header, which behind the sign-in proxy carries the Synology token.
+- The CSRF cookie is `SameSite=Strict`, and `Secure` with `RM_COOKIE_SECURE=true`, like the session cookies; that setting also sends Strict-Transport-Security for the Race Manager host name.

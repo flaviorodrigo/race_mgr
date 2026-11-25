@@ -7,6 +7,19 @@ RM is an advanced (unofficial) [Automobilista 2](https://www.game-automobilista2
 
 This fork of [cauld/race_mgr](https://github.com/cauld/race_mgr) brings the stack up to date (Spring Boot 4, Java 21, React 19), hardens the security model, runs in Docker, and adds a lot of features. See the [changelog](CHANGELOG.md).
 
+## Highlights of this fork
+
+- **Racing look**: carbon panels, chequered-flag top bar, podium, TV timing colours and photos of Fittipaldi, Piquet, Senna and Schumacher, on by default with a toggle ([details](#racing-look)).
+- **Full rotation builder**: every session setting the game server describes, per round, with cars and classes per round, import of the server's own rotation file, and save, update, copy or delete saved rotations ([details](#custom-rotations)).
+- **Presets**: save next-session settings, or whole rounds, under a name and apply them in one click; *Race next* sends a round straight to the next session.
+- **Real driver names for AI**: multiplayer AI drivers get real names, matched by class, track and skill, and stay marked as AI.
+- **Live timing**, **Records**, driver pages, shareable race pages, **penalties** and video links, championship rules (dropped rounds, adjustments, teams).
+- **Restart the game server from Race day** when it runs in its own container, optionally from round 1 ([details](#game-server-that-runs-somewhere-else-eg-its-own-container-on-a-nas)).
+- **Admins and stewards** with their own sign-ins, or **Sign in with Synology** for DSM users and groups ([details](#sign-in-with-synology)).
+- **Runs on a Synology NAS** from ready-made images (Race Manager, MongoDB, optional game server container), with [backup scripts](#backups) ([step by step](#on-a-synology-nas)).
+- **Hardened**: Spring Boot 4 and Java 21, HttpOnly session cookies with CSRF protection, deny-by-default routes, rate-limited logins, Secure cookies and HSTS behind an HTTPS proxy.
+- **Tested**: 127 Java tests, 51 web UI tests, and an end-to-end suite with a real browser, MongoDB and a stand-in game server, run on every push.
+
 ## What it does
 
 **For everyone (no login):**
@@ -31,7 +44,7 @@ On a phone: ![The leaderboard on a phone](screenshots/mobile_home.png)
 *(Screenshots of the racing look, made from the committed sample races: `E2E_SCREENSHOTS=folder npm test` in `e2e/`.)*
 
 ### Contents
-[Demos](#demos) · [Installation](#installationupgrade) · [Web UI access](#accessing-the-web-ui) · [Docker](#running-in-docker-linux--wine) · [Championships](#championships--scoring) · [Live session](#live-session) · [Game server elsewhere](#game-server-that-runs-somewhere-else-eg-its-own-container-on-a-nas) · [Admin tools](#admin-tools) · [Admins and stewards](#admins-and-stewards) · [Discord](#discord-notifications) · [Sector times](#sector-times-and-lap-by-lap-pace-optional-ams2_stats-addon) · [Backups](#backups) · [Settings (environment variables)](#windows-environment-variables) · [Developer setup](#developer-setup) · [API](#api-endpoints)
+[Highlights](#highlights-of-this-fork) · [Demos](#demos) · [Installation](#installationupgrade) · [Web UI access](#accessing-the-web-ui) · [Docker](#running-in-docker-linux--wine) · [Championships](#championships--scoring) · [Live session](#live-session) · [Game server elsewhere](#game-server-that-runs-somewhere-else-eg-its-own-container-on-a-nas) · [Admin tools](#admin-tools) · [Admins and stewards](#admins-and-stewards) · [Sign in with Synology](#sign-in-with-synology) · [Discord](#discord-notifications) · [Sector times](#sector-times-and-lap-by-lap-pace-optional-ams2_stats-addon) · [Backups](#backups) · [Settings (environment variables)](#windows-environment-variables) · [Developer setup](#developer-setup) · [API](#api-endpoints)
   
 ### Demos
  - Here is a [demo video](https://www.youtube.com/watch?v=Kuyp4uOb0OQ&t=13s) of Race Manager Server in action.
@@ -348,5 +361,5 @@ If you are looking to add or enhance features, fix bugs, etc then this is the se
 - A race calendar with sign-ups (it needs a way to tell friends apart without giving everyone an account).
 - Driver ratings and licences, with a minimum-licence rule.
 - Mod cars and tracks, installing or updating the game server from the web UI, several game servers in one Race Manager.
-- A *Restart game server* button for a game server that runs elsewhere. The game server's API has an `api/restart` method whose documentation just repeats the text of `api/session/advance`, and it needs the server's API user, so what it really does is untested.
+- Restarting a game server that doesn't use `docker/game-server/entrypoint.sh` (the in-process `api/restart` method hung at the Steam login under Wine, so it isn't used).
 - Track and car images.
