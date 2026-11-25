@@ -5,6 +5,7 @@ Notable changes, newest first. This file starts with the security and modernisat
 ## Unreleased
 
 ### Added
+- **Whitelist switch**: turn the game server's use of `whitelist.cfg` on or off from the Whitelist tool (one line of `server.cfg`), so only listed Steam IDs can join.
 - **Default session settings (server.cfg)**: edit the `sessionAttributes` block of `server.cfg` with the full settings editor; changes values in place, adds missing ones, keeps comments and a `.bak`.
 - **Live lobby vs rotation** on Race day: the live session's settings next to the rotation file on the game server (default setup plus the round), with the differences highlighted.
 - **Real driver names for AI**: generic multiplayer AI names (e.g. "Jose Lopez (AI)") are turned into real drivers from `AgyAMS2RealNames.dat`, matched by car class, track and skill tier like the SimHub plugin, and still marked as AI.

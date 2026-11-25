@@ -167,4 +167,43 @@ class ServerConfigFileTest {
         Files.writeString(other, "name : \"x\"\n");
         assertThatThrownBy(() -> new ServerConfigFile(other).writeSessionAttributes(Map.of("ManualPitStops", 1))).isInstanceOf(IOException.class);
     }
+
+    @Test
+    void turnsTheWhitelistOnByUncommentingTheSampleLineAndOffByCommentingItOut(@TempDir Path dir) throws Exception {
+        String cfg = "name : \"x\"\n// whiteList : { \"whitelist\" : \"whitelist.cfg\" }\nsecure : true\n";
+        Path file = write(dir, cfg);
+        var config = new ServerConfigFile(file);
+
+        assertThat(config.setWhitelistEnabled(true)).isTrue();
+        assertThat(Files.readString(file)).isEqualTo("name : \"x\"\nwhiteList : { \"whitelist\" : \"whitelist.cfg\" }\nsecure : true\n");
+        assertThat(Files.readString(dir.resolve("server.cfg.bak"))).isEqualTo(cfg);
+        assertThat(config.setWhitelistEnabled(true)).as("already on").isFalse();
+
+        assertThat(config.setWhitelistEnabled(false)).isTrue();
+        assertThat(Files.readString(file)).isEqualTo(cfg);
+        assertThat(config.setWhitelistEnabled(false)).as("already off").isFalse();
+    }
+
+    @Test
+    void addsTheWhitelistLineWhenTheFileHasNoSampleLine(@TempDir Path dir) throws Exception {
+        Path file = write(dir, "name : \"x\"");
+        new ServerConfigFile(file).setWhitelistEnabled(true);
+        assertThat(Files.readString(file)).isEqualTo("name : \"x\"\nwhiteList : { \"whitelist\" : \"whitelist.cfg\" }\n");
+    }
+
+    @Test
+    void doesNotGuessAtAWhitelistEntrySpreadOverSeveralLines(@TempDir Path dir) throws Exception {
+        String cfg = "whiteList : {\n  \"whitelist\" : \"whitelist.cfg\"\n}\n";
+        Path file = write(dir, cfg);
+        assertThatThrownBy(() -> new ServerConfigFile(file).setWhitelistEnabled(false)).isInstanceOf(IOException.class);
+        assertThat(Files.readString(file)).isEqualTo(cfg);
+    }
+
+    @Test
+    void neverUncommentsASampleLineThatNamesSomebodyElse(@TempDir Path dir) throws Exception {
+        String sample = "// whiteList : { \"whitelist\" : \"whitelist.cfg\", \"Stouie\" : 76561197994111033 }\n";
+        Path file = write(dir, sample);
+        new ServerConfigFile(file).setWhitelistEnabled(true);
+        assertThat(Files.readString(file)).isEqualTo(sample + "whiteList : { \"whitelist\" : \"whitelist.cfg\" }\n");
+    }
 }

@@ -395,11 +395,27 @@ scenario('the ban list and whitelist edit the game server\'s own files', async (
   assert.match(fs.readFileSync(path.join(state.serverDir, 'blacklist.cfg'), 'utf8'), /\[\n1234567890\n76561198000000005 \/\/ cut the chicane\n\]/);
 
   await openSection('Whitelist');
-  assert.match(await text('.MuiAccordionDetails-root .MuiAlert-message'), /isn't using this list yet/);
+  assert.match(await text('.MuiAccordionDetails-root .MuiAlert-message'), /The whitelist is off/);
+  assert.equal((await api('PUT', '/api/v1/admin/gameserver/whitelist/active', {enabled: true})).status, 400, 'an empty whitelist can\'t be switched on');
   await setInput(await labelled('Steam ID'), '76561198000000042');
   await clickText('button', 'allow');
   await sleep(1200);
   assert.equal(fs.readFileSync(path.join(state.serverDir, 'whitelist.cfg'), 'utf8'), '// sample whitelist\n[\n76561198000000042\n]\n');
+
+  // Switching the whitelist on and off edits one line of server.cfg; the sample's line naming a stranger is never switched on
+  const cfg = path.join(state.serverDir, 'server.cfg');
+  const original = fs.readFileSync(cfg, 'utf8');
+  const on = await api('PUT', '/api/v1/admin/gameserver/whitelist/active', {enabled: true});
+  assert.equal(on.status, 200, JSON.stringify(on));
+  const switchedOn = fs.readFileSync(cfg, 'utf8');
+  assert.match(switchedOn, /^whiteList : \{ "whitelist" : "whitelist.cfg" \}$/m);
+  assert.doesNotMatch(switchedOn.split('\n').filter(l => !l.trim().startsWith('//')).join('\n'), /Stouie/);
+  assert.equal(fs.readFileSync(`${cfg}.bak`, 'utf8'), original);
+  assert.equal((await api('GET', '/api/v1/admin/gameserver/whitelist')).data.active, true);
+  const off = await api('PUT', '/api/v1/admin/gameserver/whitelist/active', {enabled: false});
+  assert.equal(off.status, 200);
+  assert.equal((await api('GET', '/api/v1/admin/gameserver/whitelist')).data.active, false);
+  assert.doesNotMatch(fs.readFileSync(cfg, 'utf8').split('\n').filter(l => !l.trim().startsWith('//')).join('\n'), /whiteList/);
 });
 
 scenario('the game server log is shown newest first and its text is never rendered as markup', async () => {

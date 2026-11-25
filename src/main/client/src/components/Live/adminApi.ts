@@ -56,6 +56,7 @@ export interface IWhitelist {
 
 export const fetchWhitelist = () => call<IWhitelist>({url: '/gameserver/whitelist', method: 'get'});
 export const addToWhitelist = (steamId: string, note: string) => call({url: '/gameserver/whitelist', method: 'post', data: {steamId, note}});
+export const setWhitelistActive = (enabled: boolean) => call({url: '/gameserver/whitelist/active', method: 'put', data: {enabled}});
 export const removeFromWhitelist = (steamId: string) => call({url: `/gameserver/whitelist/${steamId}`, method: 'delete'});
 
 export interface ILogEvent {

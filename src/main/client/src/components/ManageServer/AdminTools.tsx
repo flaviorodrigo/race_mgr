@@ -5,7 +5,7 @@ import {
 	fetchPresets, fetchSessionSchema, savePreset,
 	updateAdminUser, changePassword, fetchAudit, fetchBanList, fetchGameLog, fetchServerConfig, fetchWhitelist,
 	removeBan, removeFromWhitelist, saveServerConfig,
-	IAdminUser, IApiResult, IAuditEvent, IBanEntry, IGameListItem, ILogEvent, INextSessionSettings, ISessionPreset, IWhitelist, ServerConfigValues, fetchSessionDefaults, saveSessionDefaults} from '../Live/adminApi';
+	IAdminUser, IApiResult, IAuditEvent, IBanEntry, IGameListItem, ILogEvent, INextSessionSettings, ISessionPreset, IWhitelist, ServerConfigValues, fetchSessionDefaults, saveSessionDefaults, setWhitelistActive} from '../Live/adminApi';
 import RotationBuilder from './RotationBuilder';
 import LobbyCheckPanel from './LobbyCheckPanel';
 import PerformancePanel from './PerformancePanel';
@@ -30,6 +30,7 @@ import MenuItem from '@mui/material/MenuItem';
 import Checkbox from '@mui/material/Checkbox';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import Select from '@mui/material/Select';
+import Switch from '@mui/material/Switch';
 import Stack from '@mui/material/Stack';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
@@ -424,7 +425,7 @@ interface IListConfig {
 	add: (steamId: string, note: string) => Promise<IApiResult>,
 	remove: (steamId: string) => Promise<IApiResult>,
 	// Extra explanation under the intro, from what the list holds
-	status?: (list: IWhitelist) => React.ReactNode,
+	status?: (list: IWhitelist, reload: () => void) => React.ReactNode,
 }
 
 // Both lists are the game server's own files of Steam IDs, edited the same way
@@ -472,7 +473,7 @@ const SteamIdListPanel = ({config}: {config: IListConfig}) => {
 			<Typography variant="body2">{config.intro}</Typography>
 			{problem && <Alert severity="warning">{problem}</Alert>}
 			{list && <>
-				{config.status?.(list)}
+				{config.status?.(list, load)}
 				{list.entries.length > 0
 					? <Table size="small" aria-label={config.ariaLabel}>
 						<TableHead>
@@ -529,6 +530,56 @@ const banListConfig: IListConfig = {
 	remove: removeBan,
 };
 
+// Whether the game server uses the list: one line of server.cfg, switched here instead of by hand
+const WhitelistSwitch = ({list, reload}: {list: IWhitelist, reload: () => void}) => {
+	const [confirm, setConfirm] = useState(false);
+	const [busy, setBusy] = useState(false);
+	const [feedback, setFeedback] = useState<IFeedback | null>(null);
+
+	const change = async (enabled: boolean) => {
+		setConfirm(false);
+		setBusy(true);
+		const result = await setWhitelistActive(enabled);
+		setBusy(false);
+		setFeedback({text: result.message, severity: result.ok ? 'success' : 'error'});
+		reload();
+	};
+
+	return (
+		<Stack spacing={1}>
+			<FormControlLabel
+				control={<Switch checked={list.active} disabled={busy || (!list.active && list.entries.length === 0)}
+					onChange={e => (e.target.checked ? setConfirm(true) : change(false))} />}
+				label="Only the players on this list can join" />
+			{list.active
+				? (list.entries.length > 0
+					? <Alert severity="warning" sx={{textAlign: 'left'}}>
+						The whitelist is on in server.cfg: only the {list.entries.length} listed player{list.entries.length === 1 ? '' : 's'} can join (the
+						ban list is then ignored). Changes apply after the game server restarts.
+					</Alert>
+					: <Alert severity="info" sx={{textAlign: 'left'}}>The whitelist is on but empty, so everybody can join. Add players to close the server to everyone else.</Alert>)
+				: <Alert severity="info" sx={{textAlign: 'left'}}>
+					The whitelist is off, so anybody with the server password can join. Add the players who may join, then switch it on.
+				</Alert>}
+			<Feedback feedback={feedback} />
+			<Dialog open={confirm} onClose={() => setConfirm(false)}>
+				<DialogTitle>Close the server to everyone else?</DialogTitle>
+				<DialogContent>
+					<DialogContentText>
+						Once the game server restarts, only the {list.entries.length} player{list.entries.length === 1 ? '' : 's'} on this list can
+						join. Make sure you and your friends are on it, or you&apos;ll lock yourselves out. This edits one line of server.cfg and keeps
+						the previous file as server.cfg.bak.
+					</DialogContentText>
+				</DialogContent>
+				<DialogActions>
+					<Button onClick={() => setConfirm(false)}>Cancel</Button>
+					<Button color="warning" onClick={() => change(true)}>Switch on</Button>
+				</DialogActions>
+			</Dialog>
+		</Stack>
+	);
+};
+
 const whitelistConfig: IListConfig = {
 	ariaLabel: 'Whitelist',
 	intro: 'For a closed server: when the game server uses its whitelist, only the players listed here can join (the ban list is then ignored). It\'s the game server\'s whitelist.cfg; restart the server for a change to be sure to apply.',
@@ -538,19 +589,8 @@ const whitelistConfig: IListConfig = {
 	load: fetchWhitelist,
 	add: addToWhitelist,
 	remove: removeFromWhitelist,
-	status(list) {
-		if (!list.active) {
-			return (
-				<Alert severity="info" sx={{textAlign: 'left'}}>
-					The game server isn&apos;t using this list yet, so anybody can join. To use it, add the line{' '}
-					<code>{'whiteList : { "whitelist" : "whitelist.cfg" }'}</code> to server.cfg and restart the server.
-				</Alert>
-			);
-		}
-
-		return list.entries.length > 0
-			? <Alert severity="warning" sx={{textAlign: 'left'}}>The whitelist is in use: only the {list.entries.length} listed player{list.entries.length === 1 ? '' : 's'} can join.</Alert>
-			: <Alert severity="info" sx={{textAlign: 'left'}}>The whitelist is in use but empty, so everybody can join. Add players to close the server to everyone else.</Alert>;
+	status(list, reload) {
+		return <WhitelistSwitch list={list} reload={reload} />;
 	},
 };
 

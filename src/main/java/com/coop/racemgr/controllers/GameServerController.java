@@ -154,6 +154,34 @@ public class GameServerController {
         }
     }
 
+    @Data
+    public static class WhitelistActiveRequest {
+        private Boolean enabled;
+    }
+
+    // Makes the game server use whitelist.cfg (only the listed players can join) or stop using it, by uncommenting or
+    // commenting out one line of server.cfg. The game server reads server.cfg when it starts.
+    @PutMapping("/api/v1/admin/gameserver/whitelist/active")
+    public ResponseEntity<Object> whitelistActive(@RequestBody WhitelistActiveRequest request, Authentication authentication) {
+        if (request.getEnabled() == null) {
+            return ResponseHandler.generateResponse("enabled must be true or false", HttpStatus.BAD_REQUEST, null);
+        }
+
+        try {
+            if (request.getEnabled() && SteamIdList.whitelistForServer().list().isEmpty()) {
+                return ResponseHandler.generateResponse("Add the players who may join first: an empty whitelist lets everybody in", HttpStatus.BAD_REQUEST, null);
+            }
+            boolean changed = ServerConfigFile.forServer().setWhitelistEnabled(request.getEnabled());
+            auditLog.record(authentication.getName(), request.getEnabled() ? "whitelist switched on" : "whitelist switched off", changed ? "server.cfg changed" : "no change");
+            return ResponseHandler.generateResponse(changed
+                    ? "Saved. Restart the game server for the change to apply."
+                    : "It was already " + (request.getEnabled() ? "on" : "off") + ".", HttpStatus.OK, null);
+        } catch (java.io.IOException | SteamIdList.UnsupportedFormatException e) {
+            logger.warn("Changing the whitelist setting failed: " + e);
+            return ResponseHandler.generateResponse(e instanceof SteamIdList.UnsupportedFormatException ? "The whitelist file has a layout Race Manager can't read" : "Could not change server.cfg", HttpStatus.MULTI_STATUS, null);
+        }
+    }
+
     @PostMapping("/api/v1/admin/gameserver/whitelist")
     public ResponseEntity<Object> whitelistAdd(@RequestBody BanListRequest request, Authentication authentication) {
         return addEntry(SteamIdList::whitelistForServer, request, authentication, "whitelist add", "Added to the whitelist. The game server reads it when it next loads its configuration.");

@@ -141,6 +141,61 @@ public class ServerConfigFile {
         GameServerFiles.replace(file, text);
     }
 
+    // --- the whitelist: whether the game server uses whitelist.cfg ----------------------------------------------
+
+    public static final String WHITELIST_LINE = "whiteList : { \"whitelist\" : \"" + SteamIdList.WHITELIST_FILE_NAME + "\" }";
+    private static final Pattern WHITELIST_ACTIVE = Pattern.compile("(?m)^([ \\t]*)\"?whiteList\"?[ \\t]*:[^\\n]*");
+    // Only the plain sample line is uncommented: the game server's own sample also lists a stranger's Steam ID
+    private static final Pattern WHITELIST_COMMENTED = Pattern.compile("(?m)^([ \\t]*)//[ \\t]*(whiteList[ \\t]*:[ \\t]*\\{[ \\t]*\"whitelist\"[ \\t]*:[ \\t]*\""
+            + Pattern.quote(SteamIdList.WHITELIST_FILE_NAME) + "\"[ \\t]*\\}[ \\t]*)$");
+
+    /**
+     * Makes the game server use whitelist.cfg (only the listed players can join) or stop using it. Turning it on
+     * uncomments the plain sample line when there is one, else adds the line at the end; turning it off comments the line
+     * out. Nothing else in the file changes, and the previous file is kept as server.cfg.bak.
+     * @return whether the file changed
+     */
+    public synchronized boolean setWhitelistEnabled(boolean enabled) throws IOException {
+        String text = Files.readString(file, StandardCharsets.UTF_8);
+        Matcher active = findTopLevel(WHITELIST_ACTIVE, text);
+        String changed;
+        if (enabled) {
+            if (active != null) {
+                return false;
+            }
+            Matcher commented = findTopLevel(WHITELIST_COMMENTED, text);
+            if (commented != null) {
+                changed = text.substring(0, commented.start()) + commented.group(1) + commented.group(2) + text.substring(commented.end());
+            } else {
+                changed = text + (text.endsWith("\n") || text.isEmpty() ? "" : "\n") + WHITELIST_LINE + "\n";
+            }
+        } else {
+            if (active == null) {
+                return false;
+            }
+            String line = active.group();
+            if (line.chars().filter(c -> c == '{').count() != line.chars().filter(c -> c == '}').count()) {
+                throw new IOException("The whiteList entry in " + FILE_NAME + " spans several lines; comment it out by hand");
+            }
+            changed = text.substring(0, active.start()) + active.group(1) + "// " + line.substring(active.group(1).length()) + text.substring(active.end());
+        }
+
+        Files.copy(file, file.resolveSibling(FILE_NAME + ".bak"), StandardCopyOption.REPLACE_EXISTING);
+        GameServerFiles.replace(file, changed);
+        return true;
+    }
+
+    // The first match that is a top-level entry of the file (not inside a block)
+    private static Matcher findTopLevel(Pattern pattern, String text) {
+        Matcher m = pattern.matcher(text);
+        while (m.find()) {
+            if (depthAt(text, m.start()) == 0) {
+                return m;
+            }
+        }
+        return null;
+    }
+
     // --- the sessionAttributes block: the settings a session starts from ------------------------------------
 
     public static final String SESSION_BLOCK = "sessionAttributes";
