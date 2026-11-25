@@ -42,6 +42,10 @@ services:
       # RM_GAMESERVER_PASSWORD: ${AMS2_API_PASSWORD}
       # Set to true when your HTTPS reverse proxy talks to Race Manager over plain HTTP
       RM_COOKIE_SECURE: ${RM_COOKIE_SECURE:-false}
+      # Sector times, the ideal lap and the lap chart need the ams2_stats addon in the game server (see the README):
+      # set RM_STATS_SOURCE=ams2_stats, and RM_STATS_TIMEZONE to the zone the game server's clock is in
+      RM_STATS_SOURCE: ${RM_STATS_SOURCE:-}
+      RM_STATS_TIMEZONE: ${RM_STATS_TIMEZONE:-}
       # Optional Discord notifications
       RM_DISCORD_WEBHOOK_URL: ${RM_DISCORD_WEBHOOK_URL:-}
       # Optional "Sign in with Synology" behind docker/docker-compose.sso-proxy.yml (see the README)
