@@ -19,6 +19,7 @@ import ApplyServerConfig from './ApplyServerConfig';
 import LivePanel from '../Live/LivePanel';
 import AdminTools, {AdminTab} from './AdminTools';
 import GameServerRestart from './GameServerRestart';
+import {fetchRotationAddon, IRotationAddon} from '../Live/adminApi';
 import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
 import {atLeast} from '../../utils/roles';
@@ -58,6 +59,15 @@ const ManageServer = (props:IManageServerProps) => {
 	const wanted = search.get('tab') as AdminTab | null;
 	const currentTab: AdminTab = tabs.some(t => t.id === wanted) ? wanted! : 'race-day';
 	const setTab = (tab: AdminTab) => setSearch(tab === 'race-day' ? {} : {tab}, {replace: true});
+
+	// Whether the racemgr_rotate addon is in use: then Update Server needs no restart
+	const [rotationAddon, setRotationAddon] = useState<IRotationAddon | null>(null);
+	useEffect(() => {
+		if (currentTab === 'championships') {
+			fetchRotationAddon().then(r => setRotationAddon(r.ok && r.data ? r.data : null));
+		}
+	}, [currentTab]);
+	const addonInUse = Boolean(rotationAddon?.ready && rotationAddon.reported);
 
 	useEffect(() => {
 		dispatch(getServerStatus());
@@ -155,9 +165,11 @@ const ManageServer = (props:IManageServerProps) => {
 
 					{serverStatus.managed === false
 					&& <Alert severity="info" sx={{textAlign: 'left', mt: 2}}>
-						{serverStatus.restartable
-							? 'The game server runs in its own container. After Update Server, use Restart game server on the Race day tab for the new rotation to take effect.'
-							: 'The game server is run outside Race Manager. After changing the rotation, restart the game server yourself for it to take effect.'}
+						{addonInUse
+							? 'The racemgr_rotate addon is in use: Update Server hands the rotation to the running game server, which picks it up within a few seconds. No restart, and nobody has to leave.'
+							: serverStatus.restartable
+								? 'The game server runs in its own container. After Update Server, use Restart game server on the Race day tab for the new rotation to take effect (or use the Rotation addon in the Server tab to skip the restart).'
+								: 'The game server is run outside Race Manager. After changing the rotation, restart the game server yourself for it to take effect.'}
 					</Alert>
 					}
 				</>}
