@@ -7,6 +7,7 @@ import {
 import Accordion from '@mui/material/Accordion';
 import AccordionDetails from '@mui/material/AccordionDetails';
 import AccordionSummary from '@mui/material/AccordionSummary';
+import Autocomplete from '@mui/material/Autocomplete';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Checkbox from '@mui/material/Checkbox';
@@ -66,6 +67,25 @@ const cleanHelp = (desc: string): string => desc
 const Choice = ({id, label, help, notSet, options, current, pick}: {id: string, label: string, help: string, notSet: boolean,
 	options: Array<{key: string, label: string}>, current: string, pick: (key: string) => void}) => {
 	const text = cleanHelp(help);
+	if (options.length > 12) {
+		const selected = options.find(o => o.key === current) ?? null;
+		return (
+			<Autocomplete
+				id={id}
+				size="small"
+				options={options}
+				value={selected}
+				getOptionLabel={o => o.label}
+				isOptionEqualToValue={(a, b) => a.key === b.key}
+				onChange={(_e, next) => pick(next ? next.key : NOT_SET)}
+				renderInput={params => (
+					<TextField {...params} variant="standard" label={label} title={help}
+						placeholder="Type to filter..." helperText={text || (notSet ? 'Not set' : undefined)} />
+				)}
+			/>
+		);
+	}
+
 	return (
 		<TextField select fullWidth variant="standard" id={id} label={label} title={help} value={current}
 			onChange={e => pick(e.target.value)} helperText={text || (notSet ? 'Not set' : undefined)}>
