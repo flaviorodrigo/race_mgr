@@ -2,8 +2,8 @@ import React, {useEffect} from 'react';
 import {useSelector, useDispatch} from 'react-redux';
 
 import {updateServerStatus} from '../../state/serverStatus';
-import {getServerConfig, updateServerConfig} from '../../state/serverConfig';
-import {fetchSessionDetail, updateServerConfig as saveActiveConfig, updateSession} from './utilities';
+import {getServerConfig} from '../../state/serverConfig';
+import {activateRotationId, fetchSessionDetail, updateServerConfig as saveActiveConfig, updateSession} from './utilities';
 
 import Button from '@mui/material/Button';
 import Stack from '@mui/material/Stack';
@@ -47,13 +47,22 @@ const ApplyServerConfig = (props:IProps) => {
 		setFormIsValid(formIsValid);
 	}, [sessions.selectedSessionId, rotations.selectedRotationId]);
 
-	const handleUpdateServerConfig = () => {
-		dispatch(updateServerConfig(
-			{
-				activeRaceSessionId: sessions.selectedSessionId ?? '',
-				activeRaceRotationId: rotations.selectedRotationId ?? '',
-			}),
-		);
+	// Records the championship and rotation as active, writes the rotation for the game server, and says what the
+	// game server needs next (a restart, or nothing when the racemgr_rotate addon is in use)
+	const handleUpdateServerConfig = async () => {
+		const saved: any = await saveActiveConfig({
+			activeRaceSessionId: sessions.selectedSessionId ?? '',
+			activeRaceRotationId: rotations.selectedRotationId ?? '',
+		});
+		if (saved?.data?.status !== 200) {
+			props.showNotification('Could not set the championship and rotation as active', 'error');
+			return;
+		}
+
+		dispatch(getServerConfig());
+		const activated: any = await activateRotationId(rotations.selectedRotationId ?? '');
+		const ok = activated?.status === 200;
+		props.showNotification(activated?.message || (ok ? 'Rotation written.' : 'Could not write the rotation for the game server'), ok ? 'success' : 'error');
 	};
 
 	// Only records which championship and rotation races belong to; the game server's rotation file is left alone

@@ -179,7 +179,7 @@ const ManageServer = (props:IManageServerProps) => {
 				<Snackbar
 					anchorOrigin={{vertical: 'bottom', horizontal: 'right'}}
 					open={notificationIsOpen}
-					autoHideDuration={3000}
+					autoHideDuration={8000}
 					onClose={handleClose}
 				>
 					<Alert severity={notificationSeverity}>{notificationMessage}</Alert>
