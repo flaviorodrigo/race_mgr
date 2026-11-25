@@ -59,14 +59,8 @@ interface IFieldProps {
 	idPrefix: string,
 }
 
-const cleanHelp = (desc: string): string => desc
-	.replace(/\s*(The|he)?\s*enum values are available[\s\S]*$/i, '')
-	.replace(/\s*The flag values are available[\s\S]*$/i, '')
-	.trim();
-
 const Choice = ({id, label, help, notSet, options, current, pick}: {id: string, label: string, help: string, notSet: boolean,
 	options: Array<{key: string, label: string}>, current: string, pick: (key: string) => void}) => {
-	const text = cleanHelp(help);
 	if (options.length > 12) {
 		const selected = options.find(o => o.key === current) ?? null;
 		return (
@@ -80,7 +74,7 @@ const Choice = ({id, label, help, notSet, options, current, pick}: {id: string, 
 				onChange={(_e, next) => pick(next ? next.key : NOT_SET)}
 				renderInput={params => (
 					<TextField {...params} variant="standard" label={label} title={help}
-						placeholder="Type to filter..." helperText={text || (notSet ? 'Not set' : undefined)} />
+						placeholder="Type to filter..." helperText={notSet ? 'Not set' : undefined} />
 				)}
 			/>
 		);
@@ -88,7 +82,7 @@ const Choice = ({id, label, help, notSet, options, current, pick}: {id: string, 
 
 	return (
 		<TextField select fullWidth variant="standard" id={id} label={label} title={help} value={current}
-			onChange={e => pick(e.target.value)} helperText={text || (notSet ? 'Not set' : undefined)}>
+			onChange={e => pick(e.target.value)} helperText={notSet ? 'Not set' : undefined}>
 			<MenuItem value={NOT_SET}><em>Not set</em></MenuItem>
 			{options.map(o => <MenuItem key={o.key} value={o.key}>{o.label}</MenuItem>)}
 		</TextField>
@@ -139,9 +133,6 @@ const Field = ({attribute, value, set, schema, tracks, classes, vehicles, idPref
 		return (
 			<Box sx={{gridColumn: '1 / -1'}}>
 				<Typography variant="subtitle2" title={help}>{label}{value === undefined ? ' (not set: the game decides)' : ''}</Typography>
-				<Typography variant="caption" color="text.secondary" sx={{display: 'block', mb: 0.5}}>
-					{cleanHelp(help) || 'Session rule flags.'} Note: &quot;Fill session with ai&quot; requires Grid Size &gt; Max Players.
-				</Typography>
 				<Box sx={{display: 'grid', gridTemplateColumns: {xs: '1fr', sm: '1fr 1fr', md: '1fr 1fr 1fr'}}}>
 					{schema.flags.map(f => (
 						<FormControlLabel key={f.name} label={prettyOption(f.name)}
@@ -185,10 +176,9 @@ const NumberField = ({id, label, help, value, set}: {id: string, label: string, 
 	const [draft, setDraft] = useState<string | null>(null);
 	const shown = draft ?? (value === undefined ? '' : String(value));
 	const valid = shown === '' || /^-?\d{1,10}$/.test(shown.trim());
-	const text = cleanHelp(help);
 	return (
 		<TextField fullWidth variant="standard" id={id} label={label} title={help} value={shown} error={!valid}
-			helperText={valid ? (text || (value === undefined ? 'Not set' : undefined)) : 'A whole number'}
+			helperText={valid ? (value === undefined ? 'Not set' : undefined) : 'A whole number'}
 			onChange={e => {
 				const text = e.target.value;
 				if (text.trim() === '') {
