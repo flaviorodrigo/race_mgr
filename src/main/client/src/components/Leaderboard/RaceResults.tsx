@@ -11,6 +11,8 @@ import {fetchTrackData, fetchVehicleData} from './utilities';
 import {SortHeadCell, useSort} from './sorting';
 import {roundsOf} from './RoundPoints';
 import CopyLinkButton from './CopyLinkButton';
+import Link from '@mui/material/Link';
+import {Link as RouterLink} from 'react-router-dom';
 import {atLeast} from '../../utils/roles';
 import {useRole} from '../Live/useRole';
 import RaceMgrApi from '../../api/RaceMgrApi';
@@ -116,7 +118,12 @@ function Row(props: { row: IRace, round: number, trackData: Array<ITrackData>, v
 					{row.raceId && <CopyLinkButton raceId={row.raceId} />}
 				</TableCell>
 				<TableCell component="th" scope="row">
-					{ props.trackData?.filter(td => td.id === row.trackName)[0]?.name.replaceAll('_', ' ') }
+					{/* The race's own page: result, qualifying, sector times, lap chart, penalties and video */}
+					{row.raceId
+						? <Link component={RouterLink} to={`/race/${row.raceId}`} underline="hover" color="inherit">
+							{ props.trackData?.filter(td => td.id === row.trackName)[0]?.name.replaceAll('_', ' ') ?? 'Race' }
+						</Link>
+						: props.trackData?.filter(td => td.id === row.trackName)[0]?.name.replaceAll('_', ' ') }
 				</TableCell>
 				<TableCell component="th" scope="row">
 					{convertEpochDate(row.startDate)}

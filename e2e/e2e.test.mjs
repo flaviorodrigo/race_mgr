@@ -332,6 +332,10 @@ scenario('Set active records the championship and rotation without touching the 
 });
 
 scenario('a race page shows the result, sector times and lap chart', async () => {
+  // It opens from the leaderboard: the track name in the race list is a link to it
+  await go('/');
+  const links = await state.page.$$eval('table[aria-label="collapsible table"] a[href^="/race/"]', as => as.map(a => a.getAttribute('href')));
+  assert.ok(links.includes(`/race/${state.raceId}`), `the race list links to the race page: ${JSON.stringify(links)}`);
   await go(`/race/${state.raceId}`);
   const result = await rows('table[aria-label="Race result"]');
   assert.equal(result.length, 6);
