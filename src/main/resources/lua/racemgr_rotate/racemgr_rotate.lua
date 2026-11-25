@@ -100,6 +100,9 @@ local function apply_current_setup()
 end
 
 
+local advance_next_setup
+
+
 -- Looks for a new rotation from Race Manager. force: read it even if it looks the same as last time.
 -- apply: set the next session from it now (not needed at start-up, when the first setup is applied right after)
 local function reload_rotation( force, apply )
@@ -149,7 +152,12 @@ local function reload_rotation( force, apply )
 		addon_data.index = #rotation
 	end
 	if apply then
-		apply_current_setup()
+		if not addon_data.index or addon_data.index < 1 then
+			-- Nothing was queued yet (the server started without a rotation): queue the first setup now
+			advance_next_setup()
+		else
+			apply_current_setup()
+		end
 	end
 	SavePersistentData()
 	write_status( "applied" )
@@ -158,7 +166,7 @@ end
 
 
 -- The main "rotate to next setup" function
-local function advance_next_setup()
+advance_next_setup = function()
 	if not rotation_ok then
 		return
 	end

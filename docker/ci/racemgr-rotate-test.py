@@ -211,6 +211,16 @@ class RotateTest(unittest.TestCase):
         self.assertEqual(self.applied()[-1]['TrackId'], 'Brasilia\n\u00e9')
         self.assertEqual(self.applied()[-1]['RaceLength'], 20)
 
+    def test_a_rotation_arriving_after_a_start_without_one_queues_its_first_round(self):
+        self.start(rounds=())  # no rotation in the addon's config and no file yet
+        self.assertEqual(self.tracks(), [])
+        self.write(rotation_file(1, ['A', 'B']))
+        self.tick()
+        self.assertEqual(self.tracks(), ['A'])
+        self.assertEqual(self.status()['index'], 1)
+        self.lua.execute('event("Lobby", "Loading")')
+        self.assertEqual(self.tracks(), ['A', 'B'])
+
     def test_the_position_is_saved_when_advancing(self):
         self.start()
         before = self.g.saves
