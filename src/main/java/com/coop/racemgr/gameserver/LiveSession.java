@@ -59,7 +59,7 @@ public final class LiveSession {
         if (maxPlayers == null) {
             maxPlayers = positive(integer(attributes.path("MaxPlayers")));
         }
-        return new Summary(stage, positive(integer(attributes.path("TrackId"))) == null ? null : text(attributes.path("TrackId")),
+        return new Summary(stage, nonZero(integer(attributes.path("TrackId"))) == null ? null : text(attributes.path("TrackId")),
                 members.size(), maxPlayers, members);
     }
 
@@ -100,6 +100,11 @@ public final class LiveSession {
 
     private static Integer positive(Integer value) {
         return value != null && value > 0 ? value : null;
+    }
+
+    // Track and class ids are signed 32-bit numbers (about half of them are negative); 0 means "none"
+    private static Integer nonZero(Integer value) {
+        return value != null && value != 0 ? value : null;
     }
 
     // Blank counts as missing

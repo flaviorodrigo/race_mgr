@@ -2,6 +2,7 @@ package com.coop.racemgr.stats;
 
 import com.coop.racemgr.gameserver.LiveTiming;
 import com.coop.racemgr.model.Race;
+import com.coop.racemgr.utils.RacemgrUtils;
 
 import java.io.BufferedReader;
 import java.io.InputStream;
@@ -254,9 +255,14 @@ public final class AiPilotConverter {
         }
 
         Integer setupClassId = integer(race.getSetup() != null ? race.getSetup().get("VehicleClassId") : null);
-        String fallbackClass = setupClassId != null && setupClassId > 0 ? lookup.vehicleClassForClassId(setupClassId) : null;
+        // Class ids are signed 32-bit numbers (F-V8_Gen2 is -1027000403); 0 or none means no class
+        String fallbackClass = setupClassId != null && setupClassId != 0 ? lookup.vehicleClassForClassId(setupClassId) : null;
         Object trackObj = race.getSetup() != null ? race.getSetup().get("TrackId") : null;
         String trackName = trackObj != null ? lookup.trackNameForTrackId(String.valueOf(trackObj)) : null;
+
+        // Some results carry car ids the game server's list doesn't know, while the participant in the same slot has
+        // one it does: show that car (and take its class) instead
+        repairVehicleIds(race, lookup);
 
         List<DriverInput> inputs = new ArrayList<>();
         collectStageInputs(race.getStages(), "qualifying1", fallbackClass, lookup, inputs);
@@ -272,6 +278,62 @@ public final class AiPilotConverter {
         applyToStageResults(race.getStages(), "race1", fallbackClass, lookup, mapping);
         applyToParticipants(race.getParticipants(), fallbackClass, lookup, mapping);
         return race;
+    }
+
+    /**
+     * A result's car id is replaced by its participant's (same participantid) when the game server's list doesn't know
+     * the result's id but does know the participant's, so the car shows up and its class can be found.
+     */
+    @SuppressWarnings("unchecked")
+    static void repairVehicleIds(Race race, Lookup lookup) {
+        if (race == null || lookup == null || race.getStages() == null) {
+            return;
+        }
+        for (Object stage : race.getStages().values()) {
+            if (!(stage instanceof Map<?, ?> stageMap) || !(stageMap.get("results") instanceof List<?> results)) {
+                continue;
+            }
+            for (Object item : results) {
+                if (!(item instanceof Map<?, ?> r) || !(r.get("attributes") instanceof Map<?, ?> attributesRaw)) {
+                    continue;
+                }
+                Integer own = integer(attributesRaw.get("VehicleId"));
+                if (own != null && knownCar(own, lookup)) {
+                    continue;
+                }
+                Map<?, ?> participant = participantAt(race.getParticipants(), integer(r.get("participantid")));
+                Integer theirs = participant == null ? null : integer(participant.get("VehicleId"));
+                if (theirs != null && knownCar(theirs, lookup)) {
+                    ((Map<String, Object>) attributesRaw).put("VehicleId", theirs);
+                }
+            }
+        }
+    }
+
+    private static boolean knownCar(Integer vehicleId, Lookup lookup) {
+        String carClass = lookup.vehicleClassForVehicleId(vehicleId);
+        return carClass != null && !carClass.isBlank();
+    }
+
+    private static Map<?, ?> participantAt(Object participants, Integer participantId) {
+        if (participantId == null) {
+            return null;
+        }
+        if (participants instanceof Map<?, ?> map) {
+            return map.get(String.valueOf(participantId)) instanceof Map<?, ?> m ? m : null;
+        }
+        if (participants instanceof List<?> list && participantId >= 0 && participantId < list.size()) {
+            return list.get(participantId) instanceof Map<?, ?> m ? m : null;
+        }
+        return null;
+    }
+
+    /** The race as it is shown: names and cars converted on a copy, so the stored race is never changed. */
+    public static Race convertedCopy(Race race, Lookup lookup) {
+        if (race == null) {
+            return null;
+        }
+        return convertRace(RacemgrUtils.JSON.convertValue(race, Race.class), lookup);
     }
 
     public static LiveTiming.Board convertLiveBoard(LiveTiming.Board board, Lookup lookup) {

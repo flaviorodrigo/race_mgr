@@ -114,4 +114,105 @@ class AiPilotConverterTest {
         assertNotEquals("Giancarlo Rampanelli (AI)", converted.cars().get(1).name());
         assertFalse(converted.cars().get(1).player());
     }
+
+    // Class ids are signed 32-bit numbers and half of them are negative (F-V8_Gen2 is -1027000403). A race whose results
+    // carry car ids the server's list doesn't know has to fall back to the session's class, whatever its sign.
+    @Test
+    void convertsResultsWhoseCarIdIsUnknownThroughTheSessionsNegativeClassId() {
+        AiPilotConverter.Lookup lookup = new AiPilotConverter.Lookup() {
+            @Override
+            public String vehicleClassForVehicleId(Integer vehicleId) {
+                return vehicleId != null && vehicleId == 1001 ? "FE-G1" : null;
+            }
+
+            @Override
+            public String vehicleClassForClassId(Integer classId) {
+                return classId != null && classId == -1027000403 ? "FE-G1" : null;
+            }
+
+            @Override
+            public String trackNameForTrackId(String trackId) {
+                return null;
+            }
+        };
+
+        Race race = new Race();
+        race.setSetup(Map.of("VehicleClassId", -1027000403, "TrackId", 999));
+        Map<String, Object> p1 = new LinkedHashMap<>();
+        p1.put("Name", "Giancarlo Rampanelli (AI)");
+        p1.put("IsPlayer", 0);
+        p1.put("VehicleId", 1001);
+        race.setParticipants(Map.of("1", p1));
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("name", "Giancarlo Rampanelli  (AI)");
+        result.put("is_player", false);
+        result.put("attributes", Map.of("VehicleId", 468530913)); // not in the list
+        race.setStages(Map.of("race1", Map.of("results", List.of(result))));
+
+        AiPilotConverter.convertRace(race, lookup);
+
+        String converted = (String) result.get("name");
+        assertNotEquals("Giancarlo Rampanelli  (AI)", converted);
+        assertTrue(converted.endsWith(" (AI)"), converted);
+        assertEquals(converted, p1.get("Name"), "the results and the participants get the same real name");
+    }
+
+    private Race raceWithUnknownResultCarIds(Map<String, Object> result, Map<String, Object> participant) {
+        Race race = new Race();
+        race.setSetup(Map.of("TrackId", 999)); // no class to fall back on
+        race.setParticipants(Map.of("2", participant));
+        race.setStages(Map.of("race1", Map.of("results", List.of(result))));
+        return race;
+    }
+
+    @Test
+    void showsTheParticipantsCarWhenTheResultsIdIsNotInTheListAndTakesItsClass() {
+        Map<String, Object> participant = new LinkedHashMap<>();
+        participant.put("Name", "Giancarlo Rampanelli (AI)");
+        participant.put("IsPlayer", 0);
+        participant.put("VehicleId", 1001); // known: FE-G1
+        Map<String, Object> attributes = new LinkedHashMap<>(Map.of("VehicleId", 468530913)); // unknown
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("name", "Giancarlo Rampanelli  (AI)");
+        result.put("is_player", false);
+        result.put("participantid", 2);
+        result.put("attributes", attributes);
+
+        AiPilotConverter.convertRace(raceWithUnknownResultCarIds(result, participant), TEST_LOOKUP);
+
+        assertEquals(1001, attributes.get("VehicleId"));
+        assertNotEquals("Giancarlo Rampanelli  (AI)", result.get("name"), "its class is found through the participant's car");
+    }
+
+    @Test
+    void leavesAResultsCarAloneWhenItsIdIsKnownOrTheParticipantsIsNot() {
+        Map<String, Object> participant = new LinkedHashMap<>(Map.of("Name", "X (AI)", "IsPlayer", 0, "VehicleId", 7777)); // unknown too
+        Map<String, Object> attributes = new LinkedHashMap<>(Map.of("VehicleId", 468530913));
+        Map<String, Object> result = new LinkedHashMap<>(Map.of("name", "X (AI)", "is_player", false, "participantid", 2, "attributes", attributes));
+        AiPilotConverter.convertRace(raceWithUnknownResultCarIds(result, participant), TEST_LOOKUP);
+        assertEquals(468530913, attributes.get("VehicleId"));
+
+        Map<String, Object> known = new LinkedHashMap<>(Map.of("VehicleId", 1001));
+        Map<String, Object> result2 = new LinkedHashMap<>(Map.of("name", "X (AI)", "is_player", false, "participantid", 2, "attributes", known));
+        Map<String, Object> participant2 = new LinkedHashMap<>(Map.of("Name", "X (AI)", "IsPlayer", 0, "VehicleId", 1001));
+        AiPilotConverter.convertRace(raceWithUnknownResultCarIds(result2, participant2), TEST_LOOKUP);
+        assertEquals(1001, known.get("VehicleId"));
+    }
+
+    @Test
+    void aConvertedCopyLeavesTheStoredRaceUntouched() {
+        Race race = new Race();
+        race.setSetup(Map.of("VehicleClassId", 2001, "TrackId", 999));
+        Map<String, Object> ai = new LinkedHashMap<>(Map.of("name", "Giancarlo Rampanelli (AI)", "is_player", false,
+                "attributes", new LinkedHashMap<>(Map.of("VehicleId", 1001))));
+        race.setStages(Map.of("race1", Map.of("results", new ArrayList<>(List.of(ai)))));
+
+        Race shown = AiPilotConverter.convertedCopy(race, TEST_LOOKUP);
+
+        assertEquals("Giancarlo Rampanelli (AI)", ai.get("name"), "the stored race keeps its generic name");
+        @SuppressWarnings("unchecked")
+        var shownResults = (List<Map<String, Object>>) ((Map<String, Object>) shown.getStages().get("race1")).get("results");
+        assertNotEquals("Giancarlo Rampanelli (AI)", shownResults.get(0).get("name"));
+    }
 }

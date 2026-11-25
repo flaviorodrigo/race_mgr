@@ -120,7 +120,7 @@ public class RaceController {
                 return ResponseHandler.generateResponse("Race not found", HttpStatus.NOT_FOUND, null);
             }
 
-            var cleaned = RaceNotes.cleanPenalties(request.getPenalties(), driversOf(AiPilotConverter.convertRace(race, gameServerLookup)));
+            var cleaned = RaceNotes.cleanPenalties(request.getPenalties(), driversOf(AiPilotConverter.convertedCopy(race, gameServerLookup)));
             if (cleaned == null) {
                 return ResponseHandler.generateResponse("Each penalty needs a driver of this race and 1 to " + RaceNotes.MAX_PENALTY_SECONDS
                         + " seconds, or a disqualification (at most " + RaceNotes.MAX_PENALTIES + ")", HttpStatus.BAD_REQUEST, null);

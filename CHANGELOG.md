@@ -38,6 +38,9 @@ Notable changes, newest first. This file starts with the security and modernisat
 - Admin login uses an HttpOnly session cookie with CSRF protection, a lockout after repeated failures and a password that can be changed in the UI. Race Manager listens on `127.0.0.1` unless told otherwise; every `/api` route not listed as public is refused.
 
 ### Fixed
+- **AI names and cars on races whose results carry car ids the game server's list doesn't know** (the car column was blank and the AI kept their generic names): the converter now falls back to the session's class whatever its sign (class ids are signed, `F-V8_Gen2` is negative), and shows the car of the participant in the same slot.
+- The live strip and live timing lost the track for any track whose id is negative (about half of them).
+- Saving penalties on a race could write the converted AI names into the database; the check now runs on a copy.
 - The rotation file keeps setting names (`"Manual"`, `"FULL"`, `"ABS_ALLOWED,SC_ALLOWED"`) again: the rotation addon turns them into numbers itself, and a file written while the game server's lists couldn't be fetched no longer mixes names and numbers.
 - Leaderboard crashes on races with missing values; better Flags and Fill-with-AI defaults in the rotation builder and presets.
 - *Restart game server* said the server hadn't answered when the restart was simply quicker than the page's check; it now follows the request being picked up by the game server's entrypoint, and says so if it never is.

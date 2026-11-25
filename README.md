@@ -18,7 +18,7 @@ This fork of [cauld/race_mgr](https://github.com/cauld/race_mgr) brings the stac
 - **Admins and stewards** with their own sign-ins, or **Sign in with Synology** for DSM users and groups ([details](#sign-in-with-synology)).
 - **Runs on a Synology NAS** from ready-made images (Race Manager, MongoDB, optional game server container), with [backup scripts](#backups) ([step by step](#on-a-synology-nas)).
 - **Hardened**: Spring Boot 4 and Java 21, HttpOnly session cookies with CSRF protection, deny-by-default routes, rate-limited logins, Secure cookies and HSTS behind an HTTPS proxy.
-- **Tested**: 138 Java tests, 51 web UI tests, and an end-to-end suite with a real browser, MongoDB and a stand-in game server, run on every push.
+- **Tested**: 143 Java tests, 51 web UI tests, and an end-to-end suite with a real browser, MongoDB and a stand-in game server, run on every push.
 
 ## What it does
 

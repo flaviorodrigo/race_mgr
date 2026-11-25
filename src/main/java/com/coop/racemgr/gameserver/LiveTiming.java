@@ -56,12 +56,17 @@ public final class LiveTiming {
         if (stage == null) {
             stage = text(status.path("state"));
         }
-        Integer track = positive(integer(attributes.path("TrackId")));
+        Integer track = nonZero(integer(attributes.path("TrackId")));
         return new Board(stage, track == null ? null : text(attributes.path("TrackId")), positive(integer(attributes.path("RaceLength"))), cars);
     }
 
     private static Integer positive(Integer value) {
         return value != null && value > 0 ? value : null;
+    }
+
+    // Track ids are signed 32-bit numbers (about half of them are negative); 0 means "none"
+    private static Integer nonZero(Integer value) {
+        return value != null && value != 0 ? value : null;
     }
 
     private static String text(JsonNode node) {

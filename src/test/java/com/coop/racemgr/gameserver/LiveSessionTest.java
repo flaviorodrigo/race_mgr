@@ -121,4 +121,13 @@ class LiveSessionTest {
         assertThat(uri.getRawQuery().substring("message=".length())).doesNotContain("&").doesNotContain("=").doesNotContain("#");
         assertThat(uri.getQuery()).isEqualTo("message=hi&refid=1 #now=yes+more?");
     }
+
+    @Test
+    void keepsTheTrackWhenItsIdIsNegative() throws Exception {
+        var status = com.coop.racemgr.utils.RacemgrUtils.JSON.readTree(
+                "{\"state\":\"Running\",\"attributes\":{\"SessionStage\":\"Race\",\"TrackId\":-559709709},\"members\":[]}");
+        assertThat(LiveSession.summarize(status, false).trackId()).isEqualTo("-559709709");
+        var idle = com.coop.racemgr.utils.RacemgrUtils.JSON.readTree("{\"state\":\"Idle\",\"attributes\":{\"TrackId\":0},\"members\":[]}");
+        assertThat(LiveSession.summarize(idle, false).trackId()).isNull();
+    }
 }
