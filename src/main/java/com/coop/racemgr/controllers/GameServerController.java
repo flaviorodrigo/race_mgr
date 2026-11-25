@@ -12,6 +12,8 @@ import com.coop.racemgr.gameserver.GameServerLog;
 import com.coop.racemgr.gameserver.LiveSession;
 import com.coop.racemgr.gameserver.LiveTiming;
 import com.coop.racemgr.gameserver.RestartSignal;
+import com.coop.racemgr.stats.AiPilotConverter;
+import com.coop.racemgr.stats.GameServerLookup;
 import com.coop.racemgr.utils.RacemgrUtils;
 
 import lombok.Data;
@@ -39,6 +41,9 @@ public class GameServerController {
 
     @Autowired
     private AuditLog auditLog;
+
+    @Autowired
+    private GameServerLookup gameServerLookup;
 
     /** ADMIN ENDPOINTS **/
 
@@ -418,7 +423,8 @@ public class GameServerController {
     @GetMapping("/api/v1/gameserver/timing")
     public ResponseEntity<Object> timing() {
         try {
-            return ResponseHandler.generateResponse("Live timing", HttpStatus.OK, LiveTiming.summarize(this.gameServerProxy.getSessionStatus()));
+            var board = LiveTiming.summarize(this.gameServerProxy.getSessionStatus());
+            return ResponseHandler.generateResponse("Live timing", HttpStatus.OK, AiPilotConverter.convertLiveBoard(board, gameServerLookup));
         } catch (Exception e) {
             return ResponseHandler.generateResponse("Request failed", HttpStatus.MULTI_STATUS, null);
         }

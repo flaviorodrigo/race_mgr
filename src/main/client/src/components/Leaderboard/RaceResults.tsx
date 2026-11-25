@@ -62,6 +62,22 @@ const columns: Array<IColumn> = [
 
 const isHuman = (driverName?:string) => Boolean(driverName && driverName.slice(-4) !== '(AI)');
 
+const renderDriver = (driverName?: string, playerFlag?: boolean) => {
+	if (!driverName) {
+		return null;
+	}
+
+	const ai = driverName.endsWith('(AI)') || playerFlag === false;
+	const clean = driverName.replace(/\s*\(AI\)$/, '').substring(0, 30);
+
+	return (
+		<React.Fragment>
+			{clean}
+			{ai && <Chip size="small" label="AI" variant="outlined" sx={{ml: 0.75}} />}
+		</React.Fragment>
+	);
+};
+
 function Row(props: { row: IRace, round: number, trackData: Array<ITrackData>, vehicleData: Array<IVehicleData>, isAdmin: boolean, onChanged?: () => void }) {
 	const {row} = props;
 	const [open, setOpen] = React.useState(false);
@@ -119,19 +135,19 @@ function Row(props: { row: IRace, round: number, trackData: Array<ITrackData>, v
 					...(isHuman(row.polePosition) && {
 						fontWeight: 'bold',
 					}),
-				}}>{row.polePosition}</TableCell>
+				}}>{renderDriver(row.polePosition)}</TableCell>
 				<TableCell align="right"sx={{
 					fontWeight: '',
 					...(isHuman(row.fastestLap) && {
 						fontWeight: 'bold',
 					}),
-				}}>{row.fastestLap}</TableCell>
+				}}>{renderDriver(row.fastestLap)}</TableCell>
 				<TableCell align="right"sx={{
 					fontWeight: '',
 					...(isHuman(row.winner) && {
 						fontWeight: 'bold',
 					}),
-				}}>{row.winner}</TableCell>
+				}}>{renderDriver(row.winner)}</TableCell>
 			</TableRow>
 			<TableRow>
 				<TableCell style={{paddingBottom: 0, paddingTop: 0}} colSpan={13}>
@@ -169,7 +185,7 @@ function Row(props: { row: IRace, round: number, trackData: Array<ITrackData>, v
 														fontWeight: 'bold',
 													}),
 												}}>
-												{(raceResult.driverName || '').substring(0, 30)}
+												{renderDriver(raceResult.driverName, raceResult.isPlayer)}
 											</TableCell>
 											<TableCell>
 												{ props.vehicleData?.filter(vd => vd.id === raceResult.vehicleId)[0]?.name}

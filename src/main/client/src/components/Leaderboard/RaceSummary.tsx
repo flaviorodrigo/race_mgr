@@ -18,6 +18,7 @@ import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Box from '@mui/material/Box';
+import Chip from '@mui/material/Chip';
 import Paper from '@mui/material/Paper';
 import Button from '@mui/material/Button';
 import Link from '@mui/material/Link';
@@ -214,7 +215,7 @@ const RaceSummary = (props:IProps) => {
 							}}>
 								{props.sessionId && !row.name.endsWith('(AI)')
 									? <Link component={RouterLink} to={`/driver/${encodeURIComponent(row.name)}?session=${props.sessionId}`} underline="hover" color="inherit">{row.name.substring(0, 30)}</Link>
-									: row.name.substring(0, 30)}
+									: <React.Fragment>{row.name.replace(/\s*\(AI\)$/, '').substring(0, 30)}{(!row.isPlayer || row.name.endsWith('(AI)')) && <Chip size="small" label="AI" variant="outlined" sx={{ml: 0.75}} />}</React.Fragment>}
 							</StyledTableCell>
 							<StyledTableCell align="right">{row.firstPlaceFinishes}</StyledTableCell>
 							<StyledTableCell align="right">{row.secondPlaceFinishes}</StyledTableCell>

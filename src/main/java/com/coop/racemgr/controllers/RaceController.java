@@ -5,6 +5,8 @@ import com.coop.racemgr.model.Race;
 import com.coop.racemgr.model.RaceNotes;
 import com.coop.racemgr.repositories.RaceMgrConfigRepository;
 import com.coop.racemgr.repositories.RaceRepository;
+import com.coop.racemgr.stats.AiPilotConverter;
+import com.coop.racemgr.stats.GameServerLookup;
 import com.coop.racemgr.utils.RacemgrUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -34,6 +36,9 @@ public class RaceController {
 
     @Autowired
     private AuditLog auditLog;
+
+    @Autowired
+    private GameServerLookup gameServerLookup;
 
     // The leaderboard UI loads every race for a session/rotation in one request
     private static final int MAX_PAGE_SIZE = 10000;
@@ -115,7 +120,7 @@ public class RaceController {
                 return ResponseHandler.generateResponse("Race not found", HttpStatus.NOT_FOUND, null);
             }
 
-            var cleaned = RaceNotes.cleanPenalties(request.getPenalties(), driversOf(race));
+            var cleaned = RaceNotes.cleanPenalties(request.getPenalties(), driversOf(AiPilotConverter.convertRace(race, gameServerLookup)));
             if (cleaned == null) {
                 return ResponseHandler.generateResponse("Each penalty needs a driver of this race and 1 to " + RaceNotes.MAX_PENALTY_SECONDS
                         + " seconds, or a disqualification (at most " + RaceNotes.MAX_PENALTIES + ")", HttpStatus.BAD_REQUEST, null);
@@ -159,7 +164,7 @@ public class RaceController {
             Race race = raceRepository.findItemByRaceId(raceId);
             return race == null
                     ? ResponseHandler.generateResponse("Race not found", HttpStatus.NOT_FOUND, null)
-                    : ResponseHandler.generateResponse("Race", HttpStatus.OK, race);
+                    : ResponseHandler.generateResponse("Race", HttpStatus.OK, AiPilotConverter.convertRace(race, gameServerLookup));
         } catch (Exception e) {
             logger.error(e);
             return ResponseHandler.generateResponse("Request failed", HttpStatus.MULTI_STATUS, null);
@@ -195,6 +200,9 @@ public class RaceController {
                 raceSessions = raceRepository.findAll(paging);
             }
 
+            for (Race r : raceSessions.getContent()) {
+                AiPilotConverter.convertRace(r, gameServerLookup);
+            }
             return ResponseHandler.generateResponse("Race event list", HttpStatus.OK, PageResponse.of(raceSessions));
         } catch (Exception e) {
             logger.error(e);
