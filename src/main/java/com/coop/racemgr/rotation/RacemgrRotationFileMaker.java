@@ -120,11 +120,13 @@ public class RacemgrRotationFileMaker {
     }
 
     private void deleteCachedRotationFile() {
+        // sms_rotate's working copy (lua_config/sms_rotate_config.json): without it, sms_rotate rebuilds it from the new
+        // default file at its next start. racemgr_rotate doesn't use it.
         File file = GameServerPaths.cachedRotationFile().toFile();
         if (file.delete()) {
-            System.out.println("Game Server cached rotation deleted successfully");
+            System.out.println("sms_rotate's working copy of the rotation removed: it rebuilds it from the new rotation at its next start");
         } else {
-            System.out.println("Game Server cached rotation");
+            System.out.println("No sms_rotate working copy of the rotation to remove");
         }
     }
 
