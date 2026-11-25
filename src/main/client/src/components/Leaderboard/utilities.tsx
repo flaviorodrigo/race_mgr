@@ -75,68 +75,73 @@ export const fetchVehicleData = async () => {
 export const mapRaceDataToRaceResultsObject = (data:Array<any>, scoring?: IScoring | null):Array<IRace> => {
 	const raceResults:Array<IRace> = [];
 
-	const finishedRaces = data.filter(d => d.finished === true && d.stages.race1);
+	const finishedRaces = data.filter(d => d?.finished === true && d?.stages?.race1);
 
 	for (const d in finishedRaces) {
 		const thisRace = finishedRaces[d];
 		// Time penalties and disqualifications an admin added after the race
-		const race1Results = applyPenalties(thisRace.stages.race1?.results ?? [], thisRace.penalties);
+		const race1Results = applyPenalties(Array.isArray(thisRace.stages?.race1?.results) ? thisRace.stages.race1.results : [], thisRace.penalties);
 		const fastestLapTimes = race1Results.map(result => ({
-			driverName: result.name,
-			fastestLapTime: result.attributes.FastestLapTime,
-			disqualified: result.attributes.State === 'Disqualified',
+			driverName: result?.name,
+			fastestLapTime: result?.attributes?.FastestLapTime,
+			disqualified: result?.attributes?.State === 'Disqualified',
 		}));
 
-		const winnerLaps = Math.max(0, ...race1Results.map((x:any) => x.attributes.Lap ?? 0));
-		const polePositionName = _.head(thisRace.stages.qualifying1?.results)?.name;
-		const winnerName = _.head(race1Results)?.name;
-		const fastestLapName = _.head(_.orderBy(fastestLapTimes?.filter(fl => fl.fastestLapTime > 0 && !fl.disqualified), ['fastestLapTime'], ['asc']))?.driverName;
+		const winnerLaps = Math.max(0, ...race1Results.map((x:any) => x?.attributes?.Lap ?? 0));
+		const qualiResultsList = Array.isArray(thisRace.stages?.qualifying1?.results) ? thisRace.stages.qualifying1.results : [];
+		const polePositionName = _.head(qualiResultsList)?.name || '';
+		const winnerName = _.head(race1Results)?.name || '';
+		const fastestLapName = _.head(_.orderBy(fastestLapTimes.filter(fl => fl.fastestLapTime > 0 && !fl.disqualified), ['fastestLapTime'], ['asc']))?.driverName || '';
 
+		const participantsObj = thisRace.participants || {};
 		const participantList:Array<string> = [];
-		for (const p in thisRace.participants) {
-			const thisP = thisRace.participants[p];
-			participantList.push(thisP.Name);
+		for (const p in participantsObj) {
+			const thisP = participantsObj[p];
+			if (thisP?.Name) {
+				participantList.push(thisP.Name);
+			}
 		}
 
+		const gridCount = Object.keys(participantsObj).length;
 		const raceResult:IRace = {
 			raceId: thisRace.race_id,
 			voided: thisRace.voided === true,
 			videoUrl: thisRace.videoUrl ?? undefined,
 			penalties: thisRace.penalties ?? [],
 			sessionId: thisRace.race_session_id,
-			trackName: thisRace.setup.TrackId,
+			trackName: thisRace.setup?.TrackId,
 			startDate: thisRace.start_time,
 			endDate: thisRace.end_time,
 			finished: thisRace.finished,
-			gridSize: Object.keys(thisRace.participants).length,
-			laps: thisRace.setup.RaceLength,
-			aiStrength: thisRace.setup.OpponentDifficulty,
+			gridSize: gridCount,
+			laps: thisRace.setup?.RaceLength,
+			aiStrength: thisRace.setup?.OpponentDifficulty,
 			participants: participantList,
 			// (A race result has no qualifying fields)
 			raceResults: race1Results.map((r:any) => ({
-				driverName: r.name,
-				isPlayer: r.is_player,
-				finishPosition: r.attributes.RacePosition,
-				vehicleId: r.attributes.VehicleId,
-				fastestLapTime: r.attributes.FastestLapTime,
-				totalTime: r.attributes.TotalTime,
-				state: r.attributes.State,
+				driverName: r?.name || '',
+				isPlayer: r?.is_player,
+				finishPosition: r?.attributes?.RacePosition,
+				vehicleId: r?.attributes?.VehicleId,
+				fastestLapTime: r?.attributes?.FastestLapTime,
+				totalTime: r?.attributes?.TotalTime,
+				state: r?.attributes?.State,
 				// A disqualified driver, or one who retired before 90% of the winner's distance, keeps their place in the
 				// result but scores nothing
-				totalPoints: r.attributes.State === 'Disqualified' || (r.attributes.State === 'Retired' && r.attributes.Lap < winnerLaps * 0.9)
+				totalPoints: r?.attributes?.State === 'Disqualified' || (r?.attributes?.State === 'Retired' && (r?.attributes?.Lap ?? 0) < winnerLaps * 0.9)
 					? 0
-					: calculatePoints(r.attributes.RacePosition, Object.keys(thisRace.participants).length, {tookPole: r.name === polePositionName, fastestLap: r.name === fastestLapName, scoring}),
-				hadFastestLap: r.name === fastestLapName,
-				penaltySeconds: r.penalty && !r.penalty.disqualify ? r.penalty.seconds : undefined,
-				penaltyNote: r.penalty?.note || undefined,
+					: calculatePoints(r?.attributes?.RacePosition, gridCount, {tookPole: Boolean(polePositionName && r?.name === polePositionName), fastestLap: Boolean(fastestLapName && r?.name === fastestLapName), scoring}),
+				hadFastestLap: Boolean(fastestLapName && r?.name === fastestLapName),
+				penaltySeconds: r?.penalty && !r.penalty.disqualify ? r.penalty.seconds : undefined,
+				penaltyNote: r?.penalty?.note || undefined,
 			})) as Array<IRaceResults>,
-			qualifyingResults: thisRace.stages.qualifying1?.results.map((r:any) => ({
-				driverName: r.name,
-				bestQualifyingTime: r.attributes.FastestLapTime,
-				tookPole: r.name === polePositionName,
+			qualifyingResults: qualiResultsList.map((r:any) => ({
+				driverName: r?.name || '',
+				bestQualifyingTime: r?.attributes?.FastestLapTime,
+				tookPole: Boolean(polePositionName && r?.name === polePositionName),
 			})),
-			drivers: thisRace.stages.race1?.drivers ?? [],
-			qualifyingDrivers: thisRace.stages.qualifying1?.drivers ?? [],
+			drivers: thisRace.stages?.race1?.drivers ?? [],
+			qualifyingDrivers: thisRace.stages?.qualifying1?.drivers ?? [],
 			polePosition: polePositionName,
 			fastestLap: fastestLapName,
 			winner: winnerName,

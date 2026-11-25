@@ -106,7 +106,8 @@ const Field = ({attribute, value, set, schema, tracks, classes, vehicles, idPref
 	const help = attribute.description;
 
 	if (attribute.kind === 'flags' && schema) {
-		const on = flagNames(value, schema.flags);
+		const defaultFlags = ['ALLOW_CUSTOM_VEHICLE_SETUP', 'ABS_ALLOWED', 'SC_ALLOWED', 'TCS_ALLOWED', 'AUTO_START_ENGINE', 'PIT_SPEED_LIMITER', 'ANTI_GRIEFING_COLLISIONS', 'PASSWORD_PROTECTED'];
+		const on = value === undefined ? [] : flagNames(value, schema.flags);
 		return (
 			<Box sx={{gridColumn: '1 / -1'}}>
 				<Typography variant="subtitle2" title={help}>{label}{value === undefined ? ' (not set: the game decides)' : ''}</Typography>
@@ -114,7 +115,11 @@ const Field = ({attribute, value, set, schema, tracks, classes, vehicles, idPref
 					{schema.flags.map(f => (
 						<FormControlLabel key={f.name} label={prettyOption(f.name)}
 							control={<Checkbox size="small" checked={on.includes(f.name)}
-								onChange={e => set(formatFlags(e.target.checked ? [...on, f.name] : on.filter(n => n !== f.name), schema.flags))} />} />
+								onChange={e => {
+									const base = value === undefined ? schema.flags.filter(x => defaultFlags.includes(x.name)).map(x => x.name) : on;
+									const next = e.target.checked ? Array.from(new Set([...base, f.name])) : base.filter(n => n !== f.name);
+									set(formatFlags(next, schema.flags));
+								}} />} />
 					))}
 				</Box>
 				{value !== undefined && <Button size="small" onClick={() => set(undefined)}>Clear (let the game decide)</Button>}

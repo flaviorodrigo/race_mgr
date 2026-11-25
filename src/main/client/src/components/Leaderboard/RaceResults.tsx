@@ -60,7 +60,7 @@ const columns: Array<IColumn> = [
 	{label: 'Winner', key: 'winner', text: true, align: 'right'},
 ];
 
-const isHuman = (driverName:string) => driverName.slice(-4) !== '(AI)';
+const isHuman = (driverName?:string) => Boolean(driverName && driverName.slice(-4) !== '(AI)');
 
 function Row(props: { row: IRace, round: number, trackData: Array<ITrackData>, vehicleData: Array<IVehicleData>, isAdmin: boolean, onChanged?: () => void }) {
 	const {row} = props;
@@ -169,27 +169,27 @@ function Row(props: { row: IRace, round: number, trackData: Array<ITrackData>, v
 														fontWeight: 'bold',
 													}),
 												}}>
-												{raceResult.driverName.substring(0, 30)}
+												{(raceResult.driverName || '').substring(0, 30)}
 											</TableCell>
 											<TableCell>
 												{ props.vehicleData?.filter(vd => vd.id === raceResult.vehicleId)[0]?.name}
 											</TableCell>
 											<TableCell align="right" sx={{
 												fontWeight: '',
-												...(row.qualifyingResults?.filter(q => q.driverName === raceResult.driverName)[0].tookPole === true && {
+												...(row.qualifyingResults?.filter(q => q.driverName === raceResult.driverName)[0]?.tookPole === true && {
 													fontWeight: 'bold',
 												}),
 											}}>
-												{row.qualifyingResults?.filter(q => q.driverName === raceResult.driverName)[0].tookPole ? '*' : ''}
-												{convertEpochTimeToRaceResult(row.qualifyingResults?.filter(q => q.driverName === raceResult.driverName)[0].bestQualifyingTime)}
+												{row.qualifyingResults?.filter(q => q.driverName === raceResult.driverName)[0]?.tookPole ? '*' : ''}
+												{convertEpochTimeToRaceResult(row.qualifyingResults?.filter(q => q.driverName === raceResult.driverName)[0]?.bestQualifyingTime)}
 											</TableCell>
 											<TableCell align="right" sx={{
 												fontWeight: '',
-												...(row.raceResults?.filter(q => q.driverName === raceResult.driverName)[0].hadFastestLap === true && {
+												...(row.raceResults?.filter(q => q.driverName === raceResult.driverName)[0]?.hadFastestLap === true && {
 													fontWeight: 'bold',
 												}),
 											}}>
-												{row.raceResults?.filter(q => q.driverName === raceResult.driverName)[0].hadFastestLap ? '*' : ''}
+												{row.raceResults?.filter(q => q.driverName === raceResult.driverName)[0]?.hadFastestLap ? '*' : ''}
 												{convertEpochTimeToRaceResult(raceResult.fastestLapTime)}
 											</TableCell>
 											<TableCell align="right">{convertEpochTimeToRaceResult(raceResult.totalTime) }</TableCell>

@@ -132,7 +132,10 @@ export const flagNames = (value: unknown, flags: Array<IOption>): Array<string> 
 	if (typeof value === 'number') {
 		// The game treats the flags as an unsigned 32-bit set (a file may hold it as a negative number); each flag is one bit
 		const bits = value < 0 ? value + (2 ** 32) : value;
-		return flags.filter(f => f.value > 0 && Math.floor(bits / f.value) % 2 === 1).map(f => f.name);
+		return flags.filter(f => {
+			const bit = f.value < 0 ? f.value + (2 ** 32) : f.value;
+			return bit > 0 && Math.floor(bits / bit) % 2 === 1;
+		}).map(f => f.name);
 	}
 
 	if (typeof value === 'string') {

@@ -41,8 +41,8 @@ const MAX_ROUNDS = 200;
 
 // A starting point for a new rotation; everything can be changed below
 const STARTING_SETUP: Record<string, unknown> = {
-	PracticeLength: 0, QualifyLength: 5, RaceLength: 5,
-	Flags: 'ALLOW_CUSTOM_VEHICLE_SETUP,ABS_ALLOWED,SC_ALLOWED,TCS_ALLOWED,FILL_SESSION_WITH_AI,AUTO_START_ENGINE',
+	PracticeLength: 0, QualifyLength: 10, RaceLength: 10, GridSize: 22, MaxPlayers: 16, OpponentDifficulty: 87,
+	Flags: 'ALLOW_CUSTOM_VEHICLE_SETUP,ABS_ALLOWED,SC_ALLOWED,TCS_ALLOWED,FILL_SESSION_WITH_AI,AUTO_START_ENGINE,PIT_SPEED_LIMITER,ANTI_GRIEFING_COLLISIONS,PASSWORD_PROTECTED',
 	DamageType: 'VISUAL_ONLY', TireWearType: 'OFF', FuelUsageType: 'OFF', PenaltiesType: 'NONE', AllowedViews: 'Any',
 	QualifyWeatherSlots: 1, QualifyWeatherSlot1: 'Clear', RaceWeatherSlots: 1, RaceWeatherSlot1: 'Clear', RaceDateProgression: 30,
 };
