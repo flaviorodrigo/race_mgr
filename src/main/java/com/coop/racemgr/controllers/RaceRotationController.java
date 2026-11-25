@@ -41,6 +41,14 @@ public class RaceRotationController {
         return config != null && id.equals(config.getActiveRaceRotationId());
     }
 
+    private static com.coop.racemgr.gameserver.SessionSchema.Schema trySessionSchema() {
+        try {
+            return new com.coop.racemgr.gameserver.GameServerProxy().getSessionSchema();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
     @Data
     public static class RaceRotationCustomRequest {
         private String name;
@@ -85,7 +93,7 @@ public class RaceRotationController {
         try {
             raceRotation = new RaceRotation(request.name, request.config);
             if (!Boolean.FALSE.equals(request.apply)) {
-                var rotationFileMaker = new RacemgrRotationFileMaker(raceRotation);
+                var rotationFileMaker = new RacemgrRotationFileMaker(raceRotation, trySessionSchema());
                 rotationFileMaker.writeGeneratedRotationFile();
             }
 
@@ -177,7 +185,7 @@ public class RaceRotationController {
         }
 
         try {
-            var rotationFileMaker = new RacemgrRotationFileMaker(rr);
+            var rotationFileMaker = new RacemgrRotationFileMaker(rr, trySessionSchema());
             rotationFileMaker.writeGeneratedRotationFile();
             auditLog.record(authentication.getName(), "rotation activated", rr.getName());
             if (GameServerMgr.isExternal()) {
