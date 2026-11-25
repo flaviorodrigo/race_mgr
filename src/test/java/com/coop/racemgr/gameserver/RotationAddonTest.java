@@ -93,4 +93,19 @@ class RotationAddonTest {
         assertThat(status.get("reported")).isNull();
         assertThat(List.of(status.get("ready"))).containsExactly(false);
     }
+
+    @Test
+    void reportsTheQueuedRoundOnlyWhileTheAddonIsTheOneInUse(@TempDir Path dir) throws Exception {
+        RotationAddon addon = new RotationAddon(dir);
+        addon.install();
+        Files.createDirectories(dir.resolve("lua_config"));
+        Files.writeString(dir.resolve("lua_config/racemgr_rotation_status.lua"),
+                "return { version = 5, index = 4, rounds = 9, ok = true, note = \"applied\" }\n");
+
+        Files.writeString(dir.resolve("server.cfg"), "luaApiAddons : [ \"sms_base\", \"sms_rotate\" ]\n");
+        assertThat(addon.queuedRound()).as("a leftover report from an addon that isn't loaded").isNull();
+
+        Files.writeString(dir.resolve("server.cfg"), "luaApiAddons : [ \"sms_base\", \"racemgr_rotate\" ]\n");
+        assertThat(addon.queuedRound()).isEqualTo(4);
+    }
 }

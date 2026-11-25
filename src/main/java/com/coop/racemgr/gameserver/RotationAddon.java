@@ -134,6 +134,18 @@ public class RotationAddon {
         return out.toString();
     }
 
+    /**
+     * The round the racemgr_rotate addon has queued for the next session, when that addon is the one in use (listed in
+     * server.cfg instead of sms_rotate) and has reported. Otherwise null.
+     */
+    public Integer queuedRound() {
+        if (!Boolean.TRUE.equals(status().get("ready"))) {
+            return null;
+        }
+        Map<String, Object> reported = reported();
+        return reported != null && reported.get("index") instanceof Long index && index > 0 ? index.intValue() : null;
+    }
+
     public Map<String, Object> status() {
         Map<String, Object> status = new LinkedHashMap<>();
         boolean installed = isInstalled();

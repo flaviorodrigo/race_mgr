@@ -391,9 +391,14 @@ public class GameServerController {
         } catch (Exception e) {
             logger.warn("Game server lists unavailable for the lobby check: " + e);
         }
-        var result = com.coop.racemgr.gameserver.LobbyCheck.compare(status, readRotationFile(),
-                com.coop.racemgr.gameserver.LobbyCheck.persistedIndex(readJsonFile(com.coop.racemgr.gameserver.GameServerPaths.rotationDataFile())),
-                schema, names);
+        // sms_rotate keeps its position in a data file; racemgr_rotate reports the round it has queued (one more than
+        // the position the data file convention stands for)
+        Integer position = com.coop.racemgr.gameserver.LobbyCheck.persistedIndex(readJsonFile(com.coop.racemgr.gameserver.GameServerPaths.rotationDataFile()));
+        Integer queued = com.coop.racemgr.gameserver.RotationAddon.forServer().queuedRound();
+        if (queued != null) {
+            position = queued - 1;
+        }
+        var result = com.coop.racemgr.gameserver.LobbyCheck.compare(status, readRotationFile(), position, schema, names);
         return ResponseHandler.generateResponse("Lobby check", HttpStatus.OK, result);
     }
 
