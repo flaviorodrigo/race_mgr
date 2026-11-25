@@ -139,7 +139,7 @@ const Field = ({attribute, value, set, schema, tracks, classes, vehicles, idPref
 		return (
 			<Box sx={{gridColumn: '1 / -1'}}>
 				<Typography variant="subtitle2" title={help}>{label}{value === undefined ? ' (not set: the game decides)' : ''}</Typography>
-				<Typography variant="caption" color="text.secondary" display="block" sx={{mb: 0.5}}>
+				<Typography variant="caption" color="text.secondary" sx={{display: 'block', mb: 0.5}}>
 					{cleanHelp(help) || 'Session rule flags.'} Note: &quot;Fill session with ai&quot; requires Grid Size &gt; Max Players.
 				</Typography>
 				<Box sx={{display: 'grid', gridTemplateColumns: {xs: '1fr', sm: '1fr 1fr', md: '1fr 1fr 1fr'}}}>

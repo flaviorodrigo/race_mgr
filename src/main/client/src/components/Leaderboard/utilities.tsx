@@ -89,9 +89,9 @@ export const mapRaceDataToRaceResultsObject = (data:Array<any>, scoring?: IScori
 
 		const winnerLaps = Math.max(0, ...race1Results.map((x:any) => x?.attributes?.Lap ?? 0));
 		const qualiResultsList = Array.isArray(thisRace.stages?.qualifying1?.results) ? thisRace.stages.qualifying1.results : [];
-		const polePositionName = _.head(qualiResultsList)?.name || '';
-		const winnerName = _.head(race1Results)?.name || '';
-		const fastestLapName = _.head(_.orderBy(fastestLapTimes.filter(fl => fl.fastestLapTime > 0 && !fl.disqualified), ['fastestLapTime'], ['asc']))?.driverName || '';
+		const polePositionName = _.head(qualiResultsList)?.name;
+		const winnerName = _.head(race1Results)?.name;
+		const fastestLapName = _.head(_.orderBy(fastestLapTimes.filter(fl => fl.fastestLapTime > 0 && !fl.disqualified), ['fastestLapTime'], ['asc']))?.driverName;
 
 		const participantsObj = thisRace.participants || {};
 		const participantList:Array<string> = [];
