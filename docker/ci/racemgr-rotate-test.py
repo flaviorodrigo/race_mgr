@@ -67,6 +67,7 @@ class RotateTest(unittest.TestCase):
     def setUp(self):
         self.dir = tempfile.TemporaryDirectory()
         os.makedirs(os.path.join(self.dir.name, 'lua_config'))
+        os.makedirs(os.path.join(self.dir.name, 'lua_output'))
         self.cwd = os.getcwd()
         os.chdir(self.dir.name)
         self.lua = LuaRuntime(unpack_returned_tuples=True)
@@ -220,6 +221,26 @@ class RotateTest(unittest.TestCase):
         self.assertEqual(self.status()['index'], 1)
         self.lua.execute('event("Lobby", "Loading")')
         self.assertEqual(self.tracks(), ['A', 'B'])
+
+    def test_works_when_the_server_only_lets_addons_reach_lua_output(self):
+        self.lua.execute("""
+            local real_open = io.open
+            io.open = function(path, mode)
+              if path:sub(1, 11) == "lua_config/" then return nil, "denied" end
+              return real_open(path, mode)
+            end
+        """)
+        Path('lua_output/racemgr_rotation.lua').write_text(rotation_file(3, ['X', 'Y']))
+        self.start(rounds=())
+        self.assertEqual(self.tracks(), ['X'])
+        status = self.lua.execute(Path('lua_output/racemgr_rotation_status.lua').read_text())
+        self.assertEqual(status['version'], 3)
+        self.assertFalse(Path('lua_config/racemgr_rotation_status.lua').exists())
+
+    def test_without_the_io_library_it_still_rotates_its_own_config(self):
+        self.lua.execute('io = nil')
+        self.start()
+        self.assertEqual(self.tracks(), ['A'])
 
     def test_the_position_is_saved_when_advancing(self):
         self.start()

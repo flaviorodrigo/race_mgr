@@ -35,12 +35,37 @@ public class RotationAddon {
         return root.resolve("lua").resolve(NAME);
     }
 
+    // The addon reads and writes in lua_output first (some servers only let addons reach that folder), then lua_config
+    private static final String[] FOLDERS = {"lua_output", "lua_config"};
+
     private Path rotationFile() {
         return root.resolve("lua_config").resolve("racemgr_rotation.lua");
     }
 
     private Path statusFile() {
-        return root.resolve("lua_config").resolve("racemgr_rotation_status.lua");
+        // The report with the newest version: the addon writes it into every folder it can reach
+        Path best = null;
+        long bestVersion = -1;
+        for (String folder : FOLDERS) {
+            Path candidate = root.resolve(folder).resolve("racemgr_rotation_status.lua");
+            if (Files.isRegularFile(candidate)) {
+                long version = versionIn(candidate);
+                if (best == null || version > bestVersion) {
+                    best = candidate;
+                    bestVersion = version;
+                }
+            }
+        }
+        return best == null ? root.resolve("lua_config").resolve("racemgr_rotation_status.lua") : best;
+    }
+
+    private static long versionIn(Path file) {
+        try {
+            Matcher m = Pattern.compile("version = (\\d+)").matcher(Files.readString(file, StandardCharsets.UTF_8));
+            return m.find() ? Long.parseLong(m.group(1)) : 0;
+        } catch (IOException | NumberFormatException e) {
+            return 0;
+        }
     }
 
     public boolean isInstalled() {
@@ -50,7 +75,9 @@ public class RotationAddon {
     /** Copies the addon into lua/racemgr_rotate. Its own config file is only created, never replaced. */
     public void install() throws IOException {
         Files.createDirectories(addonDir());
-        Files.createDirectories(rotationFile().getParent());
+        for (String folder : FOLDERS) {
+            Files.createDirectories(root.resolve(folder));
+        }
         for (String name : FILES) {
             Path target = addonDir().resolve(name);
             if (name.endsWith("_default_config.json") && Files.exists(target)) {
@@ -69,21 +96,23 @@ public class RotationAddon {
     public long writeRotation(Object config) throws IOException {
         long version = Math.max(System.currentTimeMillis(), lastVersion() + 1);
         String text = RotationLuaFile.render(config, version);
-        Files.createDirectories(rotationFile().getParent());
-        GameServerFiles.replace(rotationFile(), text);
+        for (String folder : FOLDERS) {
+            Path file = root.resolve(folder).resolve("racemgr_rotation.lua");
+            Files.createDirectories(file.getParent());
+            GameServerFiles.replace(file, text);
+        }
         return version;
     }
 
     private long lastVersion() {
-        try {
-            if (Files.exists(rotationFile())) {
-                Matcher m = Pattern.compile("version = (\\d+)").matcher(Files.readString(rotationFile(), StandardCharsets.UTF_8));
-                return m.find() ? Long.parseLong(m.group(1)) : 0;
+        long last = 0;
+        for (String folder : FOLDERS) {
+            Path file = root.resolve(folder).resolve("racemgr_rotation.lua");
+            if (Files.isRegularFile(file)) {
+                last = Math.max(last, versionIn(file));
             }
-        } catch (IOException | NumberFormatException e) {
-            // A rotation file that can't be read is simply replaced
         }
-        return 0;
+        return last;
     }
 
     /** What the addon wrote about itself (a Lua table: version, index, rounds, ok, note), or null. */

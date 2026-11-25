@@ -4,10 +4,11 @@ racemgr_rotate: the rotation addon of sms_rotate, with a rotation that Race Mana
 
 It does what sms_rotate does: applies the first setup when the server starts, and the next setup of the rotation each
 time a session leaves the lobby (or is destroyed while still in it). On top of that, every few seconds it looks at
-lua_config/racemgr_rotation.lua, which Race Manager writes when a rotation is activated. When that file changed, the
+racemgr_rotation.lua, which Race Manager writes into lua_output and lua_config when a rotation is activated (the
+server may only let addons reach lua_output). When that file changed, the
 new rotation replaces the old one without restarting the server, the position in the rotation is kept, and the next
 session is set again from the new rotation at once. A rotation with a mistake in it is refused and the previous one stays.
-After every change it writes lua_config/racemgr_rotation_status.lua, so Race Manager can see what the addon is doing.
+After every change it writes racemgr_rotation_status.lua into both folders, so Race Manager can see what the addon is doing.
 
 Use it instead of sms_rotate (not together with it): in server.cfg, put "racemgr_rotate" in luaApiAddons where
 "sms_rotate" was. The rotation file format is a Lua table:
@@ -27,8 +28,10 @@ if type( config.rotation ) ~= "table" then config.rotation = {} end
 local addon_data = addon_storage.data
 if not config.persist_index or not addon_data.index then addon_data.index = 0 end
 
-local ROTATION_FILE = "lua_config/racemgr_rotation.lua"
-local STATUS_FILE = "lua_config/racemgr_rotation_status.lua"
+-- Race Manager writes the rotation into both folders: the server may limit addon file access to lua_output
+local FOLDERS = { "lua_output/", "lua_config/" }
+local ROTATION_NAME = "racemgr_rotation.lua"
+local STATUS_NAME = "racemgr_rotation_status.lua"
 local CHECK_EVERY_SECONDS = 5
 local TAG = "RacemgrRotate: "
 
@@ -42,16 +45,56 @@ local last_check = 0
 local last_note = "started"
 
 
+-- The rotation file from the first folder the addon can read
+local function read_rotation_file()
+	if not io then
+		return nil
+	end
+	for _, folder in ipairs( FOLDERS ) do
+		local file = io.open( folder .. ROTATION_NAME, "r" )
+		if file then
+			local text = file:read( "a" )
+			file:close()
+			if text and text ~= "" then
+				return text
+			end
+		end
+	end
+	return nil
+end
+
+
+-- Says once, at start-up, which folders the addon can use: the first thing to look at when no rotation arrives
+local function report_file_access()
+	if not io then
+		print( TAG .. "The Lua io library is not available to addons on this server: Race Manager can't hand rotations over" )
+		return
+	end
+	for _, folder in ipairs( FOLDERS ) do
+		local file = io.open( folder .. ROTATION_NAME, "r" )
+		print( TAG .. folder .. ROTATION_NAME .. ( file and " can be read" or " can't be read (missing, or no access)" ) )
+		if file then
+			file:close()
+		end
+	end
+end
+
+
 -- Tells Race Manager what the addon is doing. A file that can't be written is not worth stopping for.
 local function write_status( note )
 	last_note = note or last_note
-	local file = io.open( STATUS_FILE, "w" )
-	if not file then
+	if not io then
 		return
 	end
-	file:write( string.format( "return { version = %s, index = %s, rounds = %s, ok = %s, note = %q }\n",
-		tostring( loaded_version ), tostring( addon_data.index or 0 ), tostring( #rotation ), tostring( rotation_ok ), last_note ) )
-	file:close()
+	local text = string.format( "return { version = %s, index = %s, rounds = %s, ok = %s, note = %q }\n",
+		tostring( loaded_version ), tostring( addon_data.index or 0 ), tostring( #rotation ), tostring( rotation_ok ), last_note )
+	for _, folder in ipairs( FOLDERS ) do
+		local file = io.open( folder .. STATUS_NAME, "w" )
+		if file then
+			file:write( text )
+			file:close()
+		end
+	end
 end
 
 
@@ -106,12 +149,7 @@ local advance_next_setup
 -- Looks for a new rotation from Race Manager. force: read it even if it looks the same as last time.
 -- apply: set the next session from it now (not needed at start-up, when the first setup is applied right after)
 local function reload_rotation( force, apply )
-	local file = io.open( ROTATION_FILE, "r" )
-	if not file then
-		return
-	end
-	local text = file:read( "a" )
-	file:close()
+	local text = read_rotation_file()
 	if not text or ( text == last_text and not force ) then
 		return
 	end
@@ -201,6 +239,7 @@ local function addon_callback( callback, ... )
 	if callback == Callback.ServerStateChanged then
 		local oldState, newState = ...
 		if ( oldState == "Starting" ) and ( newState == "Running" ) then
+			report_file_access()
 			reload_rotation( true, false )
 			rotation_ok = check_rotation( lib_rotation, rotation )
 			advance_next_setup()

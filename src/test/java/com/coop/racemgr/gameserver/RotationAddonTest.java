@@ -25,13 +25,13 @@ class RotationAddonTest {
         Path folder = dir.resolve("lua/racemgr_rotate");
         assertThat(folder.resolve("racemgr_rotate.lua")).exists();
         assertThat(folder.resolve("racemgr_rotate.json")).exists();
-        assertThat(Files.readString(folder.resolve("racemgr_rotate.lua"))).contains("ROTATION_FILE");
+        assertThat(Files.readString(folder.resolve("racemgr_rotate.lua"))).contains("ROTATION_NAME");
 
         Files.writeString(folder.resolve("racemgr_rotate_default_config.json"), "mine");
         Files.writeString(folder.resolve("racemgr_rotate.lua"), "old");
         addon.install();
         assertThat(Files.readString(folder.resolve("racemgr_rotate_default_config.json"))).isEqualTo("mine");
-        assertThat(Files.readString(folder.resolve("racemgr_rotate.lua"))).contains("ROTATION_FILE");
+        assertThat(Files.readString(folder.resolve("racemgr_rotate.lua"))).contains("ROTATION_NAME");
     }
 
     @Test
@@ -42,6 +42,8 @@ class RotationAddonTest {
         assertThat(second).isGreaterThan(first);
         String text = Files.readString(dir.resolve("lua_config/racemgr_rotation.lua"));
         assertThat(text).contains("version = " + second).contains("[\"TrackId\"] = \"C\"");
+        // Also where a server that limits addons to lua_output lets the addon read it
+        assertThat(Files.readString(dir.resolve("lua_output/racemgr_rotation.lua"))).isEqualTo(text);
     }
 
     @Test
@@ -107,5 +109,16 @@ class RotationAddonTest {
 
         Files.writeString(dir.resolve("server.cfg"), "luaApiAddons : [ \"sms_base\", \"racemgr_rotate\" ]\n");
         assertThat(addon.queuedRound()).isEqualTo(4);
+    }
+
+    @Test
+    void readsTheNewestReportFromWhicheverFolderTheAddonCouldWrite(@TempDir Path dir) throws Exception {
+        Files.createDirectories(dir.resolve("lua_config"));
+        Files.createDirectories(dir.resolve("lua_output"));
+        Files.writeString(dir.resolve("lua_config/racemgr_rotation_status.lua"), "return { version = 1, index = 1, rounds = 2, ok = true, note = \"old\" }\n");
+        Files.writeString(dir.resolve("lua_output/racemgr_rotation_status.lua"), "return { version = 7, index = 3, rounds = 9, ok = true, note = \"applied\" }\n");
+        var reported = (Map<?, ?>) new RotationAddon(dir).status().get("reported");
+        assertThat(reported.get("version")).isEqualTo(7L);
+        assertThat(reported.get("note")).isEqualTo("applied");
     }
 }
