@@ -13,7 +13,9 @@ After every change it writes racemgr_rotation_status.lua into both folders, so R
 Use it instead of sms_rotate (not together with it): in server.cfg, put "racemgr_rotate" in luaApiAddons where
 "sms_rotate" was. The rotation file format is a Lua table:
 
-  return { version = 1795567161000, default = { RaceLength = 15, ... }, rotation = { { TrackId = "Monza_2020" }, ... } }
+  return { version = 1795567161000, reset = 0, default = { RaceLength = 15, ... }, rotation = { { TrackId = "Monza_2020" }, ... } }
+
+reset (optional) asks to start the rotation again from round 1, once per new value, without restarting the server.
 
 The default and the rotation entries are the same setups sms_rotate uses (see lib_rotate.lua), names or numbers.
 
@@ -251,8 +253,9 @@ local function write_status( note )
 	if not io then
 		return
 	end
-	local text = string.format( "return { version = %s, index = %s, rounds = %s, ok = %s, note = %q }\n",
-		tostring( loaded_version ), tostring( addon_data.index or 0 ), tostring( #rotation ), tostring( rotation_ok ), last_note )
+	local text = string.format( "return { version = %s, index = %s, rounds = %s, ok = %s, reset = %s, note = %q }\n",
+		tostring( loaded_version ), tostring( addon_data.index or 0 ), tostring( #rotation ), tostring( rotation_ok ),
+		tostring( addon_data.reset_seen or 0 ), last_note )
 	for _, folder in ipairs( FOLDERS ) do
 		local file = io.open( folder .. STATUS_NAME, "w" )
 		if file then
@@ -353,6 +356,16 @@ local function reload_rotation( force, apply )
 	if addon_data.index and addon_data.index > #rotation then
 		addon_data.index = #rotation
 	end
+
+	-- "Start the rotation from round 1": a request Race Manager hasn't sent before puts the position back, so the
+	-- first round is queued for the next session (the open one, if any, keeps its settings)
+	local reset = tonumber( data.reset )
+	local restarted = false
+	if reset and reset > ( tonumber( addon_data.reset_seen ) or 0 ) then
+		addon_data.reset_seen = reset
+		addon_data.index = 0
+		restarted = true
+	end
 	if apply then
 		if not addon_data.index or addon_data.index < 1 then
 			-- Nothing was queued yet (the server started without a rotation): queue the first setup now
@@ -362,8 +375,8 @@ local function reload_rotation( force, apply )
 		end
 	end
 	SavePersistentData()
-	write_status( "applied" )
-	print( TAG .. "Loaded a rotation of " .. #rotation .. " setups" )
+	write_status( restarted and "applied, from round 1" or "applied" )
+	print( TAG .. "Loaded a rotation of " .. #rotation .. " setups" .. ( restarted and ", starting again from round 1" or "" ) )
 end
 
 

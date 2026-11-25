@@ -207,7 +207,8 @@ export interface IRotationAddon {
 	smsRotateListed: boolean,
 	conflict: boolean,
 	ready: boolean,
-	reported: null | {version?: number, index?: number, rounds?: number, ok: boolean, note: string},
+	reported: null | {version?: number, index?: number, rounds?: number, reset?: number, ok: boolean, note: string},
 }
 export const fetchRotationAddon = () => call<IRotationAddon>({url: '/gameserver/rotation-addon', method: 'get'});
+export const startRotationOver = () => call<{version: number}>({url: '/gameserver/rotation-addon/start-over', method: 'post'});
 export const installRotationAddon = () => call<IRotationAddon>({url: '/gameserver/rotation-addon/install', method: 'post'});

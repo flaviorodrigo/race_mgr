@@ -240,6 +240,31 @@ public class RaceRotationController {
         }
     }
 
+    // Starts the active rotation again from round 1 without restarting the game server: the racemgr_rotate addon
+    // queues round 1 for the next session. Nobody is disconnected; an open session keeps its settings.
+    @PostMapping("/api/v1/admin/gameserver/rotation-addon/start-over")
+    public ResponseEntity<Object> startRotationOver(Authentication authentication) {
+        try {
+            var addon = RotationAddon.forServer();
+            if (!Boolean.TRUE.equals(addon.status().get("ready"))) {
+                return ResponseHandler.generateResponse("This needs the racemgr_rotate addon in use (see Server, Rotation addon). Without it, use Restart game server and start the rotation from its first round.",
+                        HttpStatus.CONFLICT, null);
+            }
+            var config = raceMgrConfigRepository.findItemById("1");
+            var active = config == null || config.getActiveRaceRotationId() == null ? null : raceRotationRepository.findItemById(config.getActiveRaceRotationId());
+            if (active == null) {
+                return ResponseHandler.generateResponse("No active rotation. Set one active on the Championships tab first.", HttpStatus.CONFLICT, null);
+            }
+            long version = addon.writeRotation(active.config, true);
+            auditLog.record(authentication.getName(), "rotation started from round 1", active.getName());
+            return ResponseHandler.generateResponse("The rotation starts again from round 1 with the next session. Nobody is disconnected; a session that is open keeps its settings.",
+                    HttpStatus.OK, Map.of("version", version));
+        } catch (Exception e) {
+            logger.warn("Starting the rotation over failed: " + e);
+            return ResponseHandler.generateResponse("Could not hand the rotation to the game server", HttpStatus.MULTI_STATUS, null);
+        }
+    }
+
     /** PUBLIC ENDPOINTS **/
 
     @GetMapping("/api/v1/race/rotation/{id}")

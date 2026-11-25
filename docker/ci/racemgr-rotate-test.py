@@ -61,9 +61,10 @@ end
 '''
 
 
-def rotation_file(version, rounds, default='RaceLength = 15, ManualPitStops = "Manual"'):
+def rotation_file(version, rounds, default='RaceLength = 15, ManualPitStops = "Manual"', reset=None):
     items = ', '.join('{ TrackId = "%s" }' % r for r in rounds)
-    return 'return { version = %d, default = { %s }, rotation = { %s } }\n' % (version, default, items)
+    extra = '' if reset is None else 'reset = %d, ' % reset
+    return 'return { version = %d, %sdefault = { %s }, rotation = { %s } }\n' % (version, extra, default, items)
 
 
 class RotateTest(unittest.TestCase):
@@ -281,6 +282,28 @@ class RotateTest(unittest.TestCase):
         self.lua.globals().print = lambda *a: out.append(' '.join(str(x) for x in a))
         self.lua.execute('event("Lobby", "Loading")')
         self.assertTrue(any(line.startswith('RacemgrRotate: error:') and 'boom' in line for line in out), out)
+
+    def test_a_reset_request_starts_the_rotation_again_from_round_1_without_a_restart_and_only_once(self):
+        self.start()
+        self.lua.execute('event("Lobby", "Loading")')
+        self.lua.execute('event("Lobby", "Loading")')  # queued: C
+        self.write(rotation_file(1, ['A', 'B', 'C'], reset=500))
+        self.tick()
+        self.assertEqual(self.tracks()[-1], 'A')
+        self.assertEqual(self.status()['index'], 1)
+        self.assertEqual(self.status()['reset'], 500)
+        self.assertEqual(self.status()['note'], 'applied, from round 1')
+        self.lua.execute('event("Lobby", "Loading")')
+        self.assertEqual(self.tracks()[-1], 'B')
+        # The same request again (a later rotation change that still carries it) doesn't start over
+        self.write(rotation_file(2, ['A', 'B', 'C'], reset=500))
+        self.tick()
+        self.assertEqual(self.tracks()[-1], 'B')
+        self.assertEqual(self.status()['index'], 2)
+
+    def test_a_reset_request_present_at_start_up_starts_from_round_1(self):
+        self.start(index=2, with_file=rotation_file(1, ['X', 'Y', 'Z'], reset=900))
+        self.assertEqual(self.tracks(), ['X'])
 
     def test_the_position_is_saved_when_advancing(self):
         self.start()

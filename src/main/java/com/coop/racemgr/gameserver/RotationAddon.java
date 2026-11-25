@@ -94,8 +94,16 @@ public class RotationAddon {
 
     /** Hands a rotation to the addon. Returns the version it will report once it has loaded it. */
     public long writeRotation(Object config) throws IOException {
+        return writeRotation(config, false);
+    }
+
+    /**
+     * @param fromRoundOne also ask the addon to start the rotation again from its first round. The next session gets
+     *                     round 1; nobody is disconnected and an open session keeps its settings.
+     */
+    public long writeRotation(Object config, boolean fromRoundOne) throws IOException {
         long version = Math.max(System.currentTimeMillis(), lastVersion() + 1);
-        String text = RotationLuaFile.render(config, version);
+        String text = RotationLuaFile.render(config, version, fromRoundOne ? version : null);
         for (String folder : FOLDERS) {
             Path file = root.resolve(folder).resolve("racemgr_rotation.lua");
             Files.createDirectories(file.getParent());
@@ -123,7 +131,7 @@ public class RotationAddon {
             }
             String text = Files.readString(statusFile(), StandardCharsets.UTF_8);
             Map<String, Object> out = new LinkedHashMap<>();
-            for (String key : List.of("version", "index", "rounds")) {
+            for (String key : List.of("version", "index", "rounds", "reset")) {
                 Matcher m = Pattern.compile(key + " = (-?\\d+)").matcher(text);
                 if (m.find()) {
                     out.put(key, Long.parseLong(m.group(1)));

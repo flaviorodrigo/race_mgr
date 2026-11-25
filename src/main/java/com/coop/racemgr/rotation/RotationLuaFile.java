@@ -16,6 +16,11 @@ public final class RotationLuaFile {
 
     /** @param config a rotation's config: {@code default} (or {@code defaultConfig}) and {@code rotation} */
     public static String render(Object config, long version) {
+        return render(config, version, null);
+    }
+
+    /** @param reset when set, asks the addon to start the rotation again from round 1 (once per new value) */
+    public static String render(Object config, long version, Long reset) {
         if (!(config instanceof Map<?, ?> map)) {
             throw new IllegalArgumentException("The rotation has no configuration");
         }
@@ -27,6 +32,9 @@ public final class RotationLuaFile {
 
         StringBuilder out = new StringBuilder("return {\n");
         out.append("  version = ").append(version).append(",\n");
+        if (reset != null) {
+            out.append("  reset = ").append(reset).append(",\n");
+        }
         out.append("  default = ");
         value(out, defaults, 1);
         out.append(",\n  rotation = ");

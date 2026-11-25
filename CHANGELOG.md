@@ -5,6 +5,7 @@ Notable changes, newest first. This file starts with the security and modernisat
 ## Unreleased
 
 ### Added
+- **Start the rotation from round 1** without a restart (racemgr_rotate in use): the next session is round 1 and nobody is disconnected. Restart game server *from round 1* now also resets the new addon's position.
 - The track name in the leaderboard's race list opens that race's own page (result, qualifying, sector times, lap chart); the chain icon still copies its link.
 - **Rotation addon (no restart)**: the `racemgr_rotate` Lua addon replaces `sms_rotate` and picks up a changed rotation from Race Manager while the game server runs, keeping its position, so adding a track no longer needs a restart. Installed, checked and shown from the Server tab; tested on Lua 5.3 in CI.
 - **Whitelist switch**: turn the game server's use of `whitelist.cfg` on or off from the Whitelist tool (one line of `server.cfg`), so only listed Steam IDs can join.

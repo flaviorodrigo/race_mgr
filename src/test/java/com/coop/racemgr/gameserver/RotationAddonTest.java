@@ -121,4 +121,13 @@ class RotationAddonTest {
         assertThat(reported.get("version")).isEqualTo(7L);
         assertThat(reported.get("note")).isEqualTo("applied");
     }
+
+    @Test
+    void asksTheAddonToStartFromRoundOneOnlyWhenRequested(@TempDir Path dir) throws Exception {
+        RotationAddon addon = new RotationAddon(dir);
+        addon.writeRotation(rotation("A", "B"));
+        assertThat(Files.readString(dir.resolve("lua_output/racemgr_rotation.lua"))).doesNotContain("reset =");
+        long version = addon.writeRotation(rotation("A", "B"), true);
+        assertThat(Files.readString(dir.resolve("lua_output/racemgr_rotation.lua"))).contains("reset = " + version + ",");
+    }
 }

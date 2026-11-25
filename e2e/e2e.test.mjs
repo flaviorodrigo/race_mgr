@@ -883,6 +883,11 @@ scenario('a rotation reaches the running game server without a restart once the 
   assert.match(handed, /\["TrackId"\] = 1534602052/);
   assert.match(handed, new RegExp(`version = ${applied.data.version}`));
 
+  // Starting the rotation over is one more hand-over, with a request to begin at round 1: no restart
+  const over = await api('POST', '/api/v1/admin/gameserver/rotation-addon/start-over');
+  assert.equal(over.status, 200, JSON.stringify(over));
+  assert.match(fs.readFileSync(path.join(state.serverDir, 'lua_output', 'racemgr_rotation.lua'), 'utf8'), new RegExp(`reset = ${over.data.version},`));
+
   await go('/manageserver');
   await openSection('Rotation addon (no restart)');
   await sleep(800);
