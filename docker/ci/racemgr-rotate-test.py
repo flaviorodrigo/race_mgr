@@ -17,6 +17,9 @@ from lupa.lua53 import LuaRuntime
 ADDON = Path(__file__).resolve().parents[2] / 'src/main/resources/lua/racemgr_rotate/racemgr_rotate.lua'
 
 PRELUDE = r'''
+-- The game server's Lua has no load()
+load = nil
+loadstring = nil
 Callback = { ServerStateChanged = 1, EventLogged = 2, Tick = 3 }
 handler = nil
 function RegisterCallback(f) handler = f end
@@ -92,7 +95,7 @@ class RotateTest(unittest.TestCase):
     def write(self, text):
         Path('lua_config/racemgr_rotation.lua').write_text(text)
 
-    def tick(self, seconds=5):
+    def tick(self, seconds=10):
         self.lua.execute('now = now + %d; fire(Callback.Tick)' % seconds)
 
     def applied(self):
@@ -146,9 +149,9 @@ class RotateTest(unittest.TestCase):
         self.start()
         self.tick(0)  # the first tick after loading checks at once
         self.write(rotation_file(1, ['A', 'B']))
-        self.tick(2)
+        self.tick(4)
         self.assertEqual(self.tracks(), ['A'])
-        self.tick(3)
+        self.tick(6)
         self.assertEqual(self.tracks(), ['A', 'A'])
 
     def test_an_unchanged_file_is_not_applied_again(self):
@@ -241,6 +244,43 @@ class RotateTest(unittest.TestCase):
         self.lua.execute('io = nil')
         self.start()
         self.assertEqual(self.tracks(), ['A'])
+
+    def test_the_parser_reads_numbers_text_and_nesting_as_race_manager_writes_them(self):
+        self.start()
+        self.write('''return {
+  -- a comment
+  version = 42,
+  default = { ["RaceLength"] = 15, ["TrackId"] = -559709709, ["QualifyLength"] = 87.5, ["DamageType"] = "A\\\\B\\"C", ["ManualPitStops"] = true, },
+  rotation = { { ["TrackId"] = "Monza\\0952020" } }
+}''')
+        self.tick()
+        self.assertEqual(self.status()['note'], 'applied')
+        a = self.applied()[-1]
+        self.assertEqual(a['TrackId'], 'Monza_2020')
+        self.assertEqual(a['RaceLength'], 15)
+        self.assertEqual(self.lua.eval('math.type')(a['RaceLength']), 'integer')
+        self.assertEqual(a['QualifyLength'], 87.5)
+        self.assertEqual(a['DamageType'], 'A\\B"C')
+        self.assertIs(a['ManualPitStops'], True)
+
+    def test_the_parser_refuses_anything_but_a_table(self):
+        self.start()
+        for bad in ['return { version = 1, default = {}, rotation = { os.execute("x") } }',
+                    'return { version = 1 } extra',
+                    'print("x") return {}',
+                    'return { version = 1, default = { ["A"] = "unfinished }, rotation = {} }']:
+            self.write(bad)
+            self.tick()
+            self.assertTrue(self.status()['note'].startswith('rejected'), bad)
+        self.assertEqual(self.tracks(), ['A'])
+
+    def test_an_error_inside_the_addon_is_logged_with_its_name(self):
+        self.start()
+        self.lua.execute('SetNextSessionAttributes = function() error("boom") end')
+        out = []
+        self.lua.globals().print = lambda *a: out.append(' '.join(str(x) for x in a))
+        self.lua.execute('event("Lobby", "Loading")')
+        self.assertTrue(any(line.startswith('RacemgrRotate: error:') and 'boom' in line for line in out), out)
 
     def test_the_position_is_saved_when_advancing(self):
         self.start()

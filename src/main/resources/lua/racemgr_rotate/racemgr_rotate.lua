@@ -32,7 +32,8 @@ if not config.persist_index or not addon_data.index then addon_data.index = 0 en
 local FOLDERS = { "lua_output/", "lua_config/" }
 local ROTATION_NAME = "racemgr_rotation.lua"
 local STATUS_NAME = "racemgr_rotation_status.lua"
-local CHECK_EVERY_SECONDS = 5
+-- Each look at the file makes this server log a warning about file access, so not too often
+local CHECK_EVERY_SECONDS = 10
 local TAG = "RacemgrRotate: "
 
 -- The rotation in use: from the addon's own config until Race Manager's file replaces it
@@ -43,6 +44,170 @@ local loaded_version = 0
 local last_text = nil
 local last_check = 0
 local last_note = "started"
+
+
+-- The server's Lua has no load(), so the rotation file is read with this small parser. It understands only what
+-- Race Manager writes: return { name = value, ... } with tables, "strings" (\\, \" and \ddd escapes), numbers,
+-- true and false. Anything else is refused, so the file can never run code.
+local function parse_rotation_text( text )
+	local pos = 1
+	local len = #text
+
+	local function skip()
+		while pos <= len do
+			local c = text:sub( pos, pos )
+			if c == " " or c == "\t" or c == "\n" or c == "\r" then
+				pos = pos + 1
+			elseif text:sub( pos, pos + 1 ) == "--" then
+				local stop = text:find( "\n", pos, true )
+				pos = stop and stop + 1 or len + 1
+			else
+				return
+			end
+		end
+	end
+
+	local parse_value
+
+	local function parse_string()
+		pos = pos + 1
+		local parts = {}
+		while pos <= len do
+			local c = text:sub( pos, pos )
+			if c == '"' then
+				pos = pos + 1
+				return table.concat( parts )
+			elseif c == "\\" then
+				local n = text:sub( pos + 1, pos + 1 )
+				if n == '"' or n == "\\" then
+					parts[ #parts + 1 ] = n
+					pos = pos + 2
+				else
+					local digits = text:match( "^%d%d?%d?", pos + 1 )
+					if not digits or tonumber( digits ) > 255 then
+						error( "bad escape at " .. pos )
+					end
+					parts[ #parts + 1 ] = string.char( tonumber( digits ) )
+					pos = pos + 1 + #digits
+				end
+			elseif c == "\n" then
+				error( "line break inside text at " .. pos )
+			else
+				parts[ #parts + 1 ] = c
+				pos = pos + 1
+			end
+		end
+		error( "unfinished text" )
+	end
+
+	local function parse_table( depth )
+		if depth > 8 then
+			error( "nested too deeply" )
+		end
+		pos = pos + 1
+		local result = {}
+		local count = 0
+		skip()
+		if text:sub( pos, pos ) == "}" then
+			pos = pos + 1
+			return result
+		end
+		while true do
+			skip()
+			local key
+			if text:sub( pos, pos ) == "[" then
+				pos = pos + 1
+				skip()
+				if text:sub( pos, pos ) ~= '"' then
+					error( "expected a quoted key at " .. pos )
+				end
+				key = parse_string()
+				skip()
+				if text:sub( pos, pos ) ~= "]" then
+					error( "expected ] at " .. pos )
+				end
+				pos = pos + 1
+				skip()
+				if text:sub( pos, pos ) ~= "=" then
+					error( "expected = at " .. pos )
+				end
+				pos = pos + 1
+			else
+				local name = text:match( "^[%a_][%w_]*", pos )
+				if name and name ~= "true" and name ~= "false" and text:match( "^%s*=", pos + #name ) then
+					key = name
+					pos = pos + #name
+					skip()
+					pos = pos + 1
+				end
+			end
+			local value = parse_value( depth + 1 )
+			if key then
+				result[ key ] = value
+			else
+				count = count + 1
+				result[ count ] = value
+			end
+			skip()
+			local c = text:sub( pos, pos )
+			if c == "," then
+				pos = pos + 1
+				skip()
+				if text:sub( pos, pos ) == "}" then
+					pos = pos + 1
+					return result
+				end
+			elseif c == "}" then
+				pos = pos + 1
+				return result
+			else
+				error( "expected , or } at " .. pos )
+			end
+		end
+	end
+
+	parse_value = function( depth )
+		skip()
+		local c = text:sub( pos, pos )
+		if c == "{" then
+			return parse_table( depth )
+		elseif c == '"' then
+			return parse_string()
+		end
+		local number = text:match( "^%-?%d+%.?%d*", pos )
+		if number then
+			pos = pos + #number
+			return math.tointeger( tonumber( number ) ) or tonumber( number )
+		end
+		if text:sub( pos, pos + 3 ) == "true" then
+			pos = pos + 4
+			return true
+		end
+		if text:sub( pos, pos + 4 ) == "false" then
+			pos = pos + 5
+			return false
+		end
+		error( "unexpected text at " .. pos )
+	end
+
+	local ok, result = pcall( function()
+		skip()
+		if text:sub( pos, pos + 5 ) ~= "return" then
+			error( "the file must start with return" )
+		end
+		pos = pos + 6
+		local value = parse_value( 0 )
+		skip()
+		if pos <= len then
+			error( "unexpected text after the table at " .. pos )
+		end
+		return value
+	end )
+	if ok then
+		return result
+	end
+	return nil, result
+end
 
 
 -- The rotation file from the first folder the addon can read
@@ -155,15 +320,14 @@ local function reload_rotation( force, apply )
 	end
 	last_text = text
 
-	local chunk, problem = load( text, "racemgr_rotation", "t", {} )
-	if not chunk then
+	local data, problem = parse_rotation_text( text )
+	if not data then
 		print( TAG .. "The rotation file can't be read: " .. tostring( problem ) )
 		write_status( "rejected: the rotation file can't be read" )
 		return
 	end
 
-	local ran, data = pcall( chunk )
-	if not ran or type( data ) ~= "table" or type( data.default ) ~= "table" or type( data.rotation ) ~= "table" then
+	if type( data ) ~= "table" or type( data.default ) ~= "table" or type( data.rotation ) ~= "table" then
 		print( TAG .. "The rotation file has no default and rotation" )
 		write_status( "rejected: the rotation file has no default and rotation" )
 		return
@@ -275,7 +439,13 @@ local function addon_callback( callback, ... )
 end
 
 
-RegisterCallback( addon_callback )
+-- An error inside the addon is logged with its name in front, so it shows up next to its other messages
+RegisterCallback( function( callback, ... )
+	local ok, problem = pcall( addon_callback, callback, ... )
+	if not ok then
+		print( TAG .. "error: " .. tostring( problem ) )
+	end
+end )
 EnableCallback( Callback.ServerStateChanged )
 EnableCallback( Callback.EventLogged )
 EnableCallback( Callback.Tick )
