@@ -242,6 +242,36 @@ public class GameServerController {
         }
     }
 
+    // The settings every session starts from (server.cfg's sessionAttributes block), editable like the next session's
+    @GetMapping("/api/v1/admin/gameserver/config/session")
+    public ResponseEntity<Object> sessionAttributes() {
+        try {
+            return ResponseHandler.generateResponse("Session settings in server.cfg", HttpStatus.OK, ServerConfigFile.forServer().readSessionAttributes());
+        } catch (Exception e) {
+            logger.warn("Reading the sessionAttributes of server.cfg failed: " + e);
+            return ResponseHandler.generateResponse(e instanceof java.io.IOException ? e.getMessage() : "Could not read server.cfg", HttpStatus.MULTI_STATUS, null);
+        }
+    }
+
+    // Sets or adds settings in that block; nothing else in the file is touched and nothing is removed. The game
+    // server reads server.cfg when it starts, so a restart applies the changes.
+    @PutMapping("/api/v1/admin/gameserver/config/session")
+    public ResponseEntity<Object> updateSessionAttributes(@RequestBody Map<String, Integer> changes, Authentication authentication) {
+        String problem = SessionSettings.validate(changes);
+        if (problem != null) {
+            return ResponseHandler.generateResponse(problem, HttpStatus.BAD_REQUEST, null);
+        }
+
+        try {
+            ServerConfigFile.forServer().writeSessionAttributes(changes);
+            auditLog.record(authentication.getName(), "server.cfg session settings changed", String.join(", ", changes.keySet()));
+            return ResponseHandler.generateResponse("Saved. Restart the game server for the changes to apply.", HttpStatus.OK, null);
+        } catch (java.io.IOException e) {
+            logger.warn("Writing the sessionAttributes of server.cfg failed: " + e);
+            return ResponseHandler.generateResponse("Could not change server.cfg", HttpStatus.MULTI_STATUS, null);
+        }
+    }
+
     @Data
     public static class PerformanceTable {
         private Boolean enabled;

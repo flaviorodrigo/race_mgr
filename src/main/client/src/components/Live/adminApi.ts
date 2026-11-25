@@ -101,6 +101,9 @@ export const changePassword = (currentPassword: string, newPassword: string) =>
 export type ServerConfigValues = Record<string, string | number | boolean>;
 
 export const fetchServerConfig = () => call<ServerConfigValues>({url: '/gameserver/config', method: 'get'});
+// The settings every session starts from (server.cfg's sessionAttributes block): whole numbers by setting name
+export const fetchSessionDefaults = () => call<Record<string, number>>({url: '/gameserver/config/session', method: 'get'});
+export const saveSessionDefaults = (changes: INextSessionSettings) => call({url: '/gameserver/config/session', method: 'put', data: changes});
 export const saveServerConfig = (changes: ServerConfigValues) => call({url: '/gameserver/config', method: 'put', data: changes});
 
 export interface IGameListItem {

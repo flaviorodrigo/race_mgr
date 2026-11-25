@@ -5,8 +5,7 @@ import {
 	fetchPresets, fetchSessionSchema, savePreset,
 	updateAdminUser, changePassword, fetchAudit, fetchBanList, fetchGameLog, fetchServerConfig, fetchWhitelist,
 	removeBan, removeFromWhitelist, saveServerConfig,
-	IAdminUser, IApiResult, IAuditEvent, IBanEntry, IGameListItem, ILogEvent, INextSessionSettings, ISessionPreset, IWhitelist, ServerConfigValues,
-} from '../Live/adminApi';
+	IAdminUser, IApiResult, IAuditEvent, IBanEntry, IGameListItem, ILogEvent, INextSessionSettings, ISessionPreset, IWhitelist, ServerConfigValues, fetchSessionDefaults, saveSessionDefaults} from '../Live/adminApi';
 import RotationBuilder from './RotationBuilder';
 import LobbyCheckPanel from './LobbyCheckPanel';
 import PerformancePanel from './PerformancePanel';
@@ -66,6 +65,81 @@ const SETTING_FIELDS: Array<{id: string, label: string, kind: 'text' | 'number' 
 	{id: 'secure', label: 'Check Steam authentication', kind: 'bool'},
 	{id: 'allowEmptyJoin', label: 'Allow joining an empty server', kind: 'bool'},
 ];
+
+// The settings every session starts from. The game server builds the lobby from this block of server.cfg, and a
+// setting that isn't in it may never reach the lobby, so this is where the full default setup belongs.
+const SessionDefaultsPanel = () => {
+	const [schema, setSchema] = useState<ISchema | null>(null);
+	const [tracks, setTracks] = useState<Array<IGameListItem>>([]);
+	const [classes, setClasses] = useState<Array<IGameListItem>>([]);
+	const [vehicles, setVehicles] = useState<Array<IGameListItem>>([]);
+	const [values, setValues] = useState<Record<string, unknown>>({});
+	const [inFile, setInFile] = useState<Record<string, number>>({});
+	const [problem, setProblem] = useState('');
+	const [feedback, setFeedback] = useState<IFeedback | null>(null);
+	const [busy, setBusy] = useState(false);
+
+	const load = async () => {
+		const result = await fetchSessionDefaults();
+		setInFile(result.ok && result.data ? result.data : {});
+		setValues(result.ok && result.data ? {...result.data} : {});
+		setProblem(result.ok ? '' : result.message || 'Could not read server.cfg.');
+	};
+
+	useEffect(() => {
+		fetchSessionSchema().then(r => setSchema(r.ok && r.data ? r.data : null));
+		fetchGameList('tracks').then(setTracks);
+		fetchGameList('vehicle_classes').then(setClasses);
+		fetchGameList('vehicles').then(setVehicles);
+		load();
+	}, []);
+
+	// The file has entries the editor doesn't offer (ServerControls*) or values outside the game's lists (a tyre wear
+	// of 1, say). Those stay as they are; only a value you changed that can't be turned into a number is a problem.
+	const known = new Set((schema?.attributes ?? []).map(a => a.name));
+	const editable = Object.fromEntries(Object.entries(values).filter(([k]) => known.has(k)));
+	const converted = schema ? toNextSessionValues(editable, schema, {tracks, classes, vehicles}) : null;
+	const unresolved = converted ? converted.skipped.filter(k => editable[k] !== inFile[k]) : [];
+	// Only what is new or different goes to the file
+	const changes = converted ? Object.fromEntries(Object.entries(converted.values).filter(([k, v]) => inFile[k] !== v)) : {};
+	const added = Object.keys(changes).filter(k => inFile[k] === undefined);
+	const canSave = Boolean(converted) && Object.keys(changes).length > 0 && unresolved.length === 0 && !busy;
+
+	const save = async () => {
+		setBusy(true);
+		const result = await saveSessionDefaults(changes);
+		setBusy(false);
+		setFeedback({text: result.ok ? result.message : result.message || 'Could not save', severity: result.ok ? 'success' : 'error'});
+		if (result.ok) {
+			load();
+		}
+	};
+
+	return (
+		<Stack spacing={2} sx={{textAlign: 'left'}}>
+			<Typography variant="body2">
+				The settings every session starts from: the <code>sessionAttributes</code> block of <code>server.cfg</code>. The rotation and
+				<em> Next session settings</em> change them from there, and a setting that isn&apos;t in this block may never reach the lobby, so put your
+				full default setup here. Saving changes or adds values in the file, keeps its comments, and keeps the previous file as
+				<code> server.cfg.bak</code>. It never removes anything. The game server reads the file when it starts: restart it to apply.
+			</Typography>
+			{problem && <Alert severity="warning">{problem}</Alert>}
+			<SettingsEditor idPrefix="defaults" schema={schema} values={values} onChange={setValues} tracks={tracks} classes={classes} vehicles={vehicles} />
+			{unresolved.length > 0 && <Alert severity="warning">
+				These can&apos;t be saved as they are: {unresolved.join(', ')}. Pick them from the lists, or clear them.
+			</Alert>}
+			{Object.keys(changes).length > 0 && <Alert severity="info">
+				{`${Object.keys(changes).length} change${Object.keys(changes).length === 1 ? '' : 's'} to save`}
+				{added.length > 0 ? `, ${added.length} new in the file: ${added.join(', ')}` : ''}
+			</Alert>}
+			<Stack direction="row" spacing={2}>
+				<Button variant="contained" disabled={!canSave} onClick={save}>Save to server.cfg</Button>
+				<Button disabled={busy} onClick={load}>Reload from the file</Button>
+			</Stack>
+			<Feedback feedback={feedback} />
+		</Stack>
+	);
+};
 
 const ServerSettingsPanel = () => {
 	const [loaded, setLoaded] = useState<ServerConfigValues | null>(null);
@@ -809,6 +883,7 @@ const sections: Array<{id: string, title: string, needs: Role, tab: AdminTab, bo
 	{id: 'log', title: 'Game server log', needs: 'STEWARD', tab: 'race-day', body: <GameLogPanel />},
 	{id: 'rotation', title: 'Rotation builder', needs: 'ADMIN', tab: 'championships', body: <RotationBuilder />},
 	{id: 'config', title: 'Server settings (server.cfg)', needs: 'ADMIN', tab: 'server', body: <ServerSettingsPanel />},
+	{id: 'sessiondefaults', title: 'Default session settings (server.cfg)', needs: 'ADMIN', tab: 'server', body: <SessionDefaultsPanel />},
 	{id: 'bans', title: 'Ban list', needs: 'ADMIN', tab: 'server', body: <BanListPanel />},
 	{id: 'whitelist', title: 'Whitelist', needs: 'ADMIN', tab: 'server', body: <WhitelistPanel />},
 	{id: 'bop', title: 'Balance of performance', needs: 'ADMIN', tab: 'server', body: <PerformancePanel />},

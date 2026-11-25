@@ -174,7 +174,7 @@ const clickText = (selector, label) => state.page.evaluate((s, t) => {
 // Manage Server's tools live in tabs: open the tab first, then the tool
 const TOOL_TABS = {
   'Live lobby vs rotation': 'Race day', 'Next session settings': 'Race day', 'Game server log': 'Race day', 'Rotation builder': 'Championships',
-  'Server settings (server.cfg)': 'Server', 'Ban list': 'Server', 'Whitelist': 'Server', 'Balance of performance': 'Server',
+  'Server settings (server.cfg)': 'Server', 'Default session settings (server.cfg)': 'Server', 'Ban list': 'Server', 'Whitelist': 'Server', 'Balance of performance': 'Server',
   Admins: 'People', Account: 'People', 'Activity log': 'People',
 };
 
@@ -796,6 +796,35 @@ scenario('Race day compares the live session with the rotation on the game serve
   await sleep(800);
   assert.match(await text('body'), /Session Running/);
   assert.ok((await rows('table[aria-label="Lobby check"]')).length > 0);
+});
+
+scenario('the settings every session starts from are edited inside server.cfg, adding what is missing and keeping the rest', async () => {
+  const cfg = path.join(state.serverDir, 'server.cfg');
+  const before = fs.readFileSync(cfg, 'utf8');
+  const current = await api('GET', '/api/v1/admin/gameserver/config/session');
+  assert.equal(current.status, 200, JSON.stringify(current));
+  assert.equal(current.data.DamageType, 1);
+  assert.equal(current.data.ManualPitStops, undefined, 'not in the file yet');
+
+  const saved = await api('PUT', '/api/v1/admin/gameserver/config/session', {DamageType: 3, ManualPitStops: 1, PitWhiteLinePenalty: 1});
+  assert.equal(saved.status, 200, JSON.stringify(saved));
+  const after = fs.readFileSync(cfg, 'utf8');
+  assert.match(after, /"DamageType" : 3,/);
+  assert.match(after, /"ManualPitStops" : 1,/);
+  assert.match(after, /"PitWhiteLinePenalty" : 1,/);
+  // Everything else is as it was: the added lines and the one changed value are the only differences
+  const changedLines = after.split('\n').filter((line, i, all) => !before.split('\n').includes(line));
+  assert.deepEqual(changedLines.map(l => l.trim()), ['"DamageType" : 3,', '"ManualPitStops" : 1,', '"PitWhiteLinePenalty" : 1,']);
+  assert.equal(fs.readFileSync(`${cfg}.bak`, 'utf8'), before, 'the previous file is kept');
+
+  const refused = await api('PUT', '/api/v1/admin/gameserver/config/session', {NotASetting: 1});
+  assert.equal(refused.status, 400);
+  assert.equal(fs.readFileSync(cfg, 'utf8'), after);
+
+  await go('/manageserver');
+  await openSection('Default session settings (server.cfg)');
+  await sleep(800);
+  assert.match(await text('body'), /sessionAttributes/);
 });
 
 scenario('signing out ends the admin session', async () => {

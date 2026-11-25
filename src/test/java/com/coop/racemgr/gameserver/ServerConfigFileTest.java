@@ -112,4 +112,59 @@ class ServerConfigFileTest {
         assertThatThrownBy(() -> new ServerConfigFile(bare).write(Map.of("name", "y", "maxPlayerCount", 8))).isInstanceOf(IOException.class);
         assertThat(Files.readString(bare)).isEqualTo("name : \"x\"\n");
     }
+
+    // The block as it is in a real server.cfg: comments, an entry with a trailing comma, a negative id, a string-valued key elsewhere
+    private static final String REAL = """
+            name : "McRod AMS2 Server"
+            sessionAttributes : {
+                "ServerControlsTrack" : 1,
+                "GridSize" : 24,
+                // Visual only damage
+                "DamageType" : 1,
+                "RaceWeatherSlot1" : -934211870,
+                "RaceWeatherSlot4" : -934211870,
+            }
+            controlGameSetup : true
+            """;
+
+    @Test
+    void readsEveryWholeNumberInTheSessionBlock(@TempDir Path dir) throws Exception {
+        var values = new ServerConfigFile(write(dir, REAL)).readSessionAttributes();
+        assertThat(values).containsExactly(Map.entry("ServerControlsTrack", 1), Map.entry("GridSize", 24), Map.entry("DamageType", 1),
+                Map.entry("RaceWeatherSlot1", -934211870), Map.entry("RaceWeatherSlot4", -934211870));
+    }
+
+    @Test
+    void changesExistingSessionSettingsInPlaceAndAddsMissingOnesAtTheEndOfTheBlock(@TempDir Path dir) throws Exception {
+        Path file = write(dir, REAL);
+        Map<String, Integer> changes = new LinkedHashMap<>();
+        changes.put("DamageType", 3);
+        changes.put("ManualPitStops", 1);
+        changes.put("PitWhiteLinePenalty", 1);
+        new ServerConfigFile(file).writeSessionAttributes(changes);
+
+        String expected = REAL.replace("\"DamageType\" : 1,", "\"DamageType\" : 3,")
+                .replace("    \"RaceWeatherSlot4\" : -934211870,\n", "    \"RaceWeatherSlot4\" : -934211870,\n    \"ManualPitStops\" : 1,\n    \"PitWhiteLinePenalty\" : 1,\n");
+        assertThat(Files.readString(file)).isEqualTo(expected);
+        assertThat(Files.readString(dir.resolve("server.cfg.bak"))).isEqualTo(REAL);
+        assertThat(new ServerConfigFile(file).readSessionAttributes()).containsEntry("ManualPitStops", 1).containsEntry("DamageType", 3);
+    }
+
+    @Test
+    void addsTheCommaThatALastEntryWithoutOneNeeds(@TempDir Path dir) throws Exception {
+        String cfg = "sessionAttributes : {\n  \"GridSize\" : 24 // players\n}\nx : 1\n";
+        Path file = write(dir, cfg);
+        new ServerConfigFile(file).writeSessionAttributes(Map.of("ManualPitStops", 1));
+        assertThat(Files.readString(file)).isEqualTo("sessionAttributes : {\n  \"GridSize\" : 24, // players\n  \"ManualPitStops\" : 1,\n}\nx : 1\n");
+    }
+
+    @Test
+    void refusesUnknownSessionSettingsAndAMissingBlock(@TempDir Path dir) throws Exception {
+        Path file = write(dir, REAL);
+        assertThatThrownBy(() -> new ServerConfigFile(file).writeSessionAttributes(Map.of("NotASetting", 1))).isInstanceOf(IllegalArgumentException.class);
+        assertThat(Files.readString(file)).isEqualTo(REAL);
+        Path other = dir.resolve("other.cfg");
+        Files.writeString(other, "name : \"x\"\n");
+        assertThatThrownBy(() -> new ServerConfigFile(other).writeSessionAttributes(Map.of("ManualPitStops", 1))).isInstanceOf(IOException.class);
+    }
 }

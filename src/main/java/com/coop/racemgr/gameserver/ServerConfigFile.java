@@ -141,6 +141,109 @@ public class ServerConfigFile {
         GameServerFiles.replace(file, text);
     }
 
+    // --- the sessionAttributes block: the settings a session starts from ------------------------------------
+
+    public static final String SESSION_BLOCK = "sessionAttributes";
+    private static final Pattern ENTRY = Pattern.compile("(?m)^([ \\t]*)\"?([A-Za-z][A-Za-z0-9_]*)\"?[ \\t]*:[ \\t]*(-?\\d+)");
+
+    /** Every whole-number setting in the sessionAttributes block, in file order (other values are left alone). */
+    public Map<String, Integer> readSessionAttributes() throws IOException {
+        String text = Files.readString(file, StandardCharsets.UTF_8);
+        int[] range = rangeOf(text, SESSION_BLOCK);
+        if (range == null) {
+            throw new IOException("There is no " + SESSION_BLOCK + " block in " + FILE_NAME);
+        }
+        Map<String, Integer> values = new LinkedHashMap<>();
+        Matcher m = ENTRY.matcher(text);
+        m.region(range[0], range[1]);
+        while (m.find()) {
+            if (depthAt(text, m.start()) == 1) {
+                try {
+                    values.put(m.group(2), Integer.parseInt(m.group(3)));
+                } catch (NumberFormatException e) {
+                    // Not a 32-bit value: not one of ours, leave it
+                }
+            }
+        }
+        return values;
+    }
+
+    /**
+     * Sets settings in the sessionAttributes block: a setting that is there has only its value replaced; one that isn't
+     * is added at the end of the block. Comments, order and everything else stay as they were, and the previous file is
+     * kept as server.cfg.bak. Nothing is ever removed.
+     */
+    public synchronized void writeSessionAttributes(Map<String, Integer> changes) throws IOException {
+        String problem = SessionSettings.validate(changes);
+        if (problem != null) {
+            throw new IllegalArgumentException(problem);
+        }
+
+        String text = Files.readString(file, StandardCharsets.UTF_8);
+        if (rangeOf(text, SESSION_BLOCK) == null) {
+            throw new IOException("There is no " + SESSION_BLOCK + " block in " + FILE_NAME + "; add it by hand first");
+        }
+
+        Map<String, Integer> existing = readSessionAttributes();
+        Map<String, Integer> missing = new LinkedHashMap<>();
+        for (var entry : changes.entrySet()) {
+            if (existing.containsKey(entry.getKey())) {
+                Matcher m = locate(text, new Setting(entry.getKey(), SESSION_BLOCK, Kind.INT, 0, 0));
+                text = text.substring(0, m.start(1)) + entry.getValue() + text.substring(m.end(1));
+            } else {
+                missing.put(entry.getKey(), entry.getValue());
+            }
+        }
+        if (!missing.isEmpty()) {
+            text = addToSessionBlock(text, missing);
+        }
+
+        Files.copy(file, file.resolveSibling(FILE_NAME + ".bak"), StandardCopyOption.REPLACE_EXISTING);
+        GameServerFiles.replace(file, text);
+    }
+
+    private static String addToSessionBlock(String text, Map<String, Integer> missing) {
+        int[] range = rangeOf(text, SESSION_BLOCK);
+        int close = range[1];
+        int open = range[0] - 1;
+
+        // The last piece of real content in the block, so the new entries can follow it with a comma between
+        int lastCode = -1;
+        for (int i = open + 1; i < close; i++) {
+            int next = skipNonCode(text, i);
+            if (next != i) {
+                lastCode = Math.max(lastCode, text.charAt(i) == '"' ? next : lastCode);
+                i = next;
+                continue;
+            }
+            if (!Character.isWhitespace(text.charAt(i))) {
+                lastCode = i;
+            }
+        }
+
+        Matcher indent = ENTRY.matcher(text);
+        indent.region(range[0], range[1]);
+        String pad = indent.find() ? indent.group(1) : "    ";
+
+        StringBuilder added = new StringBuilder();
+        for (var entry : missing.entrySet()) {
+            added.append(pad).append('"').append(entry.getKey()).append("\" : ").append(entry.getValue()).append(",\n");
+        }
+
+        // Insert on the line of the closing brace when it stands alone there, else just before it
+        int lineStart = text.lastIndexOf('\n', close - 1) + 1;
+        boolean alone = lineStart > open && text.substring(lineStart, close).isBlank();
+        String insertion = alone ? added.toString() : "\n" + added;
+        int at = alone ? lineStart : close;
+
+        String result = text.substring(0, at) + insertion + text.substring(at);
+        // A previous entry without a trailing comma needs one before the new ones
+        if (lastCode > open && result.charAt(lastCode) != ',' && result.charAt(lastCode) != '{') {
+            result = result.substring(0, lastCode + 1) + "," + result.substring(lastCode + 1);
+        }
+        return result;
+    }
+
     // --- finding a key's value ---------------------------------------------------------------------------
 
     private static Matcher locate(String text, Setting s) {
