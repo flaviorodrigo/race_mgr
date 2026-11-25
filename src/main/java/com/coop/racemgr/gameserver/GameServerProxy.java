@@ -157,6 +157,34 @@ public class GameServerProxy {
         return schema;
     }
 
+    private static volatile LobbyCheck.Names cachedNames;
+    private static volatile long cachedNamesAt;
+
+    /** Track, vehicle class and vehicle names with their ids, cached like the schema. */
+    public LobbyCheck.Names getNames() {
+        long now = System.currentTimeMillis();
+        LobbyCheck.Names cached = cachedNames;
+        if (cached != null && now - cachedNamesAt < SCHEMA_CACHE_MILLIS) {
+            return cached;
+        }
+        LobbyCheck.Names names = new LobbyCheck.Names(idsByName(listResponse("/list/tracks"), "id"),
+                idsByName(listResponse("/list/vehicle_classes"), "value"), idsByName(listResponse("/list/vehicles"), "id"));
+        cachedNames = names;
+        cachedNamesAt = now;
+        return names;
+    }
+
+    private static java.util.Map<String, Long> idsByName(JsonNode response, String idField) {
+        java.util.Map<String, Long> ids = new java.util.LinkedHashMap<>();
+        for (JsonNode item : response.path("list")) {
+            JsonNode id = item.path(idField).isMissingNode() ? item.path("id") : item.path(idField);
+            if (item.path("name").isString() && id.isNumber()) {
+                ids.put(item.path("name").asString(), id.longValue());
+            }
+        }
+        return ids;
+    }
+
     private JsonNode listResponse(String path) {
         String body = REST_CLIENT.get().uri(gameServerBaseUrl + path).retrieve().body(String.class);
         try {

@@ -71,6 +71,7 @@ class Handler(BaseHTTPRequestHandler):
             return
         if url.path == '/api/session/status':
             self.reply({"result": "ok", "response": {
+                "state": "Running",
                 "attributes": {"SessionStage": "Race1", "TrackId": 1234, "MaxPlayers": 12, "RaceLength": 10},
                 "members": members, "participants": PARTICIPANTS}})
         elif url.path == '/api/log/range':

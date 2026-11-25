@@ -5,6 +5,7 @@ Notable changes, newest first. This file starts with the security and modernisat
 ## Unreleased
 
 ### Added
+- **Live lobby vs rotation** on Race day: the live session's settings next to the rotation file on the game server (default setup plus the round), with the differences highlighted.
 - **Real driver names for AI**: generic multiplayer AI names (e.g. "Jose Lopez (AI)") are turned into real drivers from `AgyAMS2RealNames.dat`, matched by car class, track and skill tier like the SimHub plugin, and still marked as AI.
 - Long dropdowns in the settings editor are searchable; each setting's explanation shows on mouseover.
 - **Sign in with Synology**: behind oauth2-proxy and the Synology SSO Server, DSM users and groups listed in `RM_SSO_*` sign in as admins or stewards; the ID token is checked against the SSO Server's keys, issuer, audience and expiry (`docker/docker-compose.sso-proxy.yml`).
@@ -35,7 +36,7 @@ Notable changes, newest first. This file starts with the security and modernisat
 - Admin login uses an HttpOnly session cookie with CSRF protection, a lockout after repeated failures and a password that can be changed in the UI. Race Manager listens on `127.0.0.1` unless told otherwise; every `/api` route not listed as public is refused.
 
 ### Fixed
-- Text settings and flags are written as the numbers the game server expects in `sms_rotate_default_config.json`.
+- The rotation file keeps setting names (`"Manual"`, `"FULL"`, `"ABS_ALLOWED,SC_ALLOWED"`) again: the rotation addon turns them into numbers itself, and a file written while the game server's lists couldn't be fetched no longer mixes names and numbers.
 - Leaderboard crashes on races with missing values; better Flags and Fill-with-AI defaults in the rotation builder and presets.
 - *Restart game server* said the server hadn't answered when the restart was simply quicker than the page's check; it now follows the request being picked up by the game server's entrypoint, and says so if it never is.
 - A rotation saved in the Rotation builder only appeared in the Rotation dropdown after leaving the page.

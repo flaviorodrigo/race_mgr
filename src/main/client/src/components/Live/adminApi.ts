@@ -177,3 +177,21 @@ export const fetchSessionSchema = () => call<ISchema>({url: '/gameserver/schema'
 // rotation again from round 1
 export const restartGameServer = (resetRotation: boolean) => call({url: '/gameserver/restart', method: 'post', data: {resetRotation}});
 export const fetchRestartStatus = () => call<{enabled: boolean, pending: boolean}>({url: '/gameserver/restart', method: 'get'});
+
+// The live lobby (or race) next to what the rotation on the game server says it should have
+export interface ILobbyRow {
+	name: string,
+	expected: string | null,
+	live: string | null,
+	match: boolean | null,
+}
+export interface ILobbyCheck {
+	state: string | null,
+	sessionOpen: boolean,
+	round: number | null,
+	rounds: number,
+	liveTrack: string | null,
+	note: string | null,
+	rows: Array<ILobbyRow>,
+}
+export const fetchLobbyCheck = () => call<ILobbyCheck>({url: '/gameserver/lobby', method: 'get'});

@@ -32,6 +32,11 @@ public final class GameServerPaths {
         return root().resolve("lua_config").resolve("sms_rotate_config.json");
     }
 
+    /** The rotation addon's saved position (its "index"). */
+    public static Path rotationDataFile() {
+        return root().resolve("lua_config").resolve("sms_rotate_data.json");
+    }
+
     public static Path statsFile() {
         return root().resolve("lua_config").resolve("sms_stats_data.json");
     }

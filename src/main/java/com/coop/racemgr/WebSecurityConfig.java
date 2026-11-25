@@ -70,7 +70,7 @@ public class WebSecurityConfig {
                 // Race-day actions a steward may do (an admin and the owner may too). Anything not listed here
                 // needs the admin role, so a new admin endpoint is admin-only until it is listed.
                 .requestMatchers(HttpMethod.GET, "/api/v1/admin/gameserver/session", "/api/v1/admin/gameserver/log",
-                        "/api/v1/admin/gameserver/presets", "/api/v1/admin/gameserver/schema").hasRole("STEWARD")
+                        "/api/v1/admin/gameserver/presets", "/api/v1/admin/gameserver/schema", "/api/v1/admin/gameserver/lobby").hasRole("STEWARD")
                 .requestMatchers(HttpMethod.POST, "/api/v1/admin/gameserver/kick", "/api/v1/admin/gameserver/chat",
                         "/api/v1/admin/gameserver/session/next", "/api/v1/admin/gameserver/session/advance",
                         "/api/v1/admin/gameserver/presets/*/apply").hasRole("STEWARD")

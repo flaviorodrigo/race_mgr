@@ -8,6 +8,7 @@ import {
 	IAdminUser, IApiResult, IAuditEvent, IBanEntry, IGameListItem, ILogEvent, INextSessionSettings, ISessionPreset, IWhitelist, ServerConfigValues,
 } from '../Live/adminApi';
 import RotationBuilder from './RotationBuilder';
+import LobbyCheckPanel from './LobbyCheckPanel';
 import PerformancePanel from './PerformancePanel';
 import {atLeast, generatePassword, Role, roleLabel} from '../../utils/roles';
 import {ISchema, toNextSessionValues} from '../../utils/sessionSettings';
@@ -803,6 +804,7 @@ const AdminsPanel = () => {
 export type AdminTab = 'race-day' | 'championships' | 'server' | 'people';
 
 const sections: Array<{id: string, title: string, needs: Role, tab: AdminTab, body: React.ReactNode}> = [
+	{id: 'lobby', title: 'Live lobby vs rotation', needs: 'STEWARD', tab: 'race-day', body: <LobbyCheckPanel />},
 	{id: 'next', title: 'Next session settings', needs: 'STEWARD', tab: 'race-day', body: <NextSessionPanel />},
 	{id: 'log', title: 'Game server log', needs: 'STEWARD', tab: 'race-day', body: <GameLogPanel />},
 	{id: 'rotation', title: 'Rotation builder', needs: 'ADMIN', tab: 'championships', body: <RotationBuilder />},

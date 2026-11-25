@@ -775,6 +775,22 @@ scenario('an admin restarts the game server in its own container through the sig
   await state.page.waitForFunction(() => document.body.innerText.includes('The game server is back'), {timeout: 20000});
 });
 
+scenario('Race day compares the live session with the rotation on the game server', async () => {
+  const lobby = await api('GET', '/api/v1/admin/gameserver/lobby');
+  assert.equal(lobby.status, 200, JSON.stringify(lobby));
+  assert.equal(lobby.data.sessionOpen, true);
+  assert.ok(lobby.data.rows.length > 0, 'the rotation file on the game server was read');
+  // The stand-in's track (1234) is in no rotation, so only the default setup is compared, and it says so
+  assert.match(lobby.data.note, /isn't in the rotation file/);
+  assert.ok(lobby.data.rows.some(r => r.match === true || r.match === false), 'live values are compared');
+
+  await go('/manageserver');
+  await openSection('Live lobby vs rotation');
+  await sleep(800);
+  assert.match(await text('body'), /Session Running/);
+  assert.ok((await rows('table[aria-label="Lobby check"]')).length > 0);
+});
+
 scenario('signing out ends the admin session', async () => {
   await go('/');
   await state.page.click('button[aria-label="Logout"]');

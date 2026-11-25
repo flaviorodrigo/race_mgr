@@ -315,6 +315,47 @@ public class GameServerController {
         }
     }
 
+    // The live lobby (or race) next to what the rotation on the game server says it should be
+    @GetMapping("/api/v1/admin/gameserver/lobby")
+    public ResponseEntity<Object> lobby() {
+        tools.jackson.databind.JsonNode status;
+        try {
+            status = this.gameServerProxy.getSessionStatus();
+        } catch (Exception e) {
+            logger.warn("Live session unavailable: " + e);
+            return ResponseHandler.generateResponse("The game server isn't answering", HttpStatus.MULTI_STATUS, null);
+        }
+        com.coop.racemgr.gameserver.SessionSchema.Schema schema = null;
+        com.coop.racemgr.gameserver.LobbyCheck.Names names = null;
+        try {
+            schema = this.gameServerProxy.getSessionSchema();
+            names = this.gameServerProxy.getNames();
+        } catch (Exception e) {
+            logger.warn("Game server lists unavailable for the lobby check: " + e);
+        }
+        var result = com.coop.racemgr.gameserver.LobbyCheck.compare(status, readRotationFile(),
+                com.coop.racemgr.gameserver.LobbyCheck.persistedIndex(readJsonFile(com.coop.racemgr.gameserver.GameServerPaths.rotationDataFile())),
+                schema, names);
+        return ResponseHandler.generateResponse("Lobby check", HttpStatus.OK, result);
+    }
+
+    // What the addon runs: its working copy when there is one, else the default it is rebuilt from
+    private static Object readRotationFile() {
+        Object working = readJsonFile(com.coop.racemgr.gameserver.GameServerPaths.cachedRotationFile());
+        return working != null ? working : readJsonFile(com.coop.racemgr.gameserver.GameServerPaths.defaultRotationFile());
+    }
+
+    private static Object readJsonFile(java.nio.file.Path path) {
+        try {
+            if (!java.nio.file.Files.isRegularFile(path)) {
+                return null;
+            }
+            return RacemgrUtils.jsonStrToObj(java.nio.file.Files.readString(path));
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
     @PostMapping("/api/v1/admin/gameserver/kick")
     public ResponseEntity<Object> kick(@RequestBody KickRequest request, Authentication authentication) {
         if (!LiveSession.isValidRefId(request.getRefid())) {

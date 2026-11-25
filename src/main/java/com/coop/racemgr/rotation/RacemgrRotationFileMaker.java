@@ -31,8 +31,9 @@ public class RacemgrRotationFileMaker {
     }
 
     /**
-     * Converts string enum names and comma-separated {@code Flags} into the numeric values AMS2DS uses internally,
-     * so {@code sms_rotate} does not skip or mis-parse fields like {@code ManualPitStops: "Manual"} or {@code DamageType: "FULL"}.
+     * Converts string enum names and comma-separated {@code Flags} into the numeric values AMS2DS uses internally.
+     * Not used for the file the game server reads: lib_rotate accepts names itself (its normalize helpers turn
+     * "Manual", "FULL" or "ABS_ALLOWED,SC_ALLOWED" into numbers), and names keep the file readable.
      * Leaves MongoDB's {@code RaceRotation.config} untouched.
      */
     @SuppressWarnings("unchecked")
