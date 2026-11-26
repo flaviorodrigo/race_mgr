@@ -5,7 +5,7 @@ import {
 	fetchPresets, fetchSessionSchema, savePreset,
 	updateAdminUser, changePassword, fetchAudit, fetchBanList, fetchGameLog, fetchServerConfig, fetchWhitelist,
 	removeBan, removeFromWhitelist, saveServerConfig,
-	IAdminUser, IApiResult, IAuditEvent, IBanEntry, IGameListItem, ILogEvent, INextSessionSettings, ISessionPreset, IWhitelist, ServerConfigValues, fetchSessionDefaults, saveSessionDefaults, setWhitelistActive, fetchRotationAddon, installRotationAddon, IRotationAddon} from '../Live/adminApi';
+	IAdminUser, IApiResult, IAuditEvent, IBanEntry, IGameListItem, ILogEvent, INextSessionSettings, ISessionPreset, IWhitelist, ServerConfigValues, fetchSessionDefaults, saveSessionDefaults, setWhitelistActive, fetchRotationAddon, installRotationAddon, installAms2StatsAddon, IRotationAddon} from '../Live/adminApi';
 import RotationBuilder from './RotationBuilder';
 import LobbyCheckPanel from './LobbyCheckPanel';
 import PerformancePanel from './PerformancePanel';
@@ -98,6 +98,13 @@ const RotationAddonPanel = () => {
 		load();
 	};
 
+	const installStats = async () => {
+		setBusy(true);
+		const result = await installAms2StatsAddon();
+		setBusy(false);
+		setFeedback({text: result.message, severity: result.ok ? 'success' : 'error'});
+	};
+
 	const yes = (ok: boolean) => <Chip size="small" color={ok ? 'success' : 'default'} label={ok ? 'yes' : 'no'} />;
 	const reported = addon?.reported ?? null;
 
@@ -141,6 +148,7 @@ const RotationAddonPanel = () => {
 			</Alert>}
 			<Stack direction="row" spacing={2}>
 				<Button variant="contained" disabled={busy} onClick={install}>{addon?.installed ? 'Update the addon' : 'Install the addon'}</Button>
+				<Button variant="outlined" disabled={busy} onClick={installStats}>Update ams2_stats addon</Button>
 				<Button disabled={busy} onClick={load}>Refresh</Button>
 			</Stack>
 			<Feedback feedback={feedback} />

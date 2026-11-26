@@ -20,6 +20,7 @@ import java.util.regex.Pattern;
 public class RotationAddon {
     public static final String NAME = "racemgr_rotate";
     private static final String[] FILES = {"racemgr_rotate.lua", "racemgr_rotate.json", "racemgr_rotate_default_config.json"};
+    private static final String[] AMS2_STATS_FILES = {"ams2_stats.lua", "ams2_stats.json", "ams2_stats_default_config.json"};
 
     private final Path root;
 
@@ -74,16 +75,26 @@ public class RotationAddon {
 
     /** Copies the addon into lua/racemgr_rotate. Its own config file is only created, never replaced. */
     public void install() throws IOException {
-        Files.createDirectories(addonDir());
         for (String folder : FOLDERS) {
             Files.createDirectories(root.resolve(folder));
         }
-        for (String name : FILES) {
-            Path target = addonDir().resolve(name);
+        copyAddonFiles(NAME, FILES);
+    }
+
+    /** Copies the patched ams2_stats addon into lua/ams2_stats. Its default config is only created, never replaced. */
+    public void installAms2Stats() throws IOException {
+        copyAddonFiles("ams2_stats", AMS2_STATS_FILES);
+    }
+
+    private void copyAddonFiles(String addonName, String[] files) throws IOException {
+        Path dir = root.resolve("lua").resolve(addonName);
+        Files.createDirectories(dir);
+        for (String name : files) {
+            Path target = dir.resolve(name);
             if (name.endsWith("_default_config.json") && Files.exists(target)) {
                 continue;
             }
-            try (InputStream in = RotationAddon.class.getResourceAsStream("/lua/" + NAME + "/" + name)) {
+            try (InputStream in = RotationAddon.class.getResourceAsStream("/lua/" + addonName + "/" + name)) {
                 if (in == null) {
                     throw new IOException("The addon file " + name + " is missing from Race Manager");
                 }

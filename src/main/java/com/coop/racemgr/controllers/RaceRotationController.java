@@ -240,6 +240,19 @@ public class RaceRotationController {
         }
     }
 
+    /** Copies the patched ams2_stats Lua addon (which keeps AI drivers separate by participantid) into lua/ams2_stats. */
+    @PostMapping("/api/v1/admin/gameserver/ams2-stats/install")
+    public ResponseEntity<Object> installAms2StatsAddon(Authentication authentication) {
+        try {
+            RotationAddon.forServer().installAms2Stats();
+            auditLog.record(authentication.getName(), "ams2_stats addon installed", "");
+            return ResponseHandler.generateResponse("ams2_stats addon updated in lua/ams2_stats. Restart the game server once to load it.", HttpStatus.OK, null);
+        } catch (Exception e) {
+            logger.warn("Installing ams2_stats failed: " + e);
+            return ResponseHandler.generateResponse("Could not install ams2_stats in the game server's folder", HttpStatus.MULTI_STATUS, null);
+        }
+    }
+
     // Starts the active rotation again from round 1 without restarting the game server: the racemgr_rotate addon
     // queues round 1 for the next session. Nobody is disconnected; an open session keeps its settings.
     @PostMapping("/api/v1/admin/gameserver/rotation-addon/start-over")

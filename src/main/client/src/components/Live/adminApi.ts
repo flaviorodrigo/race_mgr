@@ -212,3 +212,4 @@ export interface IRotationAddon {
 export const fetchRotationAddon = () => call<IRotationAddon>({url: '/gameserver/rotation-addon', method: 'get'});
 export const startRotationOver = () => call<{version: number}>({url: '/gameserver/rotation-addon/start-over', method: 'post'});
 export const installRotationAddon = () => call<IRotationAddon>({url: '/gameserver/rotation-addon/install', method: 'post'});
+export const installAms2StatsAddon = () => call<null>({url: '/gameserver/ams2-stats/install', method: 'post'});
