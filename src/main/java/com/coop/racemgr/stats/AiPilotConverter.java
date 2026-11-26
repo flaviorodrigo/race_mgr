@@ -42,6 +42,7 @@ public final class AiPilotConverter {
 
     private static final Pattern AI_SUFFIX = Pattern.compile("\\s*\\((AI|KI)\\)$", Pattern.CASE_INSENSITIVE);
     private static final Map<String, Integer> GENERIC_LEVEL_MAP = new HashMap<>();
+    private static final Map<String, String> DIRECT_MAP = new HashMap<>();
     private static final Map<String, List<RealPilot>> CLASS_ROSTER_MAP = new HashMap<>();
     private static final Map<String, Double> QUALI_BASE_MAP = new HashMap<>();
     private static final Map<String, SkillOverride> TRACK_SKILL_MAP = new HashMap<>();
@@ -68,6 +69,11 @@ public final class AiPilotConverter {
                             try {
                                 GENERIC_LEVEL_MAP.put(lower(parts[1]), Integer.parseInt(parts[2].trim()));
                             } catch (NumberFormatException ignored) {
+                            }
+                        }
+                        case "D" -> {
+                            if (parts.length >= 4 && !parts[1].isBlank() && !parts[2].isBlank() && !parts[3].isBlank()) {
+                                DIRECT_MAP.put(lower(parts[1]) + "|" + lower(parts[2]), parts[3].trim());
                             }
                         }
                         case "R" -> {
@@ -210,12 +216,22 @@ public final class AiPilotConverter {
                 continue;
             }
             String rawName = stripAiSuffix(d.name());
-            Integer lv = GENERIC_LEVEL_MAP.get(lower(rawName));
-            if (d.player() || lv == null) {
+            String normClass = normalizeClass(d.carClass());
+            if (d.player()) {
                 usedNames.add(lower(rawName));
                 continue;
             }
-            String normClass = normalizeClass(d.carClass());
+            String directTarget = normClass.isEmpty() ? null : DIRECT_MAP.get(lower(normClass) + "|" + lower(rawName));
+            if (directTarget != null) {
+                mapping.put(lower(normClass) + ":" + lower(rawName), directTarget);
+                usedNames.add(lower(directTarget));
+                continue;
+            }
+            Integer lv = GENERIC_LEVEL_MAP.get(lower(rawName));
+            if (lv == null) {
+                usedNames.add(lower(rawName));
+                continue;
+            }
             if (normClass.isEmpty()) {
                 continue;
             }

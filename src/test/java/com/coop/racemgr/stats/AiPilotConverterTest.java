@@ -215,4 +215,19 @@ class AiPilotConverterTest {
         var shownResults = (List<Map<String, Object>>) ((Map<String, Object>) shown.getStages().get("race1")).get("results");
         assertNotEquals("Giancarlo Rampanelli (AI)", shownResults.get(0).get("name"));
     }
+
+    @Test
+    void mapsCarSpecificReizaDriversDirectlyAndReservesTheirRealNames() {
+        List<AiPilotConverter.DriverInput> inputs = List.of(
+                new AiPilotConverter.DriverInput("Alejandro Fernandez  (AI)", false, "F-V8_Gen2"),
+                new AiPilotConverter.DriverInput("Giancarlo Rampanelli (AI)", false, "F-V8_Gen2"),
+                new AiPilotConverter.DriverInput("Dave Stephenson (AI)", false, "F-V8_Gen2")
+        );
+
+        Map<String, String> mapping = AiPilotConverter.buildSessionMapping(inputs, "Monza_2005");
+        assertEquals("Fernando Alonso", mapping.get("f-v8_gen2:alejandro fernandez"));
+
+        Set<String> assigned = new HashSet<>(mapping.values());
+        assertEquals(3, assigned.size());
+    }
 }
