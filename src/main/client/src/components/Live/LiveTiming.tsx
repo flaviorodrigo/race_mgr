@@ -1,15 +1,18 @@
-import React, {useEffect, useState} from 'react';
+import React, {useEffect, useMemo, useState} from 'react';
 
 import RaceMgrApi from '../../api/RaceMgrApi';
 import {usePolling} from '../../utils/usePolling';
-import {formatLap, formatSector} from '../../utils/sectors';
+import {formatLap, formatSector, lapSeries} from '../../utils/sectors';
 import {fetchTrackData} from '../Leaderboard/utilities';
 import {prettyStage} from './liveApi';
+import {EMPTY_LIVE_LAP_HISTORY, toLapDrivers, updateLiveLapHistory} from './liveLaps';
+import LapChart from '../common/LapChart';
 import PositionBadge from '../common/PositionBadge';
 import {TIMING_PURPLE} from '../../skin/colors';
 import {ITrackData} from '../../interfaces/asm2Interfaces';
 
 import Alert from '@mui/material/Alert';
+import Box from '@mui/material/Box';
 import Chip from '@mui/material/Chip';
 import Paper from '@mui/material/Paper';
 import Table from '@mui/material/Table';
@@ -66,6 +69,7 @@ const LiveTiming = () => {
 	const [board, setBoard] = useState<ITimingBoard | null>(null);
 	const [loaded, setLoaded] = useState(false);
 	const [tracks, setTracks] = useState<Array<ITrackData>>([]);
+	const [lapHistory, setLapHistory] = useState(EMPTY_LIVE_LAP_HISTORY);
 
 	useEffect(() => {
 		fetchTrackData().then(t => setTracks(Array.isArray(t) ? t : []));
@@ -74,9 +78,12 @@ const LiveTiming = () => {
 	usePolling(() => {
 		fetchTiming().then(b => {
 			setBoard(b);
+			setLapHistory(prev => updateLiveLapHistory(prev, b));
 			setLoaded(true);
 		});
 	}, 3000);
+
+	const {series, min, max} = useMemo(() => lapSeries(toLapDrivers(lapHistory)), [lapHistory]);
 
 	if (loaded && !board) {
 		return <Alert severity="info" sx={{textAlign: 'left'}}>The game server isn&apos;t answering, so there is no live timing right now.</Alert>;
@@ -142,6 +149,11 @@ const LiveTiming = () => {
 			<Typography variant="caption" color="text.secondary" sx={{display: 'block', mt: 1}}>
 				Purple is the quickest in the session. The sector a car is in now is in italics and still counting.
 			</Typography>
+			{series.length > 0 && (
+				<Box sx={{mt: 3}}>
+					<LapChart series={series} min={min} max={max} subtitle="Player lap evolution (click a name to hide or show it)" />
+				</Box>
+			)}
 		</Paper>
 	);
 };
