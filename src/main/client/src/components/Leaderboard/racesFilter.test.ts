@@ -50,4 +50,17 @@ describe('racesFilter', () => {
 			{id: '100', name: 'Spa Francorchamps'},
 		]);
 	});
+
+	it('handles numeric TrackId values before tracks metadata loads', () => {
+		const races = [
+			makeRace({raceId: '1', trackName: -1478712571 as unknown as string}),
+			makeRace({raceId: '2', trackName: 421674434 as unknown as string}),
+		];
+
+		expect(availableTracks(races, [])).toEqual([
+			{id: '-1478712571', name: '-1478712571'},
+			{id: '421674434', name: '421674434'},
+		]);
+		expect(filterAndSortRaces(races, {startDate: 0, endDate: 0, trackId: '-1478712571'}).map(r => r.raceId)).toEqual(['1']);
+	});
 });

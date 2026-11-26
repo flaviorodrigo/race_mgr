@@ -150,7 +150,7 @@ const RacesPage: React.FC = () => {
 						</TableHead>
 						<TableBody>
 							{visibleRaces.map(r => {
-								const humans = r.raceResults.filter(d => d.isPlayer).length;
+								const humans = (r.raceResults ?? []).filter(d => d.isPlayer).length;
 								return (
 									<TableRow key={r.raceId ?? r.startDate} hover>
 										<TableCell sx={{whiteSpace: 'nowrap'}}>
