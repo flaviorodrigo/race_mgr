@@ -380,6 +380,15 @@ local function reload_rotation( force, apply )
 	SavePersistentData()
 	write_status( restarted and "applied, from round 1" or "applied" )
 	print( TAG .. "Loaded a rotation of " .. #rotation .. " setups" .. ( restarted and ", starting again from round 1" or "" ) )
+	if restarted then
+		if type(SendChatToAll) == "function" then
+			pcall(SendChatToAll, "Rotation reset to round 1 for the next session.")
+		end
+	elseif apply then
+		if type(SendChatToAll) == "function" then
+			pcall(SendChatToAll, "Rotation updated (" .. tostring(#rotation) .. " rounds, next is round " .. tostring(addon_data.index or 1) .. ").")
+		end
+	end
 end
 
 
@@ -454,6 +463,9 @@ local function maybe_repeat_on_all_retired()
 		SavePersistentData()
 		write_status("repeated, all retired")
 		print(TAG .. "All human players retired; repeating round " .. tostring(addon_data.index))
+		if type(SendChatToAll) == "function" then
+			pcall(SendChatToAll, "All drivers retired - repeating round " .. tostring(addon_data.index) .. " next.")
+		end
 	end
 end
 
