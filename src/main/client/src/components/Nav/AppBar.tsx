@@ -23,6 +23,7 @@ import Tooltip from '@mui/material/Tooltip';
 import Container from '@mui/material/Container';
 
 import LeaderBoard from '../Leaderboard/LeaderBoard';
+import RacesPage from '../Leaderboard/RacesPage';
 import RacePage from '../Leaderboard/RacePage';
 import DriverPage from '../Leaderboard/DriverPage';
 import LiveTiming from '../Live/LiveTiming';
@@ -43,6 +44,7 @@ import {
 import MenuIcon from '@mui/icons-material/Menu';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import BarChartIcon from '@mui/icons-material/BarChart';
+import FlagIcon from '@mui/icons-material/Flag';
 import TimerIcon from '@mui/icons-material/Timer';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import PermDataSettingIcon from '@mui/icons-material/PermDataSetting';
@@ -122,6 +124,15 @@ const NavItems = ({isAuthenticated, onNavigate}: INavItemsProps) => (
 					<BarChartIcon />
 				</ListItemIcon>
 				<ListItemText primary="Leader Board" />
+			</ListItemButton>
+		</NavLink>
+
+		<NavLink to="/races" onClick={onNavigate}>
+			<ListItemButton>
+				<ListItemIcon>
+					<FlagIcon />
+				</ListItemIcon>
+				<ListItemText primary="Races" />
 			</ListItemButton>
 		</NavLink>
 
@@ -271,6 +282,7 @@ const DashboardContent = () => {
 					<Container maxWidth="lg" sx={{mt: {xs: 2, md: 4}, mb: 4, px: {xs: 1.5, sm: 3}}}>
 						<Routes>
 							<Route path="/" element={<LeaderBoard />} />
+							<Route path="/races" element={<RacesPage />} />
 							<Route path="/manageServer" element={<ManageServer isAuthenticated={isAuthenticated} />} />
 							<Route path="/live" element={<LiveTiming />} />
 							<Route path="/records" element={<Records />} />

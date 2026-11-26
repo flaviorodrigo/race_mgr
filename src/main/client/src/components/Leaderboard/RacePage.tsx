@@ -89,7 +89,10 @@ const RacePage = () => {
 		return (
 			<Alert severity="info" sx={{textAlign: 'left'}}>
 				{state.status === 'missing' ? 'This race could not be found.' : 'This race has no result yet.'}{' '}
-				<Link component={RouterLink} to="/">Back to the leaderboard</Link>
+				<Box sx={{display: 'flex', gap: 2}}>
+					<Link component={RouterLink} to="/races">Back to races</Link>
+					<Link component={RouterLink} to="/">Back to the leaderboard</Link>
+				</Box>
 			</Alert>
 		);
 	}
@@ -179,7 +182,10 @@ const RacePage = () => {
 			{race.drivers && race.drivers.length > 0 && <LapAnalysis drivers={race.drivers} title="Race pace" />}
 			{race.qualifyingDrivers && race.qualifyingDrivers.length > 0 && <LapAnalysis drivers={race.qualifyingDrivers} title="Qualifying pace" />}
 
-			<Link component={RouterLink} to="/">Back to the leaderboard</Link>
+			<Box sx={{display: 'flex', gap: 2}}>
+				<Link component={RouterLink} to="/races">Back to races</Link>
+				<Link component={RouterLink} to="/">Back to the leaderboard</Link>
+			</Box>
 
 			{editing && <RaceNotesDialog raceId={raceId} drivers={results.map(r => r.driverName)} penalties={race.penalties ?? []} videoUrl={race.videoUrl ?? ''}
 				onClose={() => setEditing(false)}
