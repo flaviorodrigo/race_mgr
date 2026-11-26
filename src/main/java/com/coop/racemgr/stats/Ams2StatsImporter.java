@@ -65,10 +65,15 @@ public final class Ams2StatsImporter {
 
         Map<String, Object> participants = new LinkedHashMap<>();
         for (int n = 0; n < results.size(); n++) {
+            Map<String, Object> row = results.get(n);
             Map<String, Object> p = new LinkedHashMap<>();
-            p.put("Name", results.get(n).get("name"));
-            p.put("RefId", results.get(n).get("refid"));
-            p.put("IsPlayer", 1);
+            p.put("Name", row.get("name"));
+            p.put("RefId", row.get("refid"));
+            p.put("IsPlayer", Boolean.FALSE.equals(row.get("is_player")) ? 0 : 1);
+            Object vehicleId = attributes(row).get("VehicleId");
+            if (vehicleId != null) {
+                p.put("VehicleId", vehicleId);
+            }
             participants.put(String.valueOf(n), p);
         }
         race.setParticipants(participants);
@@ -134,12 +139,17 @@ public final class Ams2StatsImporter {
         attributes.put("TotalTime", r.path("total_time").asInt(0));
         attributes.put("Lap", r.path("laps_complete").asInt(0));
         attributes.put("State", r.path("state").asString(""));
+        if (r.path("vehicle_id").isNumber()) {
+            attributes.put("VehicleId", r.path("vehicle_id").asInt());
+        }
+
+        boolean isPlayer = !r.path("is_player").isBoolean() || r.path("is_player").asBoolean();
 
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("name", r.path("name").asString("Unknown"));
         result.put("participantid", index);
         result.put("refid", r.path("refid").asInt(-1));
-        result.put("is_player", true);
+        result.put("is_player", isPlayer);
         result.put("attributes", attributes);
         return result;
     }

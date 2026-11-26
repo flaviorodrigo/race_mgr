@@ -102,4 +102,32 @@ class Ams2StatsImporterTest {
                 + "\"attrs\":{},\"drivers\":[],\"results\":[{\"name\":\"A\",\"refid\":1,\"state\":\"InGarage\"}]}]}";
         assertThat(Ams2StatsImporter.toRaces(RacemgrUtils.JSON.readTree(idle), ZoneOffset.UTC)).isEmpty();
     }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void preservesAiIsPlayerFlagAndVehicleIdWhenPresent() throws Exception {
+        String json = """
+                {
+                  "sessions": [{
+                    "uid": "20261125_220000",
+                    "stage": "Race1",
+                    "started_at": "2026-11-25T22:00:00",
+                    "finished_at": "2026-11-25T22:15:00",
+                    "results": [
+                      {"position": 1, "name": "McRod", "refid": 1024, "is_player": true, "vehicle_id": 55, "laps_complete": 5, "best_lap_time": 70000, "total_time": 350000, "state": "Finished"},
+                      {"position": 2, "name": "Jose Lopez (AI)", "refid": 1024, "is_player": false, "vehicle_id": 56, "laps_complete": 5, "best_lap_time": 71000, "total_time": 355000, "state": "Finished"}
+                    ]
+                  }]
+                }
+                """;
+        Race race = Ams2StatsImporter.toRaces(RacemgrUtils.JSON.readTree(json), ZoneOffset.UTC).get(0);
+        var race1 = results(race, "race1");
+        assertThat(race1.get(0)).containsEntry("is_player", true);
+        assertThat(race1.get(1)).containsEntry("is_player", false).containsEntry("name", "Jose Lopez (AI)");
+        assertThat(attrs(race1.get(1))).containsEntry("VehicleId", 56);
+
+        var participants = (Map<String, Map<String, Object>>) race.getParticipants();
+        assertThat(participants.get("0")).containsEntry("IsPlayer", 1).containsEntry("VehicleId", 55);
+        assertThat(participants.get("1")).containsEntry("IsPlayer", 0).containsEntry("VehicleId", 56);
+    }
 }
