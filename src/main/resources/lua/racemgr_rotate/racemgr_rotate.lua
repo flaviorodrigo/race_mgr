@@ -365,6 +365,9 @@ local function reload_rotation( force, apply )
 		addon_data.reset_seen = reset
 		addon_data.index = 0
 		restarted = true
+		if last_session_state == "Lobby" then
+			skip_next_advance = true
+		end
 	end
 	if apply then
 		if not addon_data.index or addon_data.index < 1 then
@@ -408,6 +411,7 @@ end
 
 -- Used to track state changes to decide when to advance the setup
 local last_session_state = "None"
+local skip_next_advance = false
 
 
 local function addon_callback( callback, ... )
@@ -439,12 +443,20 @@ local function addon_callback( callback, ... )
 		local event = ...
 		if ( event.type == "Session" ) and ( event.name == "StateChanged" ) then
 			if ( event.attributes.PreviousState == "Lobby" ) and ( event.attributes.NewState == "Loading" ) then
-				advance_next_setup()
+				if skip_next_advance then
+					skip_next_advance = false
+				else
+					advance_next_setup()
+				end
 			end
 			last_session_state = event.attributes.NewState
 		elseif ( event.type == "Session" ) and ( event.name == "SessionDestroyed" ) then
 			if last_session_state == "Lobby" then
-				advance_next_setup()
+				if skip_next_advance then
+					skip_next_advance = false
+				else
+					advance_next_setup()
+				end
 			end
 			last_session_state = "None"
 		end

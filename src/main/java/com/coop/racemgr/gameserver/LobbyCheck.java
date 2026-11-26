@@ -92,6 +92,13 @@ public final class LobbyCheck {
             expectedFlags &= ~flagsOf(setup.get("RemoveFlags"), schema);
         }
         long forceMask = flagsOf(String.join(",", FORCE_FLAGS), schema);
+        long knownMask = 0;
+        if (schema != null && schema.flags() != null) {
+            for (SessionSchema.Option f : schema.flags()) {
+                knownMask |= f.value() & 0xFFFFFFFFL;
+            }
+        }
+        long compareMask = knownMask != 0 ? (knownMask & ~forceMask) : ~forceMask;
 
         List<Row> rows = new ArrayList<>();
         for (Map.Entry<String, Object> e : merged.entrySet()) {
@@ -99,8 +106,8 @@ public final class LobbyCheck {
             JsonNode liveNode = open && attributes != null ? attributes.path(key) : null;
             Long live = liveNode == null || liveNode.isMissingNode() ? null : number(liveNode);
             if ("Flags".equals(key)) {
-                long want = expectedFlags & ~forceMask;
-                Long have = live == null ? null : (live & 0xFFFFFFFFL) & ~forceMask;
+                long want = expectedFlags & compareMask;
+                Long have = live == null ? null : (live & 0xFFFFFFFFL) & compareMask;
                 rows.add(new Row(key, flagText(want, schema), have == null ? null : flagText(have, schema),
                         have == null ? null : have == want));
                 continue;
