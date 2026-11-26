@@ -311,6 +311,20 @@ class RotateTest(unittest.TestCase):
         self.lua.execute('event("Lobby", "Loading")')
         self.assertGreater(self.g.saves, before)
 
+    def test_all_humans_retiring_repeats_the_current_round(self):
+        self.start()  # round 1 ('A') queued, index = 1
+        self.lua.execute('event("Lobby", "Loading")')  # advances to round 2 ('B'), index = 2
+        self.assertEqual(self.tracks()[-1], 'B')
+        self.lua.execute('''
+            session = { participants = { [0] = { IsPlayer = 1 } } }
+            handler(Callback.EventLogged, { type = "Session", name = "StageChanged", attributes = { NewStage = "Race1" } })
+            handler(Callback.EventLogged, { type = "Participant", name = "State", participantid = 0, attributes = { NewState = "Retired" } })
+            handler(Callback.EventLogged, { type = "Session", name = "StateChanged", attributes = { PreviousState = "Racing", NewState = "PostRace" } })
+        ''')
+        self.assertEqual(self.tracks()[-1], 'A')
+        self.assertEqual(self.status()['index'], 1)
+        self.assertEqual(self.status()['note'], 'repeated, all retired')
+
 
 if __name__ == '__main__':
     sys.exit(unittest.main(verbosity=2))

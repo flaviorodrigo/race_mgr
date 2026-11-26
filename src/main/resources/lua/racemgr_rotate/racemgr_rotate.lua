@@ -412,6 +412,50 @@ end
 -- Used to track state changes to decide when to advance the setup
 local last_session_state = "None"
 local skip_next_advance = false
+local in_race = false
+local human_started_race = false
+local human_finished_race = false
+local evaluated_race = false
+
+local function reset_race_tracking()
+	in_race = false
+	human_started_race = false
+	human_finished_race = false
+	evaluated_race = false
+end
+
+local function is_human_event(event)
+	if not event then return false end
+	local pid = event.participantid
+	if pid ~= nil and session and session.participants and session.participants[pid] then
+		local p = session.participants[pid]
+		local ip = p.IsPlayer
+		if ip == nil then ip = p.isPlayer end
+		if ip == nil and p.attributes then
+			ip = p.attributes.IsPlayer
+			if ip == nil then ip = p.attributes.isPlayer end
+		end
+		if ip ~= nil then return ip == 1 or ip == true end
+	end
+	return false
+end
+
+local function maybe_repeat_on_all_retired()
+	if not in_race or evaluated_race then
+		return
+	end
+	evaluated_race = true
+	if human_started_race and not human_finished_race and #rotation > 0 and rotation_ok then
+		local idx = addon_data.index or 1
+		idx = idx - 1
+		if idx < 1 then idx = #rotation end
+		addon_data.index = idx
+		apply_current_setup()
+		SavePersistentData()
+		write_status("repeated, all retired")
+		print(TAG .. "All human players retired; repeating round " .. tostring(addon_data.index))
+	end
+end
 
 
 local function addon_callback( callback, ... )
@@ -442,15 +486,49 @@ local function addon_callback( callback, ... )
 	if callback == Callback.EventLogged then
 		local event = ...
 		if ( event.type == "Session" ) and ( event.name == "StateChanged" ) then
-			if ( event.attributes.PreviousState == "Lobby" ) and ( event.attributes.NewState == "Loading" ) then
+			local prev = event.attributes.PreviousState
+			local nxt = event.attributes.NewState
+			if ( prev == "Lobby" ) and ( nxt == "Loading" ) then
+				reset_race_tracking()
 				if skip_next_advance then
 					skip_next_advance = false
 				else
 					advance_next_setup()
 				end
+			elseif in_race and ( nxt == "PostRace" or nxt == "Lobby" or prev == "Racing" ) then
+				maybe_repeat_on_all_retired()
 			end
-			last_session_state = event.attributes.NewState
+			last_session_state = nxt
+		elseif ( event.type == "Session" ) and ( event.name == "StageChanged" ) then
+			if event.attributes and event.attributes.NewStage == "Race1" then
+				in_race = true
+				human_started_race = false
+				human_finished_race = false
+				evaluated_race = false
+			elseif event.attributes and event.attributes.PreviousStage == "Race1" then
+				maybe_repeat_on_all_retired()
+			end
+		elseif in_race and ( event.type == "Participant" ) and ( event.name == "State" ) then
+			if is_human_event(event) then
+				human_started_race = true
+				if event.attributes and event.attributes.NewState == "Finished" then
+					human_finished_race = true
+				end
+			end
+		elseif in_race and ( event.name == "Lap" ) then
+			if is_human_event(event) then
+				human_started_race = true
+			end
+		elseif in_race and ( event.name == "Results" ) then
+			if is_human_event(event) then
+				human_started_race = true
+				if event.attributes and event.attributes.State == "Finished" then
+					human_finished_race = true
+				end
+			end
 		elseif ( event.type == "Session" ) and ( event.name == "SessionDestroyed" ) then
+			maybe_repeat_on_all_retired()
+			reset_race_tracking()
 			if last_session_state == "Lobby" then
 				if skip_next_advance then
 					skip_next_advance = false
