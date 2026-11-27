@@ -61,7 +61,11 @@ public class DiscordNotifier {
             parsed = parse(url.trim(), onlyDiscordHosts);
             if (parsed == null) {
                 logger.warn("RM_DISCORD_WEBHOOK_URL is not a Discord webhook address (https://discord.com/api/webhooks/...), notifications are off.");
+            } else if (onlyDiscordHosts) {
+                logger.info("Discord notifications enabled.");
             }
+        } else if (onlyDiscordHosts) {
+            logger.info("RM_DISCORD_WEBHOOK_URL is not set, Discord notifications are off.");
         }
         this.webhook = parsed;
     }

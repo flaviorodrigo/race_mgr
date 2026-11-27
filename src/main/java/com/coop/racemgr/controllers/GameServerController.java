@@ -565,7 +565,22 @@ public class GameServerController {
                 response.put("steamCheckedAt", steamServerCheck.getLastCheckedAt());
             }
         }
+        String appVersion = resolveAppVersion();
+        if (appVersion != null) {
+            response.put("appVersion", appVersion);
+        }
         return ResponseHandler.generateResponse("Current external game server status", HttpStatus.OK, response);
+    }
+
+    private static String resolveAppVersion() {
+        String env = System.getenv("RM_APP_VERSION");
+        String raw = (env != null && !env.isBlank())
+                ? env.trim()
+                : RacemgrApplication.class.getPackage().getImplementationVersion();
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        return raw.startsWith("v") ? raw : "v" + raw;
     }
 
     @GetMapping("/api/v1/gameserver/weather")

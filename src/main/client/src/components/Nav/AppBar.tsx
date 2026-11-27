@@ -297,6 +297,22 @@ const DashboardContent = () => {
 						>
 							<MenuIcon />
 						</IconButton>
+						{serverStatus.appVersion && (
+							<Typography
+								variant="caption"
+								color="inherit"
+								noWrap
+								sx={{
+									mr: 1.5,
+									opacity: 0.8,
+									fontWeight: 500,
+									letterSpacing: 0.3,
+									display: {xs: 'none', sm: 'block'},
+								}}
+							>
+								{serverStatus.appVersion}
+							</Typography>
+						)}
 						<Stack direction="row" spacing={1.5} sx={{flexGrow: 1, minWidth: 0, alignItems: 'center', justifyContent: 'center'}}>
 							<Typography component="h1" variant="h6" color="inherit" noWrap>
 								Race Manager

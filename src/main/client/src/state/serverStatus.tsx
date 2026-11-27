@@ -19,6 +19,7 @@ export interface IServerStatusState {
 	steamStatus: SteamStatus,
 	steamListing: ISteamListing | null,
 	steamCheckedAt: number | null,
+	appVersion: string | null,
 	hasLoaded: boolean,
 	isLoading: boolean,
 	hasError: boolean
@@ -31,6 +32,7 @@ const initialState: IServerStatusState = {
 	steamStatus: 'UNKNOWN',
 	steamListing: null,
 	steamCheckedAt: null,
+	appVersion: null,
 	hasLoaded: false,
 	isLoading: true,
 	hasError: false,
@@ -53,6 +55,7 @@ export const serverStatusSlice = createSlice({
 			state.steamStatus = action.payload.steamStatus ?? 'UNKNOWN';
 			state.steamListing = action.payload.steamListing ?? null;
 			state.steamCheckedAt = action.payload.steamCheckedAt ?? null;
+			state.appVersion = action.payload.appVersion ?? state.appVersion;
 			state.hasLoaded = true;
 			state.isLoading = false;
 			state.hasError = false;
