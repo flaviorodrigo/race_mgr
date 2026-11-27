@@ -42,3 +42,7 @@ installer/dist/*
 ### Docker ###
 .env
 ams2-server/
+
+### Python ###
+__pycache__/
+*.pyc
