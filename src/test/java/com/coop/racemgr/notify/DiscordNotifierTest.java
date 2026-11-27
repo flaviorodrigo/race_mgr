@@ -128,4 +128,25 @@ class DiscordNotifierTest {
         race.setStages(Map.of("qualifying1", race1));
         assertThat(RaceAnnouncement.prepare(race, now)).isEmpty();
     }
+
+    @Test
+    void skipsAnnouncementWhenAllHumanPlayersDnf() {
+        long now = 1_800_000_000L;
+        var race = new Race();
+        race.setFinished(true);
+        race.setEnd_time(String.valueOf(now - 60));
+        race.setSetup(Map.of("TrackId", 42));
+        race.setStages(Map.of("race1", Map.of("results", List.of(
+                Map.of("name", "Bot 1", "is_player", false, "attributes", Map.of("RacePosition", 1, "State", "Finished")),
+                Map.of("name", "McRod", "is_player", true, "attributes", Map.of("RacePosition", 2, "State", "Retired"))
+        ))));
+        assertThat(RaceAnnouncement.prepare(race, now)).isEmpty();
+
+        race.setStages(Map.of("race1", Map.of("results", List.of(
+                Map.of("name", "Bot 1", "is_player", false, "attributes", Map.of("RacePosition", 1, "State", "Finished")),
+                Map.of("name", "McRod", "is_player", true, "attributes", Map.of("RacePosition", 2, "State", "Finished")),
+                Map.of("name", "mbr_gt", "is_player", true, "attributes", Map.of("RacePosition", 3, "State", "Retired"))
+        ))));
+        assertThat(RaceAnnouncement.prepare(race, now)).isPresent();
+    }
 }

@@ -38,19 +38,35 @@ public final class RaceAnnouncement {
         }
 
         List<DiscordNotifier.Result> parsed = new ArrayList<>();
+        boolean anyHuman = false;
+        boolean anyHumanFinished = false;
         for (JsonNode r : results) {
             JsonNode attributes = r.path("attributes");
             if (r.path("name").isMissingNode() || !attributes.path("RacePosition").isNumber()) {
                 continue;
             }
+            if (r.path("is_player").isBoolean() && r.path("is_player").asBoolean()) {
+                anyHuman = true;
+                String state = attributes.path("State").asString("");
+                if (!isDnf(state)) {
+                    anyHumanFinished = true;
+                }
+            }
             Long fastest = attributes.path("FastestLapTime").isNumber() ? attributes.path("FastestLapTime").asLong() : null;
             parsed.add(new DiscordNotifier.Result(r.path("name").asString(), attributes.path("RacePosition").asInt(), fastest));
         }
-        if (parsed.isEmpty()) {
+        if (parsed.isEmpty() || (anyHuman && !anyHumanFinished)) {
             return Optional.empty();
         }
 
         JsonNode trackId = RacemgrUtils.JSON.valueToTree(race.getSetup() == null ? java.util.Map.of() : race.getSetup()).path("TrackId");
         return Optional.of(new Prepared(trackId.isMissingNode() ? null : trackId.asString(), parsed));
+    }
+
+    private static boolean isDnf(String state) {
+        return "Retired".equalsIgnoreCase(state)
+                || "DNF".equalsIgnoreCase(state)
+                || "Disqualified".equalsIgnoreCase(state)
+                || "InGarage".equalsIgnoreCase(state);
     }
 }
