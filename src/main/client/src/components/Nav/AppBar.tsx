@@ -1,7 +1,10 @@
 import React from 'react';
+import {useDispatch, useSelector} from 'react-redux';
 import {styled, useTheme, ThemeProvider} from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import Stack from '@mui/material/Stack';
+import Chip from '@mui/material/Chip';
+import CircularProgress from '@mui/material/CircularProgress';
 import CssBaseline from '@mui/material/CssBaseline';
 import MuiDrawer from '@mui/material/Drawer';
 import Box from '@mui/material/Box';
@@ -56,6 +59,8 @@ import LogoutIcon from '@mui/icons-material/Logout';
 import ServerStopped from '../ErrorStates/ServerStopped';
 import ServerConfigError from '../ErrorStates/ServerConfigError';
 import ServerStatusError from '../ErrorStates/ServerStatusError';
+import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
+import {getServerStatus, IServerStatusState} from '../../state/serverStatus';
 
 const drawerWidth: number = 240;
 
@@ -181,9 +186,65 @@ const NavItems = ({isAuthenticated, onNavigate}: INavItemsProps) => (
 	</List>
 );
 
+const getHeaderStatusBadge = (serverStatus: IServerStatusState) => {
+	if (!serverStatus.hasLoaded) {
+		return null;
+	}
+
+	if (!serverStatus.isRunning) {
+		return {
+			label: 'Server Offline',
+			tooltip: 'Game server HTTP API is offline',
+			color: '#f44336',
+			spinning: false,
+		};
+	}
+
+	if (serverStatus.steamStatus === 'REACHABLE') {
+		const listing = serverStatus.steamListing;
+		const details = listing
+			? `${listing.name} (${listing.addr})${listing.map ? ` · ${listing.map}` : ''} · ${listing.players}/${listing.maxPlayers} players`
+			: 'Server is reachable on Steam Master Server';
+
+		return {
+			label: 'Online · Steam',
+			tooltip: details,
+			color: '#4caf50',
+			spinning: false,
+		};
+	}
+
+	if (serverStatus.steamStatus === 'CHECKING') {
+		return {
+			label: 'Checking Steam…',
+			tooltip: 'Server backend is up; checking Steam Master Server reachability...',
+			color: '#ff9800',
+			spinning: true,
+		};
+	}
+
+	if (serverStatus.steamStatus === 'UNLISTED') {
+		return {
+			label: 'Backend Up · Not on Steam',
+			tooltip: 'Server backend HTTP API is up, but not listed on Steam Master Server yet',
+			color: '#ff9800',
+			spinning: false,
+		};
+	}
+
+	return {
+		label: 'Server Online',
+		tooltip: 'Game server HTTP API is online',
+		color: '#4caf50',
+		spinning: false,
+	};
+};
+
 const DashboardContent = () => {
 	const muiTheme = useTheme();
 	const {racing} = useSkin();
+	const dispatch = useDispatch();
+	const serverStatus = useSelector((state: any) => state.serverStatus) as IServerStatusState;
 	// Phones and small tablets get an overlay drawer instead of a permanent one
 	const isCompact = useMediaQuery(muiTheme.breakpoints.down('md'));
 
@@ -191,6 +252,16 @@ const DashboardContent = () => {
 	const [mobileOpen, setMobileOpen] = React.useState(false);
 	// Start from the session marker so a reload on an admin page doesn't bounce to the login page first
 	const [isAuthenticated, setIsAuthenticated] = React.useState(() => new RaceMgrApi().hasSession());
+
+	React.useEffect(() => {
+		dispatch(getServerStatus());
+		const timer = setInterval(() => {
+			dispatch(getServerStatus());
+		}, 15000);
+		return () => clearInterval(timer);
+	}, [dispatch]);
+
+	const statusBadge = getHeaderStatusBadge(serverStatus);
 
 	const toggleDrawer = () => {
 		if (isCompact) {
@@ -232,6 +303,30 @@ const DashboardContent = () => {
 							</Typography>
 							<Box component="img" src="/race_mgr_logo.png" alt="" sx={{height: 36, display: {xs: 'none', sm: 'block'}}} />
 						</Stack>
+
+						{statusBadge && (
+							<Tooltip title={statusBadge.tooltip}>
+								<Chip
+									size="small"
+									variant="outlined"
+									icon={statusBadge.spinning
+										? <CircularProgress size={12} sx={{color: statusBadge.color, ml: '6px !important'}} />
+										: <FiberManualRecordIcon sx={{fontSize: 12, color: `${statusBadge.color} !important`}} />
+									}
+									label={statusBadge.label}
+									sx={{
+										mr: 1,
+										color: 'inherit',
+										bgcolor: 'rgba(0, 0, 0, 0.22)',
+										borderColor: 'rgba(255, 255, 255, 0.28)',
+										fontWeight: 500,
+										'& .MuiChip-label': {
+											px: 1,
+										},
+									}}
+								/>
+							</Tooltip>
+						)}
 
 						<SkinToggle />
 						{/* The racing look is always dark */}

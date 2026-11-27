@@ -12,6 +12,7 @@ import com.coop.racemgr.gameserver.GameServerLog;
 import com.coop.racemgr.gameserver.LiveSession;
 import com.coop.racemgr.gameserver.LiveTiming;
 import com.coop.racemgr.gameserver.RestartSignal;
+import com.coop.racemgr.notify.SteamServerCheck;
 import com.coop.racemgr.stats.AiPilotConverter;
 import com.coop.racemgr.stats.GameServerLookup;
 import com.coop.racemgr.utils.RacemgrUtils;
@@ -26,6 +27,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -44,6 +46,9 @@ public class GameServerController {
 
     @Autowired
     private GameServerLookup gameServerLookup;
+
+    @Autowired
+    private SteamServerCheck steamServerCheck;
 
     /** ADMIN ENDPOINTS **/
 
@@ -547,8 +552,19 @@ public class GameServerController {
 
     @GetMapping("/api/v1/gameserver")
     public ResponseEntity<Object> gameserver() throws InterruptedException, IOException {
-        Map<String, Object> response = Map.of("isRunning", GameServerMgr.isRunning(), "managed", !GameServerMgr.isExternal(),
-                "restartable", !GameServerMgr.isExternal() || RestartSignal.isEnabled());
+        Map<String, Object> response = new HashMap<>();
+        response.put("isRunning", GameServerMgr.isRunning());
+        response.put("managed", !GameServerMgr.isExternal());
+        response.put("restartable", !GameServerMgr.isExternal() || RestartSignal.isEnabled());
+        if (steamServerCheck != null) {
+            response.put("steamStatus", steamServerCheck.getStatus().name());
+            if (steamServerCheck.getLastListing() != null) {
+                response.put("steamListing", steamServerCheck.getLastListing());
+            }
+            if (steamServerCheck.getLastCheckedAt() != null) {
+                response.put("steamCheckedAt", steamServerCheck.getLastCheckedAt());
+            }
+        }
         return ResponseHandler.generateResponse("Current external game server status", HttpStatus.OK, response);
     }
 

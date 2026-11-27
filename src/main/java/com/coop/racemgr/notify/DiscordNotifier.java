@@ -34,6 +34,7 @@ public class DiscordNotifier {
     private static final Set<String> HOSTS = Set.of("discord.com", "ptb.discord.com", "canary.discord.com", "discordapp.com");
     private static final int MAX_NAME = 32;
     private static final int COLOR_RED = 0xff2800;
+    private static final int COLOR_AMBER = 0xf59e0b;
     private static final int COLOR_GREEN = 0x2e7d32;
     private static final int COLOR_GREY = 0x757575;
 
@@ -109,6 +110,34 @@ public class DiscordNotifier {
             return;
         }
         post(embed(online ? "Game server is online" : "Game server is offline", "", online ? COLOR_GREEN : COLOR_GREY));
+    }
+
+    public void serverBackendOnline() {
+        if (!isEnabled()) {
+            return;
+        }
+        post(embed("Game server backend is online", "HTTP API is up; checking Steam Master Server reachability...", COLOR_AMBER));
+    }
+
+    public void serverSteamReachable(SteamServerCheck.Listing listing) {
+        if (!isEnabled() || listing == null) {
+            return;
+        }
+        StringBuilder desc = new StringBuilder();
+        desc.append("Server: ").append(clean(listing.name())).append('\n');
+        desc.append("Address: ").append(clean(listing.addr())).append('\n');
+        if (!listing.map().isBlank()) {
+            desc.append("Track: ").append(clean(listing.map().replace('_', ' '))).append('\n');
+        }
+        desc.append("Players: ").append(listing.players()).append('/').append(listing.maxPlayers());
+        post(embed("Game server is reachable on Steam", desc.toString().trim(), COLOR_GREEN));
+    }
+
+    public void serverSteamTimeout() {
+        if (!isEnabled()) {
+            return;
+        }
+        post(embed("Game server is not listed on Steam yet", "Backend is up, but Steam Master Server hasn't listed it after 5 minutes.", COLOR_GREY));
     }
 
     static String lap(long millis) {

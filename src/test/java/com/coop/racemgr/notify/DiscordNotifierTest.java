@@ -149,4 +149,18 @@ class DiscordNotifierTest {
         ))));
         assertThat(RaceAnnouncement.prepare(race, now)).isPresent();
     }
+
+    @Test
+    void postsBackendAndSteamReachabilityMessages() throws Exception {
+        var notifier = notifier();
+        notifier.serverBackendOnline();
+        notifier.serverSteamReachable(new SteamServerCheck.Listing("McRod AMS2 Server", "71.178.26.6:27016", "Brasilia_Full", 0, 22, "joinable"));
+        notifier.serverSteamTimeout();
+        assertThat(notifier.drain(5)).isTrue();
+
+        assertThat(bodies).hasSize(3);
+        assertThat(bodies.get(0)).contains("Game server backend is online").contains("checking Steam");
+        assertThat(bodies.get(1)).contains("Game server is reachable on Steam").contains("McRod AMS2 Server").contains("Brasilia Full");
+        assertThat(bodies.get(2)).contains("Game server is not listed on Steam yet");
+    }
 }
