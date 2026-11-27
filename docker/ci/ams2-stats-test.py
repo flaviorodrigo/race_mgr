@@ -93,7 +93,7 @@ class Ams2StatsTest(unittest.TestCase):
 
         sessions = self.storage['data']['sessions']
         self.assertEqual(1, len(sessions))
-        results = list(sessions[1]['results'].values())
+        results = list(dict(sessions[1]['results']).values())
         by_pid = {r['participantid']: r for r in results}
         self.assertEqual('McRod', by_pid[0]['name'])
         self.assertTrue(by_pid[0]['is_player'])
