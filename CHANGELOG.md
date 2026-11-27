@@ -41,6 +41,7 @@ Notable changes, newest first. This file starts with the security and modernisat
 - Admin login uses an HttpOnly session cookie with CSRF protection, a lockout after repeated failures and a password that can be changed in the UI. Race Manager listens on `127.0.0.1` unless told otherwise; every `/api` route not listed as public is refused.
 
 ### Fixed
+- The bundled `ams2_stats` addon no longer saves empty sessions (the placeholder it makes at load, a stage nobody drove); they only filled its list of kept sessions. Update the addon from the Server tab and restart the game server to get it. CI's Lua tests for it pass again.
 - **AI names and cars on races whose results carry car ids the game server's list doesn't know** (the car column was blank and the AI kept their generic names): the converter now falls back to the session's class whatever its sign (class ids are signed, `F-V8_Gen2` is negative), and shows the car of the participant in the same slot.
 - The live strip and live timing lost the track for any track whose id is negative (about half of them).
 - Saving penalties on a race could write the converted AI names into the database; the check now runs on a copy.

@@ -101,5 +101,49 @@ class Ams2StatsTest(unittest.TestCase):
         self.assertFalse(by_pid[1]['is_player'])
 
 
+    def sessions(self):
+        data = self.storage['data']['sessions']
+        return [data[i] for i in range(1, len(data) + 1)]
+
+    def stage_changed(self, new_stage):
+        self.handler(self.cb.EventLogged, self.lua.table_from({
+            'name': 'StageChanged',
+            'attributes': self.lua.table_from({'NewStage': new_stage, 'Length': 5}),
+        }))
+
+    def test_a_session_nobody_took_part_in_is_not_saved(self):
+        # The placeholder the addon makes at load, and a stage nobody drove, leave no record
+        self.stage_changed('Race1')
+        self.handler(self.cb.SessionManagerStateChanged, 'Race1', 'Idle')
+        self.assertEqual(0, len(self.sessions()))
+
+    def test_a_session_with_drivers_but_no_results_is_still_saved(self):
+        self.stage_changed('Race1')
+        self.session.participants[0] = self.lua.table_from({
+            'refid': 1, 'attributes': self.lua.table_from({'Name': 'McRod', 'IsPlayer': 1, 'VehicleId': -403158996}),
+        })
+        self.handler(self.cb.EventLogged, self.lua.table_from({
+            'name': 'State', 'type': 'Participant', 'refid': 1, 'participantid': 0,
+            'attributes': self.lua.table_from({'NewState': 'Racing'}),
+        }))
+        self.handler(self.cb.SessionManagerStateChanged, 'Race1', 'Idle')
+        saved = self.sessions()
+        self.assertEqual(1, len(saved))
+        self.assertEqual('Race1', saved[0]['stage'])
+
+    def test_each_stage_with_drivers_is_saved_in_order_and_empty_ones_between_are_not(self):
+        for stage in ('Qualifying1', 'Race1'):
+            self.stage_changed(stage)
+            self.session.participants[0] = self.lua.table_from({
+                'refid': 1, 'attributes': self.lua.table_from({'Name': 'McRod', 'IsPlayer': 1, 'VehicleId': -403158996}),
+            })
+            self.handler(self.cb.EventLogged, self.lua.table_from({
+                'name': 'State', 'type': 'Participant', 'refid': 1, 'participantid': 0,
+                'attributes': self.lua.table_from({'NewState': 'Racing'}),
+            }))
+        self.handler(self.cb.SessionManagerStateChanged, 'Race1', 'Idle')
+        self.assertEqual(['Qualifying1', 'Race1'], [s['stage'] for s in self.sessions()])
+
+
 if __name__ == '__main__':
     unittest.main()

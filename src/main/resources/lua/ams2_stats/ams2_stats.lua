@@ -153,6 +153,13 @@ end
 local function finalise_session()
   if not cur then return end
 
+  -- A session nobody took part in (the placeholder made when the addon loads, a lobby that came to nothing) isn't
+  -- worth a record: it only fills the list of kept sessions
+  if next(cur.drivers) == nil then
+    cur = nil
+    return
+  end
+
   cur.finished_at = os.date("%Y-%m-%dT%H:%M:%S")
 
   for _, d in pairs(cur.drivers) do
