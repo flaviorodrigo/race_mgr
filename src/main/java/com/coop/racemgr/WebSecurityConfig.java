@@ -65,8 +65,8 @@ public class WebSecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 // Managing the other admins: the owner only
                 .requestMatchers("/api/v1/admin/users", "/api/v1/admin/users/**").hasRole("OWNER")
-                // Any signed-in person: who am I, change my own password, SimHub ingest token
-                .requestMatchers(HttpMethod.GET, "/api/v1/admin/me").authenticated()
+                // Any signed-in person: who am I, change my own password, SimHub ingest token & own single-player sessions
+                .requestMatchers(HttpMethod.GET, "/api/v1/admin/me", "/api/v1/admin/single-player/**").authenticated()
                 .requestMatchers(HttpMethod.GET, "/api/v1/admin/ingest/token").hasRole("STEWARD")
                 .requestMatchers(HttpMethod.POST, "/api/v1/admin/password").authenticated()
                 // Race-day actions a steward may do (an admin and the owner may too). Anything not listed here

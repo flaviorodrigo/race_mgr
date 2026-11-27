@@ -6,12 +6,16 @@ import com.coop.racemgr.model.RaceSession;
 import com.coop.racemgr.repositories.RaceRepository;
 import com.coop.racemgr.repositories.RaceSessionRepository;
 import com.coop.racemgr.security.SessionCookies;
+import com.coop.racemgr.stats.AiPilotConverter;
 import com.coop.racemgr.stats.Ams2StatsImporter;
 import com.coop.racemgr.stats.Ams2StatsSource;
+import com.coop.racemgr.stats.GameServerLookup;
 import com.coop.racemgr.utils.RacemgrUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -20,6 +24,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import tools.jackson.databind.JsonNode;
 
@@ -30,18 +35,22 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Ingests single-player (or exported) {@code ams2_stats}-format race payloads and hands out the signed-in user's
- * bearer JWT for the SimHub popup browser flow.
+ * Ingests single-player (or exported) {@code ams2_stats}-format race payloads into user-owned single-player sessions,
+ * keeps them separate from multiplayer leaderboards, and hands out the signed-in user's bearer JWT for SimHub.
  */
 @RestController
 public class RaceIngestController {
     private static final String DEFAULT_SP_SESSION = "Single Player";
+    private static final int MAX_PAGE_SIZE = 10000;
 
     @Autowired
     private RaceRepository raceRepository;
 
     @Autowired
     private RaceSessionRepository raceSessionRepository;
+
+    @Autowired(required = false)
+    private GameServerLookup gameServerLookup;
 
     @Autowired(required = false)
     private AuditLog auditLog;
@@ -70,6 +79,40 @@ public class RaceIngestController {
         ));
     }
 
+    @GetMapping("/api/v1/admin/single-player/sessions")
+    public ResponseEntity<Object> mySinglePlayerSessions(
+            @RequestParam(defaultValue = "0") Integer page,
+            @RequestParam(defaultValue = "100") Integer limit,
+            Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseHandler.generateResponse("Unauthorized", HttpStatus.UNAUTHORIZED, null);
+        }
+        Pageable paging = RacemgrUtils.boundedPageRequest(page, limit, MAX_PAGE_SIZE);
+        Page<RaceSession> sessions = raceSessionRepository.findAllSinglePlayerByOwner(authentication.getName(), paging);
+        return ResponseHandler.generateResponse("Single player sessions", HttpStatus.OK, PageResponse.of(sessions));
+    }
+
+    @GetMapping("/api/v1/admin/single-player/races")
+    public ResponseEntity<Object> mySinglePlayerRaces(
+            @RequestParam(required = false, defaultValue = "") String raceSessionId,
+            @RequestParam(defaultValue = "0") Integer page,
+            @RequestParam(defaultValue = "1000") Integer limit,
+            Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseHandler.generateResponse("Unauthorized", HttpStatus.UNAUTHORIZED, null);
+        }
+        Pageable paging = RacemgrUtils.boundedPageRequest(page, limit, MAX_PAGE_SIZE);
+        Page<Race> races = raceSessionId.isBlank()
+                ? raceRepository.findAllSinglePlayerByOwner(authentication.getName(), paging)
+                : raceRepository.findAllSinglePlayerByOwnerAndSessionId(authentication.getName(), raceSessionId, paging);
+        if (gameServerLookup != null) {
+            for (Race r : races.getContent()) {
+                AiPilotConverter.convertRace(r, gameServerLookup);
+            }
+        }
+        return ResponseHandler.generateResponse("Single player races", HttpStatus.OK, PageResponse.of(races));
+    }
+
     @PostMapping("/api/v1/race/ingest")
     public ResponseEntity<Object> ingest(
             @RequestBody String rawBody,
@@ -86,15 +129,18 @@ public class RaceIngestController {
             return ResponseHandler.generateResponse("Invalid JSON payload", HttpStatus.BAD_REQUEST, null);
         }
 
+        String owner = authentication != null ? authentication.getName() : "token";
         String requestedSession = root.path("sessionName").asString(DEFAULT_SP_SESSION).trim();
         String sessionName = requestedSession.isEmpty() ? DEFAULT_SP_SESSION : requestedSession;
-        RaceSession session = findOrCreateSession(sessionName);
+        RaceSession session = findOrCreateSession(sessionName, owner);
 
-        List<Race> races = Ams2StatsImporter.toRaces(root, Ams2StatsSource.zone(), "ams2_stats_sp:");
+        List<Race> races = Ams2StatsImporter.toRaces(root, Ams2StatsSource.zone(), "ams2_stats_sp:" + owner + ":");
         int imported = 0;
         int skipped = 0;
         for (Race race : races) {
             race.setRaceSessionId(session.getId());
+            race.setSinglePlayer(true);
+            race.setOwner(owner);
             if (raceRepository.findItemByRaceId(race.getRace_id()) != null) {
                 skipped++;
                 continue;
@@ -104,8 +150,7 @@ public class RaceIngestController {
         }
 
         if (auditLog != null && imported > 0) {
-            String actor = authentication != null ? authentication.getName() : "ingest-token";
-            auditLog.record(actor, "races ingested", imported + " race(s) into " + sessionName);
+            auditLog.record(owner, "races ingested", imported + " single-player race(s) into " + session.getName());
         }
 
         return ResponseHandler.generateResponse("Ingested", HttpStatus.OK, Map.of(
@@ -136,11 +181,21 @@ public class RaceIngestController {
         return false;
     }
 
-    private RaceSession findOrCreateSession(String name) {
-        RaceSession existing = raceSessionRepository.findByName(name);
+    private RaceSession findOrCreateSession(String name, String owner) {
+        RaceSession existing = raceSessionRepository.findByNameAndOwner(name, owner);
         if (existing != null) {
             return existing;
         }
-        return raceSessionRepository.save(new RaceSession(name, new ArrayList<>()));
+        String uniqueName = raceSessionRepository.findByName(name) == null
+                ? name
+                : name + " (" + owner.replace("synology:", "") + ")";
+        RaceSession existingWithSuffix = raceSessionRepository.findByNameAndOwner(uniqueName, owner);
+        if (existingWithSuffix != null) {
+            return existingWithSuffix;
+        }
+        RaceSession created = new RaceSession(uniqueName, new ArrayList<>());
+        created.setSinglePlayer(true);
+        created.setOwner(owner);
+        return raceSessionRepository.save(created);
     }
 }

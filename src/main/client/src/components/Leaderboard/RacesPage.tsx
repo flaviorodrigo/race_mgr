@@ -1,8 +1,7 @@
-import React, {useEffect, useMemo, useRef, useState} from 'react';
+import React, {useEffect, useMemo, useState} from 'react';
 import {Link as RouterLink} from 'react-router-dom';
 import {useDispatch, useSelector} from 'react-redux';
 
-import RaceMgrApi from '../../api/RaceMgrApi';
 import {getServerConfig} from '../../state/serverConfig';
 import {getSessions} from '../../state/sessions';
 import {getRotations} from '../../state/rotations';
@@ -14,7 +13,6 @@ import {convertEpochDate, convertEpochTime} from '../../utils/epochUtils';
 import SessionsFilter from './ServerConfig/SessionsFilter';
 import DateFilter from './DateFilter';
 
-import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Chip from '@mui/material/Chip';
@@ -46,10 +44,6 @@ const RacesPage: React.FC = () => {
 	const [races, setRaces] = useState<Array<IRace>>([]);
 	const [tracks, setTracks] = useState<Array<ITrackData>>([]);
 	const [loading, setLoading] = useState(false);
-	const [importMessage, setImportMessage] = useState<string | null>(null);
-	const [reloadTick, setReloadTick] = useState(0);
-	const fileInputRef = useRef<HTMLInputElement | null>(null);
-	const canImport = new RaceMgrApi().hasSession();
 
 	useEffect(() => {
 		dispatch(getServerConfig());
@@ -93,32 +87,7 @@ const RacesPage: React.FC = () => {
 
 			setLoading(false);
 		});
-	}, [selectedSessionId, selectedRotationId, sessions.sessions, reloadTick]);
-
-	const handleImportFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
-		const file = event.target.files?.[0];
-		event.target.value = '';
-		if (!file) {
-			return;
-		}
-
-		try {
-			const text = await file.text();
-			const rmApi = new RaceMgrApi();
-			const resp = await rmApi.makeApiCall({
-				url: `${rmApi.getBaseApiUrl()}/race/ingest`,
-				method: 'post',
-				data: text,
-				headers: {'Content-Type': 'application/json'},
-			});
-			const info = resp.data?.data;
-			setImportMessage(`Imported ${info?.imported ?? 0} race(s) into "${info?.sessionName ?? 'Single Player'}" (${info?.skipped ?? 0} already present).`);
-			dispatch(getSessions());
-			setReloadTick(t => t + 1);
-		} catch {
-			setImportMessage('Could not import race JSON. Check that the file is valid ams2_stats JSON and you have Steward/Admin rights.');
-		}
-	};
+	}, [selectedSessionId, selectedRotationId, sessions.sessions]);
 
 	const trackOptions = useMemo(() => availableTracks(races, tracks), [races, tracks]);
 	const visibleRaces = useMemo(
@@ -128,21 +97,8 @@ const RacesPage: React.FC = () => {
 
 	return (
 		<Paper sx={{p: 2, pb: 4, textAlign: 'left'}}>
-			<Box sx={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1}}>
-				<Box>
-					<Typography variant="overline" color="text.secondary" sx={{lineHeight: 1.5}}>Races</Typography>
-					<Typography variant="h5" component="h2" gutterBottom>Race results &amp; lap charts</Typography>
-				</Box>
-				{canImport && (
-					<>
-						<input ref={fileInputRef} type="file" accept=".json,application/json" hidden onChange={handleImportFile} />
-						<Button variant="outlined" size="small" onClick={() => fileInputRef.current?.click()}>
-							Import Race JSON
-						</Button>
-					</>
-				)}
-			</Box>
-			{importMessage && <Alert severity="info" sx={{mb: 2}} onClose={() => setImportMessage(null)}>{importMessage}</Alert>}
+			<Typography variant="overline" color="text.secondary" sx={{lineHeight: 1.5}}>Races</Typography>
+			<Typography variant="h5" component="h2" gutterBottom>Race results &amp; lap charts</Typography>
 
 			<SessionsFilter
 				selectedSessionId={selectedSessionId}

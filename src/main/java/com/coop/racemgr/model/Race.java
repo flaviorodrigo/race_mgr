@@ -28,6 +28,9 @@ public class Race {
     public Integer index;
     // An admin can void a race: it stays visible but no longer counts towards the standings
     public Boolean voided;
+    // Single-player races belong to their uploader and stay out of multiplayer leaderboards
+    public Boolean singlePlayer;
+    public String owner;
     // Added by an admin after the race: time penalties and disqualifications (applied when results are shown) and a video link
     public java.util.List<RaceNotes.Penalty> penalties;
     public String videoUrl;

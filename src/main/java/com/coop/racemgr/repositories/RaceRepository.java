@@ -13,16 +13,23 @@ public interface RaceRepository extends CrudRepository<Race, String>, PagingAndS
     @Query("{race_id:'?0'}")
     Race findItemByRaceId(String id);
 
+    @Query("{singlePlayer:{$ne:true}}")
     Page<Race> findAll(Pageable pageable);
 
     @Query("{race_session_id:'?0'}")
     Page<Race> findAllBySessionId(String raceSessionId, Pageable pageable);
 
-    @Query("{race_rotation_id:'?0'}")
+    @Query("{race_rotation_id:'?0', singlePlayer:{$ne:true}}")
     Page<Race> findAllByRotationId(String raceRotationId, Pageable pageable);
 
     @Query("{race_session_id:'?0', 'race_rotation_id':'?1'}")
     Page<Race> findAllBySessionIdAndRotationId(String raceSessionId, String raceRotationId, Pageable pageable);
+
+    @Query("{singlePlayer:true, owner:'?0'}")
+    Page<Race> findAllSinglePlayerByOwner(String owner, Pageable pageable);
+
+    @Query("{singlePlayer:true, owner:'?0', race_session_id:'?1'}")
+    Page<Race> findAllSinglePlayerByOwnerAndSessionId(String owner, String raceSessionId, Pageable pageable);
 
     public long count();
 }

@@ -24,6 +24,7 @@ import Container from '@mui/material/Container';
 
 import LeaderBoard from '../Leaderboard/LeaderBoard';
 import RacesPage from '../Leaderboard/RacesPage';
+import SinglePlayerPage from '../Leaderboard/SinglePlayerPage';
 import RacePage from '../Leaderboard/RacePage';
 import DriverPage from '../Leaderboard/DriverPage';
 import LiveTiming from '../Live/LiveTiming';
@@ -46,6 +47,7 @@ import MenuIcon from '@mui/icons-material/Menu';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import BarChartIcon from '@mui/icons-material/BarChart';
 import FlagIcon from '@mui/icons-material/Flag';
+import PersonIcon from '@mui/icons-material/Person';
 import TimerIcon from '@mui/icons-material/Timer';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import PermDataSettingIcon from '@mui/icons-material/PermDataSetting';
@@ -154,6 +156,17 @@ const NavItems = ({isAuthenticated, onNavigate}: INavItemsProps) => (
 				<ListItemText primary="Live Timing" />
 			</ListItemButton>
 		</NavLink>
+
+		{isAuthenticated
+		&& <NavLink to="/single-player" onClick={onNavigate}>
+			<ListItemButton>
+				<ListItemIcon>
+					<PersonIcon />
+				</ListItemIcon>
+				<ListItemText primary="Single Player" />
+			</ListItemButton>
+		</NavLink>
+		}
 
 		{isAuthenticated
 		&& <NavLink to="/manageserver" onClick={onNavigate}>
@@ -284,6 +297,7 @@ const DashboardContent = () => {
 						<Routes>
 							<Route path="/" element={<LeaderBoard />} />
 							<Route path="/races" element={<RacesPage />} />
+							<Route path="/single-player" element={<SinglePlayerPage />} />
 							<Route path="/manageServer" element={<ManageServer isAuthenticated={isAuthenticated} />} />
 							<Route path="/live" element={<LiveTiming />} />
 							<Route path="/records" element={<Records />} />

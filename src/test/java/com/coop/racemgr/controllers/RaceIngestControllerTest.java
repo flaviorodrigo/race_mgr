@@ -5,6 +5,7 @@ import com.coop.racemgr.model.RaceSession;
 import com.coop.racemgr.repositories.RaceRepository;
 import com.coop.racemgr.repositories.RaceSessionRepository;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -17,7 +18,6 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -59,13 +59,15 @@ class RaceIngestControllerTest {
     }
 
     @Test
-    void ingestsSinglePlayerRaceWithStewardAuthAndDeduplicates() {
+    void ingestsSinglePlayerRaceWithOwnerAndDeduplicates() {
         RaceRepository raceRepo = mock(RaceRepository.class);
         RaceSessionRepository sessionRepo = mock(RaceSessionRepository.class);
 
         RaceSession sp = new RaceSession("Single Player", new ArrayList<>());
         sp.setId("sp-session-1");
-        when(sessionRepo.findByName("Single Player")).thenReturn(sp);
+        sp.setSinglePlayer(true);
+        sp.setOwner("McRod");
+        when(sessionRepo.findByNameAndOwner("Single Player", "McRod")).thenReturn(sp);
         when(raceRepo.findItemByRaceId(any())).thenReturn(null).thenReturn(new Race());
 
         RaceIngestController controller = new RaceIngestController();
@@ -77,13 +79,11 @@ class RaceIngestControllerTest {
 
         var first = controller.ingest(SAMPLE_PAYLOAD, null, auth);
         assertThat(first.getStatusCode()).isEqualTo(HttpStatus.OK);
-        @SuppressWarnings("unchecked")
-        Map<String, Object> body1 = (Map<String, Object>) first.getBody();
-        @SuppressWarnings("unchecked")
-        Map<String, Object> data1 = (Map<String, Object>) body1.get("data");
-        assertThat(data1.get("imported")).isEqualTo(1);
-        assertThat(data1.get("skipped")).isEqualTo(0);
-        verify(raceRepo).save(any(Race.class));
+
+        ArgumentCaptor<Race> captor = ArgumentCaptor.forClass(Race.class);
+        verify(raceRepo).save(captor.capture());
+        assertThat(captor.getValue().getSinglePlayer()).isTrue();
+        assertThat(captor.getValue().getOwner()).isEqualTo("McRod");
 
         var second = controller.ingest(SAMPLE_PAYLOAD, null, auth);
         @SuppressWarnings("unchecked")
@@ -95,9 +95,10 @@ class RaceIngestControllerTest {
     }
 
     @Test
-    void createsSinglePlayerSessionWhenMissing() {
+    void createsOwnerSinglePlayerSessionWhenMissing() {
         RaceRepository raceRepo = mock(RaceRepository.class);
         RaceSessionRepository sessionRepo = mock(RaceSessionRepository.class);
+        when(sessionRepo.findByNameAndOwner("Single Player", "token")).thenReturn(null);
         when(sessionRepo.findByName("Single Player")).thenReturn(null);
         when(sessionRepo.save(any(RaceSession.class))).thenAnswer(inv -> {
             RaceSession s = inv.getArgument(0);
@@ -112,7 +113,10 @@ class RaceIngestControllerTest {
 
         var resp = controller.ingest(SAMPLE_PAYLOAD, "good-token", null);
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
-        verify(sessionRepo).save(any(RaceSession.class));
+        ArgumentCaptor<RaceSession> sc = ArgumentCaptor.forClass(RaceSession.class);
+        verify(sessionRepo).save(sc.capture());
+        assertThat(sc.getValue().getSinglePlayer()).isTrue();
+        assertThat(sc.getValue().getOwner()).isEqualTo("token");
         verify(raceRepo).save(any(Race.class));
     }
 }

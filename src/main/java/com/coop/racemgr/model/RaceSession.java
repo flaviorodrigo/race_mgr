@@ -18,6 +18,8 @@ public class RaceSession {
     public Long created;
     public Long updated;
     public Boolean active;
+    public Boolean singlePlayer;
+    public String owner;
     // Null means the built-in points formula
     public ScoringConfig scoring;
 
