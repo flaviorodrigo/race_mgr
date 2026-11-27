@@ -60,12 +60,14 @@ public class WebSecurityConfig {
             // plain (non-XOR masked) request handler is used.
             .csrf(csrf -> csrf
                 .csrfTokenRepository(csrfTokenRepository())
-                .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler()))
+                .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler())
+                .ignoringRequestMatchers("/api/v1/race/ingest"))
             .authorizeHttpRequests(auth -> auth
                 // Managing the other admins: the owner only
                 .requestMatchers("/api/v1/admin/users", "/api/v1/admin/users/**").hasRole("OWNER")
-                // Any signed-in person: who am I, change my own password
+                // Any signed-in person: who am I, change my own password, SimHub ingest token
                 .requestMatchers(HttpMethod.GET, "/api/v1/admin/me").authenticated()
+                .requestMatchers(HttpMethod.GET, "/api/v1/admin/ingest/token").hasRole("STEWARD")
                 .requestMatchers(HttpMethod.POST, "/api/v1/admin/password").authenticated()
                 // Race-day actions a steward may do (an admin and the owner may too). Anything not listed here
                 // needs the admin role, so a new admin endpoint is admin-only until it is listed.
@@ -79,7 +81,7 @@ public class WebSecurityConfig {
                 .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
                 // Public read-only endpoints (also GET /api, which hands out the XSRF token)
                 .requestMatchers(HttpMethod.GET, "/api", "/api/v1/gameserver/**", "/api/v1/config", "/api/v1/race/**", "/api/v1/sso").permitAll()
-                .requestMatchers(HttpMethod.POST, "/api/v1/authenticate", "/api/v1/logout", "/api/v1/sso/login").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/v1/authenticate", "/api/v1/logout", "/api/v1/sso/login", "/api/v1/race/ingest").permitAll()
                 // Anything else under /api is denied, so a new endpoint is private unless listed above
                 .requestMatchers("/api/**").denyAll()
                 // Everything else is the React single page app's static assets

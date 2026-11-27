@@ -28,7 +28,7 @@ public final class Ams2StatsSource {
         return "ams2_stats".equalsIgnoreCase(source);
     }
 
-    static ZoneId zone() {
+    public static ZoneId zone() {
         String name = System.getProperty("RM_STATS_TIMEZONE", System.getenv("RM_STATS_TIMEZONE"));
         try {
             return name == null || name.isBlank() ? ZoneId.systemDefault() : ZoneId.of(name.trim());

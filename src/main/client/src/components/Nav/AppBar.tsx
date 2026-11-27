@@ -30,6 +30,7 @@ import LiveTiming from '../Live/LiveTiming';
 import Records from '../Leaderboard/Records';
 import ManageServer from '../ManageServer/ManageServer';
 import Login from '../Login/Login';
+import SimhubAuthPage from '../Login/SimhubAuthPage';
 
 import ListItemButton from '@mui/material/ListItemButton';
 import ListItemIcon from '@mui/material/ListItemIcon';
@@ -290,6 +291,7 @@ const DashboardContent = () => {
 							<Route path="/driver/:name" element={<DriverPage />} />
 							<Route path="/race/:raceId" element={<RacePage />} />
 							<Route path="/login" element={<Login isAuthenticated={isAuthenticated} setIsAuthenticated={setIsAuthenticated} />} />
+							<Route path="/simhub-auth" element={<SimhubAuthPage />} />
 							<Route path="/serverstopped" element={<ServerStopped />} />
 							<Route path="/serverconfigerror" element={<ServerConfigError />} />
 							<Route path="/serverstatuserror" element={<ServerStatusError />} />

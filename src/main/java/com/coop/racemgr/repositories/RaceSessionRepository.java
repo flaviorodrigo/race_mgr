@@ -11,6 +11,7 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface RaceSessionRepository extends CrudRepository<RaceSession, String>, PagingAndSortingRepository<RaceSession, String> {
     RaceSession findItemById(String id);
+    RaceSession findByName(String name);
 
     @Query(value="{active:true}")
     Page<RaceSession> findAll(Pageable pageable);

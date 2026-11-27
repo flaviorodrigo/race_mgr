@@ -26,6 +26,10 @@ public final class Ams2StatsImporter {
     private Ams2StatsImporter() {}
 
     public static List<Race> toRaces(JsonNode root, ZoneId zone) {
+        return toRaces(root, zone, "ams2_stats:");
+    }
+
+    public static List<Race> toRaces(JsonNode root, ZoneId zone, String idPrefix) {
         List<Race> races = new ArrayList<>();
         JsonNode sessions = root.path("sessions");
         if (!sessions.isArray()) {
@@ -45,15 +49,15 @@ public final class Ams2StatsImporter {
             }
 
             JsonNode qualifying = i > 0 && "Qualifying1".equals(sessions.get(i - 1).path("stage").asString(null)) ? sessions.get(i - 1) : null;
-            races.add(buildRace(session, results, qualifying, zone));
+            races.add(buildRace(session, results, qualifying, zone, idPrefix));
         }
         return races;
     }
 
-    private static Race buildRace(JsonNode session, List<Map<String, Object>> results, JsonNode qualifying, ZoneId zone) {
+    private static Race buildRace(JsonNode session, List<Map<String, Object>> results, JsonNode qualifying, ZoneId zone, String idPrefix) {
         Race race = new Race();
         String uid = session.path("uid").asString("");
-        race.setRace_id(Hashing.sha256().hashString("ams2_stats:" + uid, StandardCharsets.UTF_8).toString());
+        race.setRace_id(Hashing.sha256().hashString((idPrefix == null ? "ams2_stats:" : idPrefix) + uid, StandardCharsets.UTF_8).toString());
         race.setStart_time(String.valueOf(epoch(session.path("started_at"), zone)));
         race.setEnd_time(String.valueOf(epoch(session.path("finished_at"), zone)));
         race.setFinished(true);
