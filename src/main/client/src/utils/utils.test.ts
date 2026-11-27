@@ -176,12 +176,14 @@ describe('sector analysis', () => {
 		const slow = {name: 'B', state: null, laps: [lap(1, 110000, 41000, 34000, 35000)]};
 		expect(sectorRows([slow, driver]).map(r => r.name)).toEqual(['A', 'B']);
 		expect(sectorRows([{name: 'C', laps: []}])[0]).toMatchObject({bestLap: null, theoretical: null, gap: null});
+		expect(sectorRows([{name: 'LuaEmpty', laps: {} as unknown as Array<never>}])[0]).toMatchObject({bestLap: null, theoretical: null, gap: null});
 		expect(sectorRows(undefined)).toEqual([]);
 	});
 
 	it('leaves slow outliers off the lap chart', () => {
 		const spin = {name: 'S', laps: [lap(1, 104000, 1, 1, 1), lap(2, 160000, 1, 1, 1), lap(3, 103000, 1, 1, 1)]};
-		const {series, max, min} = lapSeries([driver, spin]);
+		const luaEmpty = {name: 'E', laps: {} as unknown as Array<never>};
+		const {series, max, min} = lapSeries([driver, spin, luaEmpty]);
 		expect(series.find(s => s.name === 'S')?.points.map(p => p.lap)).toEqual([1, 3]);
 		expect(min).toBe(103000);
 		expect(max).toBeLessThan(120000);

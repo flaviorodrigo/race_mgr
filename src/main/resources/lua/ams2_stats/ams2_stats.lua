@@ -103,8 +103,8 @@ local function get_or_create_driver(pid, refid)
     local p = (pid ~= nil and session and session.participants and session.participants[pid]) or nil
     local pname, pis_player, pvid, pcar, pteam = read_participant_info(p)
 
-    local dname = pname or (pis_player ~= false and known and known.name) or nil
-    local dsteam = (pis_player ~= false and known and known.steamid) or nil
+    local dname = pname or (pis_player == true and known and known.name) or nil
+    local dsteam = (pis_player == true and known and known.steamid) or nil
 
     cur.drivers[key] = {
       refid          = refid,
@@ -135,15 +135,15 @@ end
 local function enrich_driver(d, pid, refid)
   local p = (pid ~= nil and session and session.participants and session.participants[pid]) or nil
   local pname, pis_player, pvid, pcar, pteam = read_participant_info(p)
+  if pis_player ~= nil then d.is_player = pis_player end
   if pname and (not d.name or d.is_player == false) then d.name = pname end
-  if d.is_player == nil and pis_player ~= nil then d.is_player = pis_player end
   if d.vehicle_id == nil and pvid ~= nil then d.vehicle_id = pvid end
   if pcar  and not d.car  then d.car  = pcar  end
   if pteam and not d.team then d.team = pteam end
-  if d.is_player ~= false and refid and known_members[refid] then
+  if d.is_player == true and refid and known_members[refid] then
     if not d.name then d.name = known_members[refid].name end
     if d.steamid == nil then d.steamid = known_members[refid].steamid end
-    if d.is_player == true then refid_to_human_key[refid] = driver_key(pid, refid) end
+    refid_to_human_key[refid] = driver_key(pid, refid)
   end
   if d.is_player == false then
     d.steamid = nil
@@ -156,6 +156,7 @@ local function finalise_session()
   cur.finished_at = os.date("%Y-%m-%dT%H:%M:%S")
 
   for _, d in pairs(cur.drivers) do
+    enrich_driver(d, d.participantid, d.refid)
     if d.started and not d.has_result then
       d.state = d.state or "DNF"
       table.insert(cur.results, {

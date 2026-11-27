@@ -439,6 +439,27 @@ public final class AiPilotConverter {
                 r.put("name", mapped + " (AI)");
             }
         }
+        if (stage.get("drivers") instanceof List<?> drivers) {
+            for (Object item : drivers) {
+                if (!(item instanceof Map<?, ?> rawMap)) {
+                    continue;
+                }
+                Map<String, Object> d = (Map<String, Object>) rawMap;
+                if (Boolean.TRUE.equals(d.get("is_player"))) {
+                    continue;
+                }
+                String name = str(d.get("name"));
+                if (name == null) {
+                    continue;
+                }
+                Integer vehicleId = integer(d.get("vehicle_id"));
+                String normClass = normalizeClass(resolveClass(vehicleId, fallbackClass, lookup));
+                String mapped = mapping.get(lower(normClass) + ":" + lower(stripAiSuffix(name)));
+                if (mapped != null) {
+                    d.put("name", mapped + " (AI)");
+                }
+            }
+        }
     }
 
     private static void collectParticipantInputs(Object participants, String fallbackClass,

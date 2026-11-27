@@ -98,7 +98,7 @@ const RacePage = () => {
 	}
 
 	const {race} = state;
-	const trackName = tracks.find(t => t.id === race.trackName)?.name.replaceAll('_', ' ');
+	const trackName = tracks.find(t => String(t.id) === String(race.trackName))?.name?.replaceAll('_', ' ');
 	const vehicleName = (id: string) => vehicles.find(v => String(v.id) === String(id))?.name ?? '';
 	const results = [...(race.raceResults ?? [])].sort((a, b) => a.finishPosition - b.finishPosition);
 

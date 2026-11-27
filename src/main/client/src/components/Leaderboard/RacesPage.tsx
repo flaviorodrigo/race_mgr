@@ -53,12 +53,16 @@ const RacesPage: React.FC = () => {
 	}, []);
 
 	useEffect(() => {
-		setSelectedSessionId(serverConfig.activeRaceSessionId || 'All');
-	}, [serverConfig.activeRaceSessionId]);
+		if (!serverConfig.isLoading) {
+			setSelectedSessionId(serverConfig.activeRaceSessionId || 'All');
+		}
+	}, [serverConfig.isLoading, serverConfig.activeRaceSessionId]);
 
 	useEffect(() => {
-		setSelectedRotationId(serverConfig.activeRaceRotationId || 'All');
-	}, [serverConfig.activeRaceRotationId]);
+		if (!serverConfig.isLoading) {
+			setSelectedRotationId(serverConfig.activeRaceRotationId || 'All');
+		}
+	}, [serverConfig.isLoading, serverConfig.activeRaceRotationId]);
 
 	useEffect(() => {
 		if (!selectedSessionId || !selectedRotationId) {
@@ -127,7 +131,7 @@ const RacesPage: React.FC = () => {
 				</FormControl>
 			</Box>
 
-			{loading ? (
+			{serverConfig.isLoading || loading ? (
 				<Box sx={{display: 'flex', justifyContent: 'center', py: 4}}>
 					<CircularProgress />
 				</Box>

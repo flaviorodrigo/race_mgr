@@ -22,7 +22,7 @@ jobs:
       # The Windows installer profile is skipped: it needs Windows tooling.
       - run: ./mvnw -B package -P '!windows-dist'
       # The racemgr_rotate Lua addon, on Lua 5.3 like the game server, against a stand-in for its Lua API
-      - run: python3 -m venv /tmp/lua-venv && /tmp/lua-venv/bin/pip install -q lupa && /tmp/lua-venv/bin/python docker/ci/racemgr-rotate-test.py
+      - run: python3 -m venv /tmp/lua-venv && /tmp/lua-venv/bin/pip install -q lupa && /tmp/lua-venv/bin/python docker/ci/racemgr-rotate-test.py && /tmp/lua-venv/bin/python docker/ci/ams2-stats-test.py
       - uses: actions/upload-artifact@v7
         with:
           name: racemgr-jar

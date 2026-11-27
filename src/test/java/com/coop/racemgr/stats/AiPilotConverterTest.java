@@ -230,4 +230,29 @@ class AiPilotConverterTest {
         Set<String> assigned = new HashSet<>(mapping.values());
         assertEquals(3, assigned.size());
     }
+
+    @Test
+    void convertsStageDriversForLapAnalysisCharts() {
+        Race race = new Race();
+        race.setSetup(Map.of("VehicleClassId", 2001, "TrackId", 999));
+        Map<String, Object> resultAi = new LinkedHashMap<>(Map.of(
+                "name", "Giancarlo Rampanelli (AI)",
+                "is_player", false,
+                "attributes", new LinkedHashMap<>(Map.of("VehicleId", 1001))
+        ));
+        Map<String, Object> driverAi = new LinkedHashMap<>(Map.of(
+                "name", "Giancarlo Rampanelli (AI)",
+                "is_player", false,
+                "vehicle_id", 1001
+        ));
+        race.setStages(Map.of("race1", Map.of(
+                "results", new ArrayList<>(List.of(resultAi)),
+                "drivers", new ArrayList<>(List.of(driverAi))
+        )));
+
+        AiPilotConverter.convertRace(race, TEST_LOOKUP);
+
+        assertEquals(resultAi.get("name"), driverAi.get("name"));
+        assertNotEquals("Giancarlo Rampanelli (AI)", driverAi.get("name"));
+    }
 }
