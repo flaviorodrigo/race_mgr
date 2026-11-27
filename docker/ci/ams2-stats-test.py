@@ -32,7 +32,7 @@ class Ams2StatsTest(unittest.TestCase):
         self.lua = LuaRuntime(unpack_returned_tuples=True)
         self.lua.execute(PRELUDE)
         storage = self.lua.table_from({'config': self.lua.table_from({'max_sessions': 20}), 'data': self.lua.table_from({})})
-        self.fn = self.lua.eval(f'function(storage) {ADDON.read_text(encoding="utf-8")} end')
+        self.fn = self.lua.eval(f'function(...) {ADDON.read_text(encoding="utf-8")} end')
         self.fn(storage)
         self.storage = storage
         self.handler = self.lua.globals().handler
@@ -89,7 +89,7 @@ class Ams2StatsTest(unittest.TestCase):
             }))
 
         # Session ends -> Idle finalises Race1
-        self.handler(self.cb.SessionManagerStateChanged, 'Idle')
+        self.handler(self.cb.SessionManagerStateChanged, 'Race1', 'Idle')
 
         sessions = self.storage['data']['sessions']
         self.assertEqual(1, len(sessions))
