@@ -12,12 +12,14 @@ This fork of [cauld/race_mgr](https://github.com/cauld/race_mgr) brings the stac
 - **Racing look**: carbon panels, chequered-flag top bar, podium, TV timing colours and photos of Fittipaldi, Piquet, Senna and Schumacher, on by default with a toggle ([details](#racing-look)).
 - **Full rotation builder**: every session setting the game server describes, per round, with cars and classes per round, import of the server's own rotation file, and save, update, copy or delete saved rotations ([details](#custom-rotations)).
 - **Presets**: save next-session settings, or whole rounds, under a name and apply them in one click; *Race next* sends a round straight to the next session.
-- **Real driver names for AI**: multiplayer AI drivers get real names, matched by class, track and skill, and stay marked as AI.
+- **Real driver names for AI**: multiplayer AI drivers get real names, matched by class, sub-model, track and skill tier via `AgyAMS2RealNames.dat`, and stay marked as AI.
+- **Single-player tracking & SimHub integration**: record and browse your own single-player qualifying and race sessions via the companion [SimHub plugins](https://github.com/flaviorodrigo/simhub-ams2-racemgr) (`Agy.AMS2SpRecorder.Plugin` with built-in Race Manager SSO at `/simhub-auth`, plus `Agy.AMS2RealNames.Plugin` for live SimHub overlays).
 - **Live timing**, **Records**, driver pages, shareable race pages, **penalties** and video links, championship rules (dropped rounds, adjustments, teams).
+- **Server & Steam reachability monitoring**: live status badge in the top header bar (`Checking Steam…`, `Online · Steam`, `Backend Up · Not on Steam`, `Server Offline`) backed by Valve's Steam Master Server API, plus Discord alerts for backend boot, Steam reachability, server offline, race results, and rotation activation.
 - **Restart the game server from Race day** when it runs in its own container, optionally from round 1 ([details](#game-server-that-runs-somewhere-else-eg-its-own-container-on-a-nas)).
-- **Admins and stewards** with their own sign-ins, or **Sign in with Synology** for DSM users and groups ([details](#sign-in-with-synology)).
-- **Runs on a Synology NAS** from ready-made images (Race Manager, MongoDB, optional game server container), with [backup scripts](#backups) ([step by step](#on-a-synology-nas)).
-- **Hardened**: Spring Boot 4 and Java 21, HttpOnly session cookies with CSRF protection, deny-by-default routes, rate-limited logins, Secure cookies and HSTS behind an HTTPS proxy.
+- **Admins and stewards** with their own sign-ins, or **pluggable OIDC / SSO** behind `oauth2-proxy` (Synology SSO, Keycloak, Authentik, etc.) with role mapping by user/group ([details](#sign-in-with-synology)).
+- **Runs in Docker containers**: ready-made images (Race Manager, MongoDB, optional game server container, or alongside an external game server container on any Linux host or NAS) with [backup scripts](#backups) ([Docker guide](#running-in-docker-linux--wine) · [NAS guide](#on-a-synology-nas)).
+- **Hardened & patched**: Spring Boot 4, Java 21, React 19, MUI 9, Vite 8 — all backend and frontend dependencies bumped with all known security vulnerabilities resolved as of the release date (November 2026); HttpOnly session cookies with CSRF protection, deny-by-default routes, rate-limited logins, Secure cookies and HSTS behind an HTTPS proxy.
 - **Tested**: 154 Java tests, 51 web UI tests, and an end-to-end suite with a real browser, MongoDB and a stand-in game server, run on every push.
 
 ## What it does
@@ -25,14 +27,15 @@ This fork of [cauld/race_mgr](https://github.com/cauld/race_mgr) brings the stac
 **For everyone (no login):**
 - **Leader Board**: championship standings with your own points table, pole and fastest-lap bonuses, dropped rounds, point adjustments and team standings; points by round; the race list; a fastest laps table; CSV export.
 - **Race pages** you can share: result, qualifying, and (with the optional `ams2_stats` addon) sector times, the ideal lap and a lap-time chart; DSQ/DNF badges, penalties and a *Watch the race* link.
-- **Driver pages**, **Records** (career totals, lap record per track) and **Live Timing** of the running session, plus who is online.
+- **Driver pages**, **Records** (career totals, lap record per track) and **Live Timing** of the running session, plus who is online and live server/Steam reachability status in the header.
 
 **For admins** (each person has their own sign-in; stewards get race-day tools only):
+- **Single Player**: view your uploaded single-player sessions/races and generate personal SimHub ingest tokens.
 - Sessions (championships) and rotations, including a rotation builder; server settings (`server.cfg`), next-session settings and **presets**, advance the session.
 - Live session: kick (with a temporary ban) and message players. Ban list, **whitelist**, balance of performance (ballast, power, drag), the game server log, an activity log.
 - Penalties, disqualifications, voiding races, video links. Discord notifications.
 
-**Runs** on Windows, or in Docker with the game server under Wine, or against a game server that runs elsewhere (a NAS, another container). MongoDB keeps the history; there are [backup scripts](#backups).
+**Runs** on Windows, or in Docker containers (with the game server under Wine in one container, or as a lightweight Race Manager container alongside a separate game server container). MongoDB keeps the history; there are [backup scripts](#backups).
 
 | | |
 |---|---|

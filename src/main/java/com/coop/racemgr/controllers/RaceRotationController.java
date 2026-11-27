@@ -6,10 +6,12 @@ import com.coop.racemgr.gameserver.GameServerMgr;
 import com.coop.racemgr.gameserver.GameServerProxy;
 import com.coop.racemgr.gameserver.RotationAddon;
 import com.coop.racemgr.model.RaceRotation;
+import com.coop.racemgr.notify.DiscordNotifier;
 import com.coop.racemgr.repositories.RaceRotationRepository;
 import com.coop.racemgr.rotation.RacemgrRotationConfigMaker;
 import com.coop.racemgr.rotation.RacemgrRotationFileMaker;
 import com.coop.racemgr.rotation.RotationValidator;
+import com.coop.racemgr.stats.GameServerLookup;
 
 import com.coop.racemgr.utils.RacemgrUtils;
 import lombok.Data;
@@ -21,6 +23,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -37,6 +42,12 @@ public class RaceRotationController {
 
     @Autowired
     private com.coop.racemgr.repositories.RaceMgrConfigRepository raceMgrConfigRepository;
+
+    @Autowired
+    private DiscordNotifier discordNotifier;
+
+    @Autowired
+    private GameServerLookup gameServerLookup;
 
     private boolean isActiveRotation(String id) {
         var config = raceMgrConfigRepository.findItemById("1");
@@ -102,6 +113,7 @@ public class RaceRotationController {
         }
     }
 
+
     @PostMapping("/api/v1/admin/race/rotation/generate")
     public ResponseEntity<Object> rotationGeneration(@RequestBody RaceRotationGenerationRequest request, Authentication authentication) {
         // Generate rotation config
@@ -117,6 +129,7 @@ public class RaceRotationController {
             return ResponseHandler.generateResponse("Request failed", HttpStatus.MULTI_STATUS, null);
         }
     }
+
 
     // Changes a saved rotation in place: its name and its setup. Races recorded under it stay under it.
     @PutMapping("/api/v1/admin/race/rotation/{id}")
@@ -148,6 +161,7 @@ public class RaceRotationController {
         }
     }
 
+
     @DeleteMapping("/api/v1/admin/race/rotation/{id}")
     public ResponseEntity<Object> deleteRaceRotation(@PathVariable String id, Authentication authentication) {
         var rr = raceRotationRepository.findItemById(id);
@@ -171,6 +185,7 @@ public class RaceRotationController {
         }
     }
 
+
     @PostMapping("/api/v1/admin/race/rotation/{id}/activate")
     public ResponseEntity<Object> activateRaceRotation(@PathVariable String id, Authentication authentication) {
         RaceRotation rr = raceRotationRepository.findItemById(id);
@@ -188,22 +203,90 @@ public class RaceRotationController {
                 if (addon.isInstalled()) {
                     long version = addon.writeRotation(rr.config);
                     if (Boolean.TRUE.equals(addon.status().get("ready"))) {
+                        notifyRotationActivated(rr, true);
                         return ResponseHandler.generateResponse(
                                 "Rotation sent to the game server. It takes effect within a few seconds: no restart, and nobody has to leave.",
                                 HttpStatus.OK, Map.of("version", version, "restartNeeded", false));
                     }
                 }
+                notifyRotationActivated(rr, false);
                 return ResponseHandler.generateResponse(
                         "Rotation written. Restart the game server to apply it (it is managed outside Race Manager).", HttpStatus.OK,
                         Map.of("restartNeeded", true));
             }
 
             GameServerMgr.restart();
+            notifyRotationActivated(rr, false);
             return ResponseHandler.generateResponse("Successfully activated race rotation, restarting server now to apply!", HttpStatus.OK, null);
         } catch (Exception e) {
             logger.error(e);
             return ResponseHandler.generateResponse("Request failed", HttpStatus.MULTI_STATUS, null);
         }
+    }
+
+
+    private void notifyRotationActivated(RaceRotation rr, boolean liveApplied) {
+        if (discordNotifier == null || !discordNotifier.isEnabled() || rr == null) {
+            return;
+        }
+        List<DiscordNotifier.RotationRound> rounds = new ArrayList<>();
+        if (rr.config instanceof Map<?, ?> cfg) {
+            Map<Object, Object> defaults = new LinkedHashMap<>();
+            Object def = cfg.containsKey("default") ? cfg.get("default") : cfg.get("defaultConfig");
+            if (def instanceof Map<?, ?> defMap) {
+                defaults.putAll(defMap);
+            }
+            Object rawRounds = cfg.get("rotation");
+            if (rawRounds instanceof List<?> list) {
+                for (Object item : list) {
+                    if (!(item instanceof Map<?, ?> rMap)) {
+                        continue;
+                    }
+                    Map<Object, Object> merged = new LinkedHashMap<>(defaults);
+                    merged.putAll(rMap);
+                    String track = resolveTrackName(merged.get("TrackId"));
+                    String vehicleClass = resolveClassName(merged.get("VehicleClassId"));
+                    Integer raceLaps = asInt(merged.get("RaceLength"));
+                    Integer qualiMins = asInt(merged.get("QualifyLength"));
+                    Integer ai = asInt(merged.get("OpponentDifficulty"));
+                    rounds.add(new DiscordNotifier.RotationRound(track, vehicleClass, raceLaps, qualiMins, ai));
+                }
+            }
+        }
+        discordNotifier.rotationActivated(rr.getName(), rounds, liveApplied);
+    }
+
+    private String resolveTrackName(Object trackId) {
+        if (trackId == null) {
+            return null;
+        }
+        String raw = String.valueOf(trackId);
+        String resolved = gameServerLookup != null ? gameServerLookup.trackNameForTrackId(raw) : null;
+        return resolved != null && !resolved.isBlank() ? resolved : raw;
+    }
+
+    private String resolveClassName(Object classId) {
+        Integer id = asInt(classId);
+        if (id != null && gameServerLookup != null) {
+            String resolved = gameServerLookup.vehicleClassForClassId(id);
+            if (resolved != null && !resolved.isBlank()) {
+                return resolved;
+            }
+        }
+        return classId == null ? null : String.valueOf(classId);
+    }
+
+    private static Integer asInt(Object val) {
+        if (val instanceof Number n) {
+            return n.intValue();
+        }
+        if (val instanceof String s && !s.isBlank()) {
+            try {
+                return Integer.parseInt(s.trim());
+            } catch (NumberFormatException ignored) {
+            }
+        }
+        return null;
     }
 
     // The racemgr_rotate addon: whether it is installed and in use, and what it reports

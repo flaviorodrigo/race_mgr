@@ -5,6 +5,8 @@ Notable changes, newest first. This file starts with the security and modernisat
 ## Unreleased
 
 ### Added
+- **Discord rotation notifications & live Steam reachability**: activating a rotation announces its rounds (tracks, classes, laps, AI) to Discord; server startup posts when the backend HTTP API is up, polls Steam Master Server (`GetServersAtAddress`) until listed, and shows live reachability status in the top header bar.
+- **Single-player race ingestion & SimHub integration**: upload and browse single-player qualifying and race sessions (`POST /api/v1/race/ingest`, `/single-player`) using personal ingest tokens or SimHub browser SSO (`/simhub-auth`), paired with the companion [simhub-ams2-racemgr](https://github.com/flaviorodrigo/simhub-ams2-racemgr) plugins (`Agy.AMS2SpRecorder.Plugin` and `Agy.AMS2RealNames.Plugin`).
 - **Start the rotation from round 1** without a restart (racemgr_rotate in use): the next session is round 1 and nobody is disconnected. Restart game server *from round 1* now also resets the new addon's position.
 - The track name in the leaderboard's race list opens that race's own page (result, qualifying, sector times, lap chart); the chain icon still copies its link.
 - **Rotation addon (no restart)**: the `racemgr_rotate` Lua addon replaces `sms_rotate` and picks up a changed rotation from Race Manager while the game server runs, keeping its position, so adding a track no longer needs a restart. Installed, checked and shown from the Server tab; tested on Lua 5.3 in CI.
@@ -37,7 +39,7 @@ Notable changes, newest first. This file starts with the security and modernisat
 - End-to-end tests (`e2e/`) and a CI workflow. The README screenshots come from them (`E2E_SCREENSHOTS=folder npm test`).
 
 ### Changed
-- Spring Boot 4, Java 21, React 19, MUI 9, Vite 8; all dependencies updated.
+- Spring Boot 4, Java 21, React 19, MUI 9, Vite 8; all backend and frontend dependencies bumped with all known security vulnerabilities resolved as of the release date (November 2026).
 - Admin login uses an HttpOnly session cookie with CSRF protection, a lockout after repeated failures and a password that can be changed in the UI. Race Manager listens on `127.0.0.1` unless told otherwise; every `/api` route not listed as public is refused.
 
 ### Fixed

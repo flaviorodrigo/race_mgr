@@ -163,4 +163,21 @@ class DiscordNotifierTest {
         assertThat(bodies.get(1)).contains("Game server is reachable on Steam").contains("McRod AMS2 Server").contains("Brasilia Full");
         assertThat(bodies.get(2)).contains("Game server is not listed on Steam yet");
     }
+
+    @Test
+    void postsRotationActivatedMessage() throws Exception {
+        var notifier = notifier();
+        notifier.rotationActivated("F1 1991 Season", List.of(
+                new DiscordNotifier.RotationRound("Interlagos", "Formula Classic Gen 4", 10, 10, 92),
+                new DiscordNotifier.RotationRound("Suzuka GP", "Formula Classic Gen 4", 12, 10, 92)
+        ), true);
+        assertThat(notifier.drain(5)).isTrue();
+
+        assertThat(bodies).hasSize(1);
+        assertThat(bodies.get(0))
+                .contains("Rotation activated · F1 1991 Season")
+                .contains("1. Interlagos — Formula Classic Gen 4 (10L, Q 10m, AI 92)")
+                .contains("2. Suzuka GP — Formula Classic Gen 4 (12L, Q 10m, AI 92)")
+                .contains("Applied live to the running server.");
+    }
 }

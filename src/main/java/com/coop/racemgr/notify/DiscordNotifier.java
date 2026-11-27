@@ -87,6 +87,8 @@ public class DiscordNotifier {
 
     public record Result(String name, int position, Long fastestLapMillis) {}
 
+    public record RotationRound(String track, String vehicleClass, Integer raceLaps, Integer qualifyMinutes, Integer aiDifficulty) {}
+
     public void raceFinished(String track, int rounds, List<Result> results) {
         if (!isEnabled() || results.isEmpty()) {
             return;
@@ -138,6 +140,47 @@ public class DiscordNotifier {
             return;
         }
         post(embed("Game server is not listed on Steam yet", "Backend is up, but Steam Master Server hasn't listed it after 5 minutes.", COLOR_GREY));
+    }
+
+    public void rotationActivated(String rotationName, List<RotationRound> rounds, boolean liveApplied) {
+        if (!isEnabled()) {
+            return;
+        }
+        String title = (rotationName == null || rotationName.isBlank())
+                ? "Rotation activated"
+                : "Rotation activated · " + clean(rotationName);
+        StringBuilder desc = new StringBuilder();
+        if (rounds != null && !rounds.isEmpty()) {
+            int limit = Math.min(rounds.size(), 15);
+            for (int i = 0; i < limit; i++) {
+                RotationRound r = rounds.get(i);
+                desc.append(i + 1).append(". ");
+                desc.append(r.track() != null && !r.track().isBlank() ? clean(r.track()) : "Unknown track");
+                if (r.vehicleClass() != null && !r.vehicleClass().isBlank()) {
+                    desc.append(" — ").append(clean(r.vehicleClass()));
+                }
+                List<String> details = new ArrayList<>();
+                if (r.raceLaps() != null && r.raceLaps() > 0) {
+                    details.add(r.raceLaps() + "L");
+                }
+                if (r.qualifyMinutes() != null && r.qualifyMinutes() > 0) {
+                    details.add("Q " + r.qualifyMinutes() + "m");
+                }
+                if (r.aiDifficulty() != null) {
+                    details.add("AI " + r.aiDifficulty());
+                }
+                if (!details.isEmpty()) {
+                    desc.append(" (").append(String.join(", ", details)).append(')');
+                }
+                desc.append('\n');
+            }
+            if (rounds.size() > limit) {
+                desc.append("… and ").append(rounds.size() - limit).append(" more round(s)\n");
+            }
+            desc.append('\n');
+        }
+        desc.append(liveApplied ? "Applied live to the running server." : "Restarting/pending restart to apply.");
+        post(embed(title, desc.toString().trim(), liveApplied ? COLOR_GREEN : COLOR_AMBER));
     }
 
     static String lap(long millis) {
